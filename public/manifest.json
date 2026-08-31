@@ -1,0 +1,14 @@
+{
+  "name": "个人数字花园",
+  "short_name": "数字花园",
+  "description": "博客 + 游戏厅 + 工具箱 + 留言板",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

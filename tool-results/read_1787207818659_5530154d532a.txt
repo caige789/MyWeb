@@ -1,0 +1,1035 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→     4→import { Button } from '@/components/ui/button';
+     5→     5→import { ArrowLeft, Trophy } from 'lucide-react';
+     6→     6→
+     7→     7→/* ============ 组件属性接口 ============ */
+     8→     8→interface PvzGameProps {
+     9→     9→  onBack: () => void;
+    10→    10→}
+    11→    11→
+    12→    12→/* ============ 游戏常量 ============ */
+    13→    13→const GAME_NAME = 'pvz';
+    14→    14→const ROWS = 5;
+    15→    15→const COLS = 9;
+    16→    16→const LOGIC_W = 640;
+    17→    17→const LOGIC_H = Math.floor(LOGIC_W * (ROWS / COLS));
+    18→    18→const TOTAL_WAVES = 5;
+    19→    19→const WAVE_DURATION = 30;
+    20→    20→const SUN_DROP_INTERVAL = 8000;
+    21→    21→const SUN_VALUE = 25;
+    22→    22→const PEA_SPEED = 4;
+    23→    23→const PEA_DAMAGE = 25;
+    24→    24→const SHOOT_INTERVAL = 1500;
+    25→    25→const SUNFLOWER_INTERVAL = 12000;
+    26→    26→const SUN_LIFE = 600;
+    27→    27→const ICE_SLOW_DURATION = 3000;
+    28→    28→const ICE_SLOW_FACTOR = 0.5;
+    29→    29→const CHERRY_FUSE_TIME = 1500;
+    30→    30→const CHERRY_DAMAGE = 1800;
+    31→    31→const CHERRY_RADIUS_CELLS = 1.5;
+    32→    32→const CHOMP_DIGEST_TIME = 30000;
+    33→    33→const CHOMP_MAX_HP = 300;
+    34→    34→
+    35→    35→/* ============ 难度配置 ============ */
+    36→    36→type Difficulty = 'easy' | 'normal' | 'hard';
+    37→    37→
+    38→    38→interface DifficultyConfig {
+    39→    39→  label: string;
+    40→    40→  initSun: number;
+    41→    41→  zombieSpeedMul: number;
+    42→    42→  zombieCountMul: number;
+    43→    43→}
+    44→    44→
+    45→    45→const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
+    46→    46→  easy:   { label: '简单', initSun: 150, zombieSpeedMul: 0.7, zombieCountMul: 0.6 },
+    47→    47→  normal: { label: '普通', initSun: 100, zombieSpeedMul: 1.0, zombieCountMul: 1.0 },
+    48→    48→  hard:   { label: '困难', initSun: 50,  zombieSpeedMul: 1.4, zombieCountMul: 1.5 },
+    49→    49→};
+    50→    50→
+    51→    51→/* ============ 植物定义（共7种） ============ */
+    52→    52→interface PlantDef {
+    53→    53→  id: string;
+    54→    54→  name: string;
+    55→    55→  emoji: string;
+    56→    56→  cost: number;
+    57→    57→  hp: number;
+    58→    58→  desc: string;
+    59→    59→}
+    60→    60→
+    61→    61→const PLANT_DEFS: PlantDef[] = [
+    62→    62→  { id: 'sunflower',   name: '向日葵',   emoji: '🌻', cost: 50,  hp: 80,  desc: '产生阳光' },
+    63→    63→  { id: 'peashooter',  name: '豌豆射手', emoji: '🟢', cost: 100, hp: 80,  desc: '单发射击' },
+    64→    64→  { id: 'wallnut',     name: '坚果墙',   emoji: '🥜', cost: 50,  hp: 800, desc: '高血量挡路' },
+    65→    65→  { id: 'doubleshoot', name: '双发射手', emoji: '🔵', cost: 200, hp: 80,  desc: '双发射击' },
+    66→    66→  { id: 'iceshooter',  name: '寒冰射手', emoji: '❄️', cost: 175, hp: 80,  desc: '冰豌豆减速' },
+    67→    67→  { id: 'cherrybomb',  name: '樱桃炸弹', emoji: '💥', cost: 150, hp: 80,  desc: '范围爆炸' },
+    68→    68→  { id: 'chomper',     name: '大嘴花',   emoji: '🌵', cost: 150, hp: 80,  desc: '吃掉僵尸' },
+    69→    69→];
+    70→    70→
+    71→    71→/* ============ 僵尸定义（共5种） ============ */
+    72→    72→type ZombieType = 'normal' | 'cone' | 'bucket' | 'flag' | 'newspaper';
+    73→    73→
+    74→    74→interface ZombieDef {
+    75→    75→  type: ZombieType;
+    76→    76→  name: string;
+    77→    77→  emoji: string;
+    78→    78→  hp: number;
+    79→    79→  speed: number;
+    80→    80→  score: number;
+    81→    81→}
+    82→    82→
+    83→    83→const ZOMBIE_DEFS: Record<ZombieType, ZombieDef> = {
+    84→    84→  normal:    { type: 'normal',    name: '普通僵尸', emoji: '🧟',     hp: 100, speed: 0.3,  score: 10 },
+    85→    85→  cone:      { type: 'cone',      name: '路障僵尸', emoji: '🧟‍♂️',  hp: 200, speed: 0.3,  score: 20 },
+    86→    86→  bucket:    { type: 'bucket',    name: '铁桶僵尸', emoji: '🧟‍♀️', hp: 400, speed: 0.25, score: 40 },
+    87→    87→  flag:      { type: 'flag',      name: '旗帜僵尸', emoji: '🚩',    hp: 150, speed: 0.5,  score: 30 },
+    88→    88→  newspaper: { type: 'newspaper', name: '报纸僵尸', emoji: '📰',    hp: 280, speed: 0.3,  score: 35 },
+    89→    89→};
+    90→    90→
+    91→    91→/* ============ 游戏对象接口 ============ */
+    92→    92→interface Plant {
+    93→    93→  type: string;
+    94→    94→  row: number;
+    95→    95→  col: number;
+    96→    96→  hp: number;
+    97→    97→  maxHp: number;
+    98→    98→  shootTimer: number;
+    99→    99→  sunTimer: number;
+   100→   100→  fuseTimer: number;
+   101→   101→  digestTimer: number;
+   102→   102→  digesting: boolean;
+   103→   103→  dead: boolean;
+   104→   104→}
+   105→   105→
+   106→   106→interface Zombie {
+   107→   107→  id: number;
+   108→   108→  type: ZombieType;
+   109→   109→  name: string;
+   110→   110→  emoji: string;
+   111→   111→  row: number;
+   112→   112→  x: number;
+   113→   113→  hp: number;
+   114→   114→  maxHp: number;
+   115→   115→  baseSpeed: number;
+   116→   116→  speed: number;
+   117→   117→  score: number;
+   118→   118→  hitFlash: number;
+   119→   119→  eating: boolean;
+   120→   120→  walkPhase: number;
+   121→   121→  slowTimer: number;
+   122→   122→  paperBroken: boolean;
+   123→   123→}
+   124→   124→
+   125→   125→interface Pea {
+   126→   126→  row: number;
+   127→   127→  x: number;
+   128→   128→  y: number;
+   129→   129→  isIce: boolean;
+   130→   130→}
+   131→   131→
+   132→   132→interface Sun {
+   133→   133→  id: number;
+   134→   134→  x: number;
+   135→   135→  y: number;
+   136→   136→  targetY: number;
+   137→   137→  vy: number;
+   138→   138→  collected: boolean;
+   139→   139→  alpha: number;
+   140→   140→  bouncePhase: number;
+   141→   141→  lifeTimer: number;
+   142→   142→}
+   143→   143→
+   144→   144→/* ============ 每波僵尸生成配置 ============ */
+   145→   145→function getWaveZombies(wave: number, countMul: number): { type: ZombieType; delay: number }[] {
+   146→   146→  const zombies: { type: ZombieType; delay: number }[] = [];
+   147→   147→  let delay = 0;
+   148→   148→  const baseCounts: number[][] = [
+   149→   149→    [4, 1, 0, 0, 0],
+   150→   150→    [3, 2, 0, 1, 1],
+   151→   151→    [2, 2, 1, 1, 2],
+   152→   152→    [2, 3, 1, 1, 2],
+   153→   153→    [1, 3, 2, 2, 3],
+   154→   154→  ];
+   155→   155→  const counts = baseCounts[Math.min(wave, baseCounts.length - 1)];
+   156→   156→  const types: ZombieType[] = ['normal', 'cone', 'bucket', 'flag', 'newspaper'];
+   157→   157→  for (let i = 0; i < types.length; i++) {
+   158→   158→    const count = Math.round(counts[i] * countMul);
+   159→   159→    for (let j = 0; j < count; j++) {
+   160→   160→      zombies.push({ type: types[i], delay });
+   161→   161→      delay += 2000 + Math.random() * 3000;
+   162→   162→    }
+   163→   163→  }
+   164→   164→  for (let i = zombies.length - 1; i > 0; i--) {
+   165→   165→    const j = Math.floor(Math.random() * (i + 1));
+   166→   166→    [zombies[i], zombies[j]] = [zombies[j], zombies[i]];
+   167→   167→  }
+   168→   168→  return zombies;
+   169→   169→}
+   170→   170→
+   171→   171→/* ============ 主组件 ============ */
+   172→   172→export default function PvzGame({ onBack }: PvzGameProps) {
+   173→   173→  /* --- UI状态 --- */
+   174→   174→  const [phase, setPhase] = useState<'settings' | 'playing' | 'won' | 'lost'>('settings');
+   175→   175→  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+   176→   176→  const [sunCount, setSunCount] = useState(100);
+   177→   177→  const [score, setScore] = useState(0);
+   178→   178→  const [currentWave, setCurrentWave] = useState(1);
+   179→   179→  const [selectedPlant, setSelectedPlant] = useState<string | null>(null);
+   180→   180→  const [highScore, setHighScore] = useState(0);
+   181→   181→
+   182→   182→  /* --- 游戏状态Refs --- */
+   183→   183→  const plantsRef = useRef<Plant[]>([]);
+   184→   184→  const zombiesRef = useRef<Zombie[]>([]);
+   185→   185→  const peasRef = useRef<Pea[]>([]);
+   186→   186→  const sunsRef = useRef<Sun[]>([]);
+   187→   187→  const sunRef = useRef(100);
+   188→   188→  const scoreRef = useRef(0);
+   189→   189→  const waveRef = useRef(1);
+   190→   190→  const waveElapsedRef = useRef(0);
+   191→   191→  const waveZombiesRef = useRef<{ type: ZombieType; delay: number }[]>([]);
+   192→   192→  const waveSpawnIdxRef = useRef(0);
+   193→   193→  const sunDropTimerRef = useRef(0);
+   194→   194→  const zombieIdRef = useRef(0);
+   195→   195→  const sunIdRef = useRef(0);
+   196→   196→  const diffRef = useRef<Difficulty>('normal');
+   197→   197→  const overRef = useRef(false);
+   198→   198→  const wonRef = useRef(false);
+   199→   199→  const selPlantRef = useRef<string | null>(null);
+   200→   200→  const lastTimeRef = useRef(0);
+   201→   201→  const rafRef = useRef(0);
+   202→   202→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   203→   203→  const containerRef = useRef<HTMLDivElement>(null);
+   204→   204→  const cellWRef = useRef(LOGIC_W / COLS);
+   205→   205→  const cellHRef = useRef(LOGIC_H / ROWS);
+   206→   206→
+   207→   207→  const loopFnRef = useRef<(timestamp: number) => void>(null!);
+   208→   208→  const submitScoreRef = useRef<(s: number) => void>(() => {});
+   209→   209→
+   210→   210→  /* --- 获取最高分 --- */
+   211→   211→  useEffect(() => {
+   212→   212→    fetch('/api/games/scores')
+   213→   213→      .then(r => r.json())
+   214→   214→      .then(data => {
+   215→   215→        if (data.code === 200) {
+   216→   216→          const pvz = (data.data || []).find((s: { game: string }) => s.game === GAME_NAME);
+   217→   217→          if (pvz) setHighScore(pvz.score);
+   218→   218→        }
+   219→   219→      });
+   220→   220→  }, []);
+   221→   221→
+   222→   222→  /* --- 提交分数 --- */
+   223→   223→  const doSubmitScore = useCallback((s: number) => {
+   224→   224→    fetch('/api/games/scores', {
+   225→   225→      method: 'POST',
+   226→   226→      headers: { 'Content-Type': 'application/json' },
+   227→   227→      body: JSON.stringify({ game: GAME_NAME, score: s }),
+   228→   228→    })
+   229→   229→      .then(r => r.json())
+   230→   230→      .then(data => {
+   231→   231→        if (data.code === 200 && data.data) setHighScore(data.data.score);
+   232→   232→      });
+   233→   233→  }, []);
+   234→   234→
+   235→   235→  useEffect(() => { submitScoreRef.current = doSubmitScore; }, [doSubmitScore]);
+   236→   236→
+   237→   237→  /* --- 高DPI Canvas设置 --- */
+   238→   238→  const setupCanvas = useCallback(() => {
+   239→   239→    const canvas = canvasRef.current;
+   240→   240→    const container = containerRef.current;
+   241→   241→    if (!canvas || !container) return;
+   242→   242→    const rect = container.getBoundingClientRect();
+   243→   243→    const w = Math.min(rect.width, 640);
+   244→   244→    const h = w * (ROWS / COLS);
+   245→   245→    const dpr = window.devicePixelRatio || 1;
+   246→   246→    canvas.width = w * dpr;
+   247→   247→    canvas.height = h * dpr;
+   248→   248→    canvas.style.width = w + 'px';
+   249→   249→    canvas.style.height = h + 'px';
+   250→   250→    const ctx = canvas.getContext('2d');
+   251→   251→    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   252→   252→    cellWRef.current = w / COLS;
+   253→   253→    cellHRef.current = h / ROWS;
+   254→   254→  }, []);
+   255→   255→
+   256→   256→  /* --- 初始化游戏状态 --- */
+   257→   257→  const initGame = useCallback((diff: Difficulty) => {
+   258→   258→    const cfg = DIFFICULTY_CONFIG[diff];
+   259→   259→    plantsRef.current = [];
+   260→   260→    zombiesRef.current = [];
+   261→   261→    peasRef.current = [];
+   262→   262→    sunsRef.current = [];
+   263→   263→    sunRef.current = cfg.initSun;
+   264→   264→    scoreRef.current = 0;
+   265→   265→    waveRef.current = 1;
+   266→   266→    waveElapsedRef.current = 0;
+   267→   267→    waveZombiesRef.current = getWaveZombies(0, cfg.zombieCountMul);
+   268→   268→    waveSpawnIdxRef.current = 0;
+   269→   269→    sunDropTimerRef.current = 0;
+   270→   270→    zombieIdRef.current = 0;
+   271→   271→    sunIdRef.current = 0;
+   272→   272→    diffRef.current = diff;
+   273→   273→    overRef.current = false;
+   274→   274→    wonRef.current = false;
+   275→   275→    selPlantRef.current = null;
+   276→   276→    lastTimeRef.current = 0;
+   277→   277→    setSunCount(cfg.initSun);
+   278→   278→    setScore(0);
+   279→   279→    setCurrentWave(1);
+   280→   280→    setSelectedPlant(null);
+   281→   281→  }, []);
+   282→   282→
+   283→   283→  /* --- 开始游戏 --- */
+   284→   284→  const startGame = useCallback(() => {
+   285→   285→    initGame(difficulty);
+   286→   286→    setPhase('playing');
+   287→   287→  }, [difficulty, initGame]);
+   288→   288→
+   289→   289→  /* --- 坐标转换 --- */
+   290→   290→  const screenToLogic = useCallback((clientX: number, clientY: number) => {
+   291→   291→    const canvas = canvasRef.current;
+   292→   292→    if (!canvas) return { x: 0, y: 0 };
+   293→   293→    const rect = canvas.getBoundingClientRect();
+   294→   294→    return {
+   295→   295→      x: (clientX - rect.left) * (LOGIC_W / rect.width),
+   296→   296→      y: (clientY - rect.top) * (LOGIC_H / rect.height),
+   297→   297→    };
+   298→   298→  }, []);
+   299→   299→
+   300→   300→  /* --- Canvas点击/触摸处理 --- */
+   301→   301→  const handleCanvasInteraction = useCallback((clientX: number, clientY: number) => {
+   302→   302→    if (overRef.current || wonRef.current) return;
+   303→   303→    const pos = screenToLogic(clientX, clientY);
+   304→   304→    const cellW = cellWRef.current;
+   305→   305→    const cellH = cellHRef.current;
+   306→   306→
+   307→   307→    // 1. 检查是否点击了阳光
+   308→   308→    const suns = sunsRef.current;
+   309→   309→    for (let i = suns.length - 1; i >= 0; i--) {
+   310→   310→      const s = suns[i];
+   311→   311→      if (s.collected) continue;
+   312→   312→      const dx = pos.x - s.x;
+   313→   313→      const dy = pos.y - s.y;
+   314→   314→      if (dx * dx + dy * dy < 900) {
+   315→   315→        s.collected = true;
+   316→   316→        sunRef.current += SUN_VALUE;
+   317→   317→        setSunCount(sunRef.current);
+   318→   318→        return;
+   319→   319→      }
+   320→   320→    }
+   321→   321→
+   322→   322→    // 2. 在格子上种植物
+   323→   323→    const sel = selPlantRef.current;
+   324→   324→    if (sel) {
+   325→   325→      const col = Math.floor(pos.x / cellW);
+   326→   326→      const row = Math.floor(pos.y / cellH);
+   327→   327→      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+   328→   328→        const exists = plantsRef.current.some(p => p.row === row && p.col === col);
+   329→   329→        if (!exists) {
+   330→   330→          const def = PLANT_DEFS.find(d => d.id === sel);
+   331→   331→          if (def && sunRef.current >= def.cost) {
+   332→   332→            sunRef.current -= def.cost;
+   333→   333→            setSunCount(sunRef.current);
+   334→   334→            plantsRef.current.push({
+   335→   335→              type: def.id, row, col,
+   336→   336→              hp: def.hp, maxHp: def.hp,
+   337→   337→              shootTimer: 0, sunTimer: 0,
+   338→   338→              fuseTimer: 0, digestTimer: 0,
+   339→   339→              digesting: false, dead: false,
+   340→   340→            });
+   341→   341→          }
+   342→   342→        }
+   343→   343→      }
+   344→   344→    }
+   345→   345→  }, [screenToLogic]);
+   346→   346→
+   347→   347→  /* --- Canvas事件监听 --- 依赖phase，确保playing时Canvas已存在再绑定 */
+   348→   348→  useEffect(() => {
+   349→   349→    if (phase !== 'playing') return;
+   350→   350→    const canvas = canvasRef.current;
+   351→   351→    if (!canvas) return;
+   352→   352→    const onClick = (e: MouseEvent) => {
+   353→   353→      e.preventDefault();
+   354→   354→      handleCanvasInteraction(e.clientX, e.clientY);
+   355→   355→    };
+   356→   356→    const onTouch = (e: TouchEvent) => {
+   357→   357→      e.preventDefault();
+   358→   358→      const t = e.touches[0] || e.changedTouches[0];
+   359→   359→      if (t) handleCanvasInteraction(t.clientX, t.clientY);
+   360→   360→    };
+   361→   361→    canvas.addEventListener('click', onClick);
+   362→   362→    canvas.addEventListener('touchstart', onTouch, { passive: false });
+   363→   363→    return () => {
+   364→   364→      canvas.removeEventListener('click', onClick);
+   365→   365→      canvas.removeEventListener('touchstart', onTouch);
+   366→   366→    };
+   367→   367→  }, [phase, handleCanvasInteraction]);
+   368→   368→
+   369→   369→  /* --- 选择植物 --- */
+   370→   370→  const handleSelectPlant = useCallback((plantId: string) => {
+   371→   371→    if (selPlantRef.current === plantId) {
+   372→   372→      selPlantRef.current = null;
+   373→   373→      setSelectedPlant(null);
+   374→   374→    } else {
+   375→   375→      selPlantRef.current = plantId;
+   376→   376→      setSelectedPlant(plantId);
+   377→   377→    }
+   378→   378→  }, []);
+   379→   379→
+   380→   380→  /* --- 定义游戏主循环 --- */
+   381→   381→  useEffect(() => {
+   382→   382→    const loop = (timestamp: number) => {
+   383→   383→      const canvas = canvasRef.current;
+   384→   384→      if (!canvas) return;
+   385→   385→      const ctx = canvas.getContext('2d');
+   386→   386→      if (!ctx) return;
+   387→   387→
+   388→   388→      const dpr = window.devicePixelRatio || 1;
+   389→   389→      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   390→   390→
+   391→   391→      if (lastTimeRef.current === 0) lastTimeRef.current = timestamp;
+   392→   392→      const deltaMs = Math.min(timestamp - lastTimeRef.current, 50);
+   393→   393→      lastTimeRef.current = timestamp;
+   394→   394→      const dt = deltaMs / 16.667;
+   395→   395→
+   396→   396→      const cellW = cellWRef.current;
+   397→   397→      const cellH = cellHRef.current;
+   398→   398→      const cfg = DIFFICULTY_CONFIG[diffRef.current];
+   399→   399→
+   400→   400→      /* ===== 更新逻辑 ===== */
+   401→   401→      if (!overRef.current && !wonRef.current) {
+   402→   402→        waveElapsedRef.current += deltaMs;
+   403→   403→
+   404→   404→        // 天上掉阳光
+   405→   405→        sunDropTimerRef.current += deltaMs;
+   406→   406→        if (sunDropTimerRef.current >= SUN_DROP_INTERVAL) {
+   407→   407→          sunDropTimerRef.current -= SUN_DROP_INTERVAL;
+   408→   408→          const newSun: Sun = {
+   409→   409→            id: sunIdRef.current++,
+   410→   410→            x: 40 + Math.random() * (LOGIC_W - 80),
+   411→   411→            y: -20,
+   412→   412→            targetY: 30 + Math.random() * (LOGIC_H - 60),
+   413→   413→            vy: 0, collected: false, alpha: 1, bouncePhase: 0, lifeTimer: SUN_LIFE,
+   414→   414→          };
+   415→   415→          sunsRef.current.push(newSun);
+   416→   416→        }
+   417→   417→
+   418→   418→        // 生成当前波僵尸
+   419→   419→        const wz = waveZombiesRef.current;
+   420→   420→        const wsi = waveSpawnIdxRef.current;
+   421→   421→        if (wsi < wz.length && waveElapsedRef.current >= wz[wsi].delay) {
+   422→   422→          const zType = wz[wsi].type;
+   423→   423→          const def = ZOMBIE_DEFS[zType];
+   424→   424→          const newspaperHp = zType === 'newspaper' ? 180 : def.hp;
+   425→   425→          const newZombie: Zombie = {
+   426→   426→            id: zombieIdRef.current++,
+   427→   427→            type: zType,
+   428→   428→            name: def.name,
+   429→   429→            emoji: def.emoji,
+   430→   430→            row: Math.floor(Math.random() * ROWS),
+   431→   431→            x: LOGIC_W + 10,
+   432→   432→            hp: def.hp, maxHp: def.hp,
+   433→   433→            baseSpeed: def.speed,
+   434→   434→            speed: def.speed * cfg.zombieSpeedMul,
+   435→   435→            score: def.score,
+   436→   436→            hitFlash: 0, eating: false,
+   437→   437→            walkPhase: Math.random() * Math.PI * 2,
+   438→   438→            slowTimer: 0,
+   439→   439→            paperBroken: false,
+   440→   440→          };
+   441→   441→          zombiesRef.current.push(newZombie);
+   442→   442→          waveSpawnIdxRef.current++;
+   443→   443→        }
+   444→   444→
+   445→   445→        // 检查波次结束
+   446→   446→        if (
+   447→   447→          waveElapsedRef.current >= WAVE_DURATION * 1000 &&
+   448→   448→          waveSpawnIdxRef.current >= wz.length &&
+   449→   449→          zombiesRef.current.length === 0
+   450→   450→        ) {
+   451→   451→          if (waveRef.current >= TOTAL_WAVES) {
+   452→   452→            wonRef.current = true;
+   453→   453→            submitScoreRef.current(scoreRef.current);
+   454→   454→            setPhase('won');
+   455→   455→          } else {
+   456→   456→            waveRef.current++;
+   457→   457→            waveElapsedRef.current = 0;
+   458→   458→            waveSpawnIdxRef.current = 0;
+   459→   459→            waveZombiesRef.current = getWaveZombies(waveRef.current - 1, cfg.zombieCountMul);
+   460→   460→            setCurrentWave(waveRef.current);
+   461→   461→          }
+   462→   462→        }
+   463→   463→
+   464→   464→        // 更新植物
+   465→   465→        const plants = plantsRef.current;
+   466→   466→        for (let pi = plants.length - 1; pi >= 0; pi--) {
+   467→   467→          const p = plants[pi];
+   468→   468→          if (p.dead) { plants.splice(pi, 1); continue; }
+   469→   469→          if (p.hp <= 0) { plants.splice(pi, 1); continue; }
+   470→   470→
+   471→   471→          // 樱桃炸弹引信
+   472→   472→          if (p.type === 'cherrybomb') {
+   473→   473→            p.fuseTimer += deltaMs;
+   474→   474→            if (p.fuseTimer >= CHERRY_FUSE_TIME) {
+   475→   475→              // 范围3x3爆炸
+   476→   476→              const cx = (p.col + 0.5) * cellW;
+   477→   477→              const cy = (p.row + 0.5) * cellH;
+   478→   478→              const radius = CHERRY_RADIUS_CELLS * Math.max(cellW, cellH);
+   479→   479→              const zombies = zombiesRef.current;
+   480→   480→              for (const z of zombies) {
+   481→   481→                const zy = (z.row + 0.5) * cellH;
+   482→   482→                const dx = z.x - cx;
+   483→   483→                const dy = zy - cy;
+   484→   484→                if (dx * dx + dy * dy < radius * radius) {
+   485→   485→                  z.hp -= CHERRY_DAMAGE;
+   486→   486→                  z.hitFlash = 10;
+   487→   487→                }
+   488→   488→              }
+   489→   489→              p.hp = 0;
+   490→   490→            }
+   491→   491→            continue;
+   492→   492→          }
+   493→   493→
+   494→   494→          // 大嘴花消化中
+   495→   495→          if (p.type === 'chomper') {
+   496→   496→            if (p.digesting) {
+   497→   497→              p.digestTimer += deltaMs;
+   498→   498→              if (p.digestTimer >= CHOMP_DIGEST_TIME) {
+   499→   499→                p.digesting = false;
+   500→   500→                p.digestTimer = 0;
+   501→   501→              }
+   502→   502→              continue;
+   503→   503→            }
+   504→   504→            // 尝试吃掉前方僵尸
+   505→   505→            const chompRange = cellW * 1.2;
+   506→   506→            const px = (p.col + 0.5) * cellW;
+   507→   507→            const py = (p.row + 0.5) * cellH;
+   508→   508→            for (const z of zombiesRef.current) {
+   509→   509→              if (z.hp <= 0) continue;
+   510→   510→              if (z.row !== p.row) continue;
+   511→   511→              const zy = (z.row + 0.5) * cellH;
+   512→   512→              const dx = z.x - px;
+   513→   513→              const dy = zy - py;
+   514→   514→              if (dx > 0 && dx < chompRange && Math.abs(dy) < cellH * 0.5) {
+   515→   515→                if (z.hp <= CHOMP_MAX_HP) {
+   516→   516→                  z.hp = 0;
+   517→   517→                  p.digesting = true;
+   518→   518→                  p.digestTimer = 0;
+   519→   519→                }
+   520→   520→                break;
+   521→   521→              }
+   522→   522→            }
+   523→   523→            continue;
+   524→   524→          }
+   525→   525→
+   526→   526→          // 向日葵产阳光
+   527→   527→          if (p.type === 'sunflower') {
+   528→   528→            p.sunTimer += deltaMs;
+   529→   529→            if (p.sunTimer >= SUNFLOWER_INTERVAL) {
+   530→   530→              p.sunTimer -= SUNFLOWER_INTERVAL;
+   531→   531→              const sx = (p.col + 0.5) * cellW;
+   532→   532→              const sy = p.row * cellH + cellH * 0.2;
+   533→   533→              sunsRef.current.push({
+   534→   534→                id: sunIdRef.current++,
+   535→   535→                x: sx, y: sy,
+   536→   536→                targetY: sy + 20 + Math.random() * 30,
+   537→   537→                vy: 0, collected: false, alpha: 1, bouncePhase: 0, lifeTimer: SUN_LIFE,
+   538→   538→              });
+   539→   539→            }
+   540→   540→          }
+   541→   541→
+   542→   542→          // 射手发射豌豆
+   543→   543→          if (p.type === 'peashooter' || p.type === 'doubleshoot' || p.type === 'iceshooter') {
+   544→   544→            const hasZombie = zombiesRef.current.some(
+   545→   545→              z => z.row === p.row && z.x > (p.col + 0.5) * cellW && z.hp > 0
+   546→   546→            );
+   547→   547→            if (hasZombie) {
+   548→   548→              p.shootTimer += deltaMs;
+   549→   549→              if (p.shootTimer >= SHOOT_INTERVAL) {
+   550→   550→                p.shootTimer -= SHOOT_INTERVAL;
+   551→   551→                const px = (p.col + 0.8) * cellW;
+   552→   552→                const py = (p.row + 0.5) * cellH;
+   553→   553→                const isIce = p.type === 'iceshooter';
+   554→   554→                peasRef.current.push({ row: p.row, x: px, y: py, isIce });
+   555→   555→                if (p.type === 'doubleshoot') {
+   556→   556→                  peasRef.current.push({ row: p.row, x: px - 8, y: py - 4, isIce: false });
+   557→   557→                }
+   558→   558→              }
+   559→   559→            }
+   560→   560→          }
+   561→   561→        }
+   562→   562→
+   563→   563→        // 更新豌豆
+   564→   564→        const peas = peasRef.current;
+   565→   565→        for (let i = peas.length - 1; i >= 0; i--) {
+   566→   566→          peas[i].x += PEA_SPEED * dt;
+   567→   567→        }
+   568→   568→
+   569→   569→        // 豌豆碰撞检测
+   570→   570→        for (let i = peas.length - 1; i >= 0; i--) {
+   571→   571→          const pea = peas[i];
+   572→   572→          let hit = false;
+   573→   573→          const zombies = zombiesRef.current;
+   574→   574→          for (let zi = 0; zi < zombies.length; zi++) {
+   575→   575→            const z = zombies[zi];
+   576→   576→            if (z.hp <= 0 || z.row !== pea.row) continue;
+   577→   577→            const zy = (z.row + 0.5) * cellH;
+   578→   578→            const dx = pea.x - z.x;
+   579→   579→            const dy = pea.y - zy;
+   580→   580→            const hitR = cellW * 0.4;
+   581→   581→            if (dx * dx + dy * dy < hitR * hitR) {
+   582→   582→              z.hp -= PEA_DAMAGE;
+   583→   583→              z.hitFlash = 6;
+   584→   584→              if (pea.isIce) {
+   585→   585→                z.slowTimer = ICE_SLOW_DURATION;
+   586→   586→              }
+   587→   587→              hit = true;
+   588→   588→              break;
+   589→   589→            }
+   590→   590→          }
+   591→   591→          if (hit || pea.x > LOGIC_W + 20) {
+   592→   592→            peas.splice(i, 1);
+   593→   593→          }
+   594→   594→        }
+   595→   595→
+   596→   596→        // 更新僵尸
+   597→   597→        const zombies = zombiesRef.current;
+   598→   598→        for (let i = zombies.length - 1; i >= 0; i--) {
+   599→   599→          const z = zombies[i];
+   600→   600→          if (z.hp <= 0) {
+   601→   601→            scoreRef.current += z.score;
+   602→   602→            setScore(scoreRef.current);
+   603→   603→            zombies.splice(i, 1);
+   604→   604→            continue;
+   605→   605→          }
+   606→   606→          if (z.hitFlash > 0) z.hitFlash -= dt;
+   607→   607→          z.walkPhase += 0.05 * dt;
+   608→   608→
+   609→   609→          // 减速计时
+   610→   610→          if (z.slowTimer > 0) {
+   611→   611→            z.slowTimer -= deltaMs;
+   612→   612→            z.speed = z.baseSpeed * cfg.zombieSpeedMul * ICE_SLOW_FACTOR;
+   613→   613→          } else {
+   614→   614→            z.speed = z.baseSpeed * cfg.zombieSpeedMul;
+   615→   615→          }
+   616→   616→
+   617→   617→          // 报纸僵尸：报纸破后加速
+   618→   618→          if (z.type === 'newspaper' && !z.paperBroken && z.hp <= 100) {
+   619→   619→            z.paperBroken = true;
+   620→   620→            z.baseSpeed = 0.6;
+   621→   621→            z.maxHp = 100;
+   622→   622→          }
+   623→   623→
+   624→   624→          // 碰到植物就吃
+   625→   625→          z.eating = false;
+   626→   626→          const zCol = Math.floor(z.x / cellW);
+   627→   627→          const target = plants.find(p => p.row === z.row && p.col === zCol && !p.dead && p.hp > 0);
+   628→   628→          if (target) {
+   629→   629→            z.eating = true;
+   630→   630→            target.hp -= 0.5 * dt;
+   631→   631→          } else {
+   632→   632→            z.x -= z.speed * dt;
+   633→   633→          }
+   634→   634→
+   635→   635→          // 到达最左侧
+   636→   636→          if (z.x < cellW * 0.3) {
+   637→   637→            overRef.current = true;
+   638→   638→            submitScoreRef.current(scoreRef.current);
+   639→   639→            setPhase('lost');
+   640→   640→          }
+   641→   641→        }
+   642→   642→
+   643→   643→        // 更新阳光
+   644→   644→        const suns = sunsRef.current;
+   645→   645→        for (let i = suns.length - 1; i >= 0; i--) {
+   646→   646→          const s = suns[i];
+   647→   647→          if (s.collected) {
+   648→   648→            s.alpha -= 0.05 * dt;
+   649→   649→            if (s.alpha <= 0) suns.splice(i, 1);
+   650→   650→            continue;
+   651→   651→          }
+   652→   652→          s.lifeTimer -= dt;
+   653→   653→          if (s.lifeTimer <= 0) { suns.splice(i, 1); continue; }
+   654→   654→          if (s.y < s.targetY) {
+   655→   655→            s.vy += 0.15 * dt;
+   656→   656→            s.y += s.vy * dt;
+   657→   657→            if (s.y >= s.targetY) {
+   658→   658→              s.y = s.targetY;
+   659→   659→              s.vy = -s.vy * 0.3;
+   660→   660→              s.bouncePhase++;
+   661→   661→              if (s.bouncePhase >= 3) { s.y = s.targetY; s.vy = 0; }
+   662→   662→            }
+   663→   663→          }
+   664→   664→        }
+   665→   665→      }
+   666→   666→
+   667→   667→      /* ===== 绘制 ===== */
+   668→   668→      ctx.clearRect(0, 0, LOGIC_W, LOGIC_H);
+   669→   669→
+   670→   670→      // 草坪棋盘格
+   671→   671→      for (let r = 0; r < ROWS; r++) {
+   672→   672→        for (let c = 0; c < COLS; c++) {
+   673→   673→          ctx.fillStyle = (r + c) % 2 === 0 ? '#5cb85c' : '#4cae4c';
+   674→   674→          ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+   675→   675→        }
+   676→   676→      }
+   677→   677→
+   678→   678→      // 网格线
+   679→   679→      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+   680→   680→      ctx.lineWidth = 1;
+   681→   681→      for (let r = 0; r <= ROWS; r++) {
+   682→   682→        ctx.beginPath(); ctx.moveTo(0, r * cellH); ctx.lineTo(LOGIC_W, r * cellH); ctx.stroke();
+   683→   683→      }
+   684→   684→      for (let c = 0; c <= COLS; c++) {
+   685→   685→        ctx.beginPath(); ctx.moveTo(c * cellW, 0); ctx.lineTo(c * cellW, LOGIC_H); ctx.stroke();
+   686→   686→      }
+   687→   687→
+   688→   688→      // 选中植物时的高亮
+   689→   689→      const sel = selPlantRef.current;
+   690→   690→      if (sel) {
+   691→   691→        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+   692→   692→        for (let r = 0; r < ROWS; r++) {
+   693→   693→          for (let c = 0; c < COLS; c++) {
+   694→   694→            ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+   695→   695→          }
+   696→   696→        }
+   697→   697→      }
+   698→   698→
+   699→   699→      // 绘制植物
+   700→   700→      for (const p of plantsRef.current) {
+   701→   701→        const def = PLANT_DEFS.find(d => d.id === p.type);
+   702→   702→        if (!def) continue;
+   703→   703→        const cx = (p.col + 0.5) * cellW;
+   704→   704→        const cy = (p.row + 0.5) * cellH;
+   705→   705→        const fs = Math.min(cellW, cellH) * 0.65;
+   706→   706→        ctx.font = `${fs}px serif`;
+   707→   707→        ctx.textAlign = 'center';
+   708→   708→        ctx.textBaseline = 'middle';
+   709→   709→
+   710→   710→        // 樱桃炸弹闪烁效果
+   711→   711→        if (p.type === 'cherrybomb' && p.fuseTimer > 0) {
+   712→   712→          const flash = Math.sin(p.fuseTimer * 0.02) > 0;
+   713→   713→          ctx.save();
+   714→   714→          if (flash) {
+   715→   715→            ctx.fillStyle = 'rgba(255,100,0,0.3)';
+   716→   716→            ctx.beginPath();
+   717→   717→            ctx.arc(cx, cy, cellW * 0.6, 0, Math.PI * 2);
+   718→   718→            ctx.fill();
+   719→   719→          }
+   720→   720→          ctx.restore();
+   721→   721→        }
+   722→   722→
+   723→   723→        // 大嘴花消化中显示
+   724→   724→        if (p.type === 'chomper' && p.digesting) {
+   725→   725→          ctx.globalAlpha = 0.5;
+   726→   726→        }
+   727→   727→
+   728→   728→        ctx.fillText(def.emoji, cx, cy);
+   729→   729→        ctx.globalAlpha = 1;
+   730→   730→
+   731→   731→        // 大嘴花消化进度条
+   732→   732→        if (p.type === 'chomper' && p.digesting) {
+   733→   733→          const bw = cellW * 0.7;
+   734→   734→          const bx = cx - bw / 2;
+   735→   735→          const by = (p.row + 0.15) * cellH;
+   736→   736→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   737→   737→          ctx.fillRect(bx, by, bw, 3);
+   738→   738→          const ratio = Math.min(1, p.digestTimer / CHOMP_DIGEST_TIME);
+   739→   739→          ctx.fillStyle = '#9c27b0';
+   740→   740→          ctx.fillRect(bx, by, bw * ratio, 3);
+   741→   741→        }
+   742→   742→
+   743→   743→        // 血量条（除樱桃炸弹外）
+   744→   744→        if (p.type !== 'cherrybomb' && p.hp < p.maxHp) {
+   745→   745→          const bw = cellW * 0.7;
+   746→   746→          const bx = cx - bw / 2;
+   747→   747→          const by = (p.row + 0.92) * cellH;
+   748→   748→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   749→   749→          ctx.fillRect(bx, by, bw, 4);
+   750→   750→          const ratio = Math.max(0, p.hp / p.maxHp);
+   751→   751→          ctx.fillStyle = ratio > 0.5 ? '#4caf50' : ratio > 0.25 ? '#ff9800' : '#f44336';
+   752→   752→          ctx.fillRect(bx, by, bw * ratio, 4);
+   753→   753→        }
+   754→   754→      }
+   755→   755→
+   756→   756→      // 绘制豌豆
+   757→   757→      for (const pea of peasRef.current) {
+   758→   758→        if (pea.isIce) {
+   759→   759→          ctx.fillStyle = '#42a5f5';
+   760→   760→          ctx.beginPath();
+   761→   761→          ctx.arc(pea.x, pea.y, 5, 0, Math.PI * 2);
+   762→   762→          ctx.fill();
+   763→   763→          ctx.fillStyle = '#bbdefb';
+   764→   764→          ctx.beginPath();
+   765→   765→          ctx.arc(pea.x - 1, pea.y - 1, 2, 0, Math.PI * 2);
+   766→   766→          ctx.fill();
+   767→   767→        } else {
+   768→   768→          ctx.fillStyle = '#66bb6a';
+   769→   769→          ctx.beginPath();
+   770→   770→          ctx.arc(pea.x, pea.y, 4, 0, Math.PI * 2);
+   771→   771→          ctx.fill();
+   772→   772→          ctx.fillStyle = '#a5d6a7';
+   773→   773→          ctx.beginPath();
+   774→   774→          ctx.arc(pea.x - 1, pea.y - 1, 1.5, 0, Math.PI * 2);
+   775→   775→          ctx.fill();
+   776→   776→        }
+   777→   777→      }
+   778→   778→
+   779→   779→      // 绘制阳光
+   780→   780→      for (const s of sunsRef.current) {
+   781→   781→        ctx.save();
+   782→   782→        ctx.globalAlpha = Math.max(0, s.alpha);
+   783→   783→        const glow = ctx.createRadialGradient(s.x, s.y, 2, s.x, s.y, 22);
+   784→   784→        glow.addColorStop(0, 'rgba(255,235,59,0.8)');
+   785→   785→        glow.addColorStop(0.5, 'rgba(255,193,7,0.4)');
+   786→   786→        glow.addColorStop(1, 'rgba(255,193,7,0)');
+   787→   787→        ctx.fillStyle = glow;
+   788→   788→        ctx.beginPath(); ctx.arc(s.x, s.y, 22, 0, Math.PI * 2); ctx.fill();
+   789→   789→        ctx.fillStyle = '#ffeb3b';
+   790→   790→        ctx.beginPath(); ctx.arc(s.x, s.y, 12, 0, Math.PI * 2); ctx.fill();
+   791→   791→        ctx.fillStyle = '#fff9c4';
+   792→   792→        ctx.beginPath(); ctx.arc(s.x - 3, s.y - 3, 4, 0, Math.PI * 2); ctx.fill();
+   793→   793→        ctx.fillStyle = '#f57f17';
+   794→   794→        ctx.font = 'bold 10px sans-serif';
+   795→   795→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   796→   796→        ctx.fillText('25', s.x, s.y + 1);
+   797→   797→        ctx.restore();
+   798→   798→      }
+   799→   799→
+   800→   800→      // 绘制僵尸
+   801→   801→      for (const z of zombiesRef.current) {
+   802→   802→        if (z.hp <= 0) continue;
+   803→   803→        const cy = (z.row + 0.5) * cellH;
+   804→   804→        const wobble = Math.sin(z.walkPhase) * 3;
+   805→   805→        const fs = Math.min(cellW, cellH) * 0.7;
+   806→   806→        ctx.save();
+   807→   807→        if (z.hitFlash > 0) {
+   808→   808→          ctx.filter = 'hue-rotate(-60deg) saturate(3)';
+   809→   809→        }
+   810→   810→        // 减速效果 - 蓝色边框
+   811→   811→        if (z.slowTimer > 0) {
+   812→   812→          ctx.shadowColor = '#42a5f5';
+   813→   813→          ctx.shadowBlur = 8;
+   814→   814→        }
+   815→   815→        ctx.font = `${fs}px serif`;
+   816→   816→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   817→   817→        ctx.fillText(z.emoji, z.x + wobble, cy);
+   818→   818→        ctx.restore();
+   819→   819→
+   820→   820→        if (z.hp < z.maxHp) {
+   821→   821→          const bw = cellW * 0.7;
+   822→   822→          const bx = z.x - bw / 2;
+   823→   823→          const by = (z.row + 0.92) * cellH;
+   824→   824→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   825→   825→          ctx.fillRect(bx, by, bw, 4);
+   826→   826→          const ratio = Math.max(0, z.hp / z.maxHp);
+   827→   827→          ctx.fillStyle = ratio > 0.5 ? '#e53935' : '#b71c1c';
+   828→   828→          ctx.fillRect(bx, by, bw * ratio, 4);
+   829→   829→        }
+   830→   830→      }
+   831→   831→
+   832→   832→      // 游戏结束/胜利遮罩
+   833→   833→      if (overRef.current || wonRef.current) {
+   834→   834→        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+   835→   835→        ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+   836→   836→        ctx.fillStyle = '#fff';
+   837→   837→        ctx.font = 'bold 28px sans-serif';
+   838→   838→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   839→   839→        if (wonRef.current) {
+   840→   840→          ctx.fillText('胜利!', LOGIC_W / 2, LOGIC_H / 2 - 20);
+   841→   841→        } else {
+   842→   842→          ctx.fillText('游戏结束', LOGIC_W / 2, LOGIC_H / 2 - 20);
+   843→   843→        }
+   844→   844→        ctx.font = '18px sans-serif';
+   845→   845→        ctx.fillText(`得分: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 20);
+   846→   846→      }
+   847→   847→
+   848→   848→      rafRef.current = requestAnimationFrame(loop);
+   849→   849→    };
+   850→   850→
+   851→   851→    loopFnRef.current = loop;
+   852→   852→  }, []);
+   853→   853→
+   854→   854→  /* --- 启动/停止游戏循环 --- */
+   855→   855→  useEffect(() => {
+   856→   856→    if (phase === 'playing') {
+   857→   857→      lastTimeRef.current = 0;
+   858→   858→      // 等DOM渲染后再设置Canvas（确保canvas元素已挂载）
+   859→   859→      requestAnimationFrame(() => {
+   860→   860→        setupCanvas();
+   861→   861→        rafRef.current = requestAnimationFrame(loopFnRef.current);
+   862→   862→      });
+   863→   863→    }
+   864→   864→    return () => {
+   865→   865→      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+   866→   866→    };
+   867→   867→  }, [phase, setupCanvas]);
+   868→   868→
+   869→   869→  /* --- 窗口resize --- */
+   870→   870→  useEffect(() => {
+   871→   871→    const onResize = () => { if (phase === 'playing') setupCanvas(); };
+   872→   872→    window.addEventListener('resize', onResize);
+   873→   873→    return () => window.removeEventListener('resize', onResize);
+   874→   874→  }, [phase, setupCanvas]);
+   875→   875→
+   876→   876→  /* ============ 设置面板 ============ */
+   877→   877→  if (phase === 'settings') {
+   878→   878→    return (
+   879→   879→      <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+   880→   880→        <div className="w-full flex items-center gap-3 mb-6">
+   881→   881→          <Button variant="ghost" size="icon" onClick={onBack}>
+   882→   882→            <ArrowLeft className="h-5 w-5" />
+   883→   883→          </Button>
+   884→   884→          <h1 className="text-2xl font-bold">植物大战僵尸</h1>
+   885→   885→        </div>
+   886→   886→
+   887→   887→        <div className="w-full bg-card border rounded-lg p-4 md:p-6 space-y-5">
+   888→   888→          <div>
+   889→   889→            <h2 className="text-lg font-semibold mb-3">难度选择</h2>
+   890→   890→            <div className="flex gap-3">
+   891→   891→              {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => (
+   892→   892→                <button
+   893→   893→                  key={d}
+   894→   894→                  onClick={() => setDifficulty(d)}
+   895→   895→                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+   896→   896→                    difficulty === d
+   897→   897→                      ? 'border-primary bg-primary/10 text-primary'
+   898→   898→                      : 'border-muted bg-background hover:border-primary/50'
+   899→   899→                  }`}
+   900→   900→                >
+   901→   901→                  {DIFFICULTY_CONFIG[d].label}
+   902→   902→                  <span className="block text-xs text-muted-foreground mt-1">
+   903→   903→                    初始阳光 {DIFFICULTY_CONFIG[d].initSun}
+   904→   904→                  </span>
+   905→   905→                </button>
+   906→   906→              ))}
+   907→   907→            </div>
+   908→   908→          </div>
+   909→   909→
+   910→   910→          <div>
+   911→   911→            <h2 className="text-lg font-semibold mb-3">操作说明</h2>
+   912→   912→            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+   913→   913→              <li>先点击底部植物卡片选择要种的植物</li>
+   914→   914→              <li>再点击草坪上的格子来种植</li>
+   915→   915→              <li>点击掉落的阳光来收集</li>
+   916→   916→              <li>消灭所有波次的僵尸即可获胜</li>
+   917→   917→            </ol>
+   918→   918→          </div>
+   919→   919→
+   920→   920→          <div>
+   921→   921→            <h2 className="text-lg font-semibold mb-3">植物介绍</h2>
+   922→   922→            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+   923→   923→              {PLANT_DEFS.map(p => (
+   924→   924→                <div key={p.id} className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-2">
+   925→   925→                  <span className="text-2xl">{p.emoji}</span>
+   926→   926→                  <div>
+   927→   927→                    <div className="font-medium">{p.name}</div>
+   928→   928→                    <div className="text-xs text-muted-foreground">{p.desc} ({p.cost}阳光)</div>
+   929→   929→                  </div>
+   930→   930→                </div>
+   931→   931→              ))}
+   932→   932→            </div>
+   933→   933→          </div>
+   934→   934→
+   935→   935→          <div>
+   936→   936→            <h2 className="text-lg font-semibold mb-3">僵尸介绍</h2>
+   937→   937→            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+   938→   938→              {(Object.values(ZOMBIE_DEFS) as ZombieDef[]).map(z => (
+   939→   939→                <div key={z.type} className="flex flex-col items-center gap-1 text-sm bg-muted/50 rounded-lg p-2">
+   940→   940→                  <span className="text-2xl">{z.emoji}</span>
+   941→   941→                  <div className="font-medium text-xs">{z.name}</div>
+   942→   942→                  <div className="text-xs text-muted-foreground">血量 {z.hp}</div>
+   943→   943→                </div>
+   944→   944→              ))}
+   945→   945→            </div>
+   946→   946→          </div>
+   947→   947→
+   948→   948→          {highScore > 0 && (
+   949→   949→            <div className="flex items-center justify-center gap-2 text-amber-600">
+   950→   950→              <Trophy className="h-4 w-4" />
+   951→   951→              <span className="text-sm font-medium">最高分: {highScore}</span>
+   952→   952→            </div>
+   953→   953→          )}
+   954→   954→
+   955→   955→          <Button className="w-full" size="lg" onClick={startGame}>
+   956→   956→            开始游戏
+   957→   957→          </Button>
+   958→   958→        </div>
+   959→   959→      </div>
+   960→   960→    );
+   961→   961→  }
+   962→   962→
+   963→   963→  /* ============ 游戏界面 ============ */
+   964→   964→  return (
+   965→   965→    <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+   966→   966→      {/* 顶部栏 */}
+   967→   967→      <div className="w-full flex items-center justify-between mb-2 px-1">
+   968→   968→        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+   969→   969→          <ArrowLeft className="h-5 w-5" />
+   970→   970→        </Button>
+   971→   971→        <h1 className="text-lg font-bold">植物大战僵尸</h1>
+   972→   972→        <div className="flex items-center gap-3 text-sm">
+   973→   973→          <span className="font-medium">分数: {score}</span>
+   974→   974→          <span className="text-muted-foreground">第{currentWave}/{TOTAL_WAVES}波</span>
+   975→   975→        </div>
+   976→   976→      </div>
+   977→   977→
+   978→   978→      {/* 阳光数量显示 */}
+   979→   979→      <div className="w-full flex items-center justify-center gap-2 mb-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+   980→   980→        <span className="text-xl">☀️</span>
+   981→   981→        <span className="text-lg font-bold text-amber-700 dark:text-amber-400">{sunCount}</span>
+   982→   982→      </div>
+   983→   983→
+   984→   984→      {/* Canvas游戏区域 */}
+   985→   985→      <div ref={containerRef} className="w-full" style={{ maxWidth: 640 }}>
+   986→   986→        <canvas
+   987→   987→          ref={canvasRef}
+   988→   988→          className="w-full border-2 border-green-700 dark:border-green-800 rounded-lg cursor-pointer block"
+   989→   989→          style={{ aspectRatio: `${COLS} / ${ROWS}`, touchAction: 'none' }}
+   990→   990→        />
+   991→   991→      </div>
+   992→   992→
+   993→   993→      {/* 底部植物选择栏 grid-cols-4 布局 */}
+   994→   994→      <div className="w-full mt-3 grid grid-cols-4 gap-2">
+   995→   995→        {PLANT_DEFS.map(p => {
+   996→   996→          const canAfford = sunCount >= p.cost;
+   997→   997→          const isSelected = selectedPlant === p.id;
+   998→   998→          return (
+   999→   999→            <button
+  1000→  1000→              key={p.id}
+  1001→  1001→              onClick={() => handleSelectPlant(p.id)}
+  1002→  1002→              disabled={!canAfford && !isSelected}
+  1003→  1003→              className={`flex flex-col items-center justify-center gap-0.5 rounded-lg border-2 transition-all min-h-[64px] py-2 px-1 ${
+  1004→  1004→                isSelected
+  1005→  1005→                  ? 'border-primary bg-primary/10 shadow-md scale-105'
+  1006→  1006→                  : canAfford
+  1007→  1007→                    ? 'border-muted bg-card hover:border-primary/50 active:scale-95'
+  1008→  1008→                    : 'border-muted bg-muted/30 opacity-50 cursor-not-allowed'
+  1009→  1009→              }`}
+  1010→  1010→            >
+  1011→  1011→              <span className="text-2xl leading-none">{p.emoji}</span>
+  1012→  1012→              <span className="text-xs font-medium leading-tight">{p.name}</span>
+  1013→  1013→              <span className={`text-xs font-bold leading-tight ${canAfford ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+  1014→  1014→                {p.cost}☀️
+  1015→  1015→              </span>
+  1016→  1016→            </button>
+  1017→  1017→          );
+  1018→  1018→        })}
+  1019→  1019→      </div>
+  1020→  1020→
+  1021→  1021→      {/* 游戏结束按钮 */}
+  1022→  1022→      {(phase === 'won' || phase === 'lost') && (
+  1023→  1023→        <div className="w-full mt-4 flex gap-3">
+  1024→  1024→          <Button className="flex-1" variant="outline" onClick={onBack}>
+  1025→  1025→            返回大厅
+  1026→  1026→          </Button>
+  1027→  1027→          <Button className="flex-1" onClick={() => { setPhase('settings'); }}>
+  1028→  1028→            再来一局
+  1029→  1029→          </Button>
+  1030→  1030→        </div>
+  1031→  1031→      )}
+  1032→  1032→    </div>
+  1033→  1033→  );
+  1034→  1034→}
+  1035→  1035→

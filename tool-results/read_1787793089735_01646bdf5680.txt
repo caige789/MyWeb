@@ -1,0 +1,1151 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react';
+     6→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     7→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+     8→
+     9→const breakoutControlsInfo: GameControlsInfo = {
+    10→  gameName: '打砖块',
+    11→  desktop: [
+    12→    { action: '方向键 ← →', keys: ['ArrowLeft','ArrowRight'], description: '移动挡板左右' },
+    13→    { action: 'A / D', keys: ['KeyA','KeyD'], description: '备选挡板控制' },
+    14→    { action: '鼠标移动', keys: [], description: '挡板跟随鼠标水平位置' },
+    15→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    16→    { action: '磁力发射', keys: ['Space'], description: '磁力挡板粘球后点击或空格发射' },
+    17→  ],
+    18→  mobile: [
+    19→    { action: '触摸滑动', keys: [], description: '触摸并滑动控制挡板位置' },
+    20→    { action: '点击', keys: [], description: '磁力挡板粘球后点击发射' },
+    21→  ],
+    22→  rules: [
+    23→    '用挡板反弹弹球击碎上方砖块',
+    24→    '5种道具: 加长挡板、加速球、额外生命、火球穿透、磁力挡板',
+    25→    '连续击中砖块不掉落可累积连击倍率',
+    26→    '消灭所有砖块进入下一关，共5关',
+    27→    '弹球落到底部失去一条命',
+    28→  ],
+    29→  tips: ['弹球角度由挡板碰撞位置决定', '火球期间尽量向上打清砖', '连击倍率越高得分越多，保持球不落地'],
+    30→};
+    31→
+    32→interface BreakoutGameProps {
+    33→  onBack: () => void;
+    34→}
+    35→
+    36→const GAME_NAME = 'breakout';
+    37→const CANVAS_MAX_W = 480;
+    38→const CANVAS_H = 600;
+    39→const PADDLE_W = 80;
+    40→const PADDLE_H = 12;
+    41→const PADDLE_Y_OFFSET = 30;
+    42→const BALL_RADIUS = 6;
+    43→const BALL_SPEED = 4.5;
+    44→const BRICK_COLS = 8;
+    45→const BRICK_H = 22;
+    46→const BRICK_GAP = 3;
+    47→const BRICK_TOP_OFFSET = 60;
+    48→const MAX_LIVES = 3;
+    49→const MAX_LEVEL = 5;
+    50→const POWERUP_CHANCE = 0.25;
+    51→const POWERUP_SPEED = 2.5;
+    52→const POWERUP_SIZE = 24;
+    53→
+    54→const BRICK_TYPES = [
+    55→  { color: '#ef4444', score: 10, gradient: ['#f87171', '#dc2626'] },
+    56→  { color: '#f97316', score: 20, gradient: ['#fb923c', '#ea580c'] },
+    57→  { color: '#eab308', score: 30, gradient: ['#facc15', '#ca8a04'] },
+    58→  { color: '#22c55e', score: 40, gradient: ['#4ade80', '#16a34a'] },
+    59→  { color: '#a855f7', score: 50, gradient: ['#c084fc', '#9333ea'] },
+    60→];
+    61→
+    62→enum PowerUpType {
+    63→  Extend = 'E',    // Widen paddle
+    64→  Speed = 'F',      // Speed up ball
+    65→  Life = '+',       // Extra life
+    66→  Fireball = 'X',   // Piercing fireball
+    67→  Magnet = 'M',     // Magnet paddle
+    68→}
+    69→
+    70→const POWERUP_COLORS: Record<PowerUpType, string> = {
+    71→  [PowerUpType.Extend]: '#22c55e',
+    72→  [PowerUpType.Speed]: '#f97316',
+    73→  [PowerUpType.Life]: '#ef4444',
+    74→  [PowerUpType.Fireball]: '#f59e0b',
+    75→  [PowerUpType.Magnet]: '#06b6d4',
+    76→};
+    77→
+    78→interface Brick {
+    79→  x: number;
+    80→  y: number;
+    81→  w: number;
+    82→  h: number;
+    83→  typeIndex: number;
+    84→  alive: boolean;
+    85→}
+    86→
+    87→interface Ball {
+    88→  x: number;
+    89→  y: number;
+    90→  dx: number;
+    91→  dy: number;
+    92→  radius: number;
+    93→  speed: number;
+    94→ stuck: boolean;  // Stuck to magnet paddle
+    95→  stuckOffset: number;  // Offset from paddle center
+    96→}
+    97→
+    98→interface PowerUp {
+    99→  x: number;
+   100→  y: number;
+   101→  type: PowerUpType;
+   102→  frame: number;
+   103→}
+   104→
+   105→interface Particle {
+   106→  x: number;
+   107→  y: number;
+   108→  dx: number;
+   109→  dy: number;
+   110→  life: number;
+   111→  maxLife: number;
+   112→  color: string;
+   113→  size: number;
+   114→}
+   115→
+   116→interface TrailPoint {
+   117→  x: number;
+   118→  y: number;
+   119→  alpha: number;
+   120→}
+   121→
+   122→type GameStatus = 'idle' | 'playing' | 'levelUp' | 'over';
+   123→
+   124→// Timer entry for effects
+   125→interface EffectTimer {
+   126→  type: string;
+   127→  endTime: number;
+   128→}
+   129→
+   130→function generateBricks(level: number, canvasW: number): Brick[] {
+   131→  const bricks: Brick[] = [];
+   132→  const brickW = (canvasW - (BRICK_COLS + 1) * BRICK_GAP) / BRICK_COLS;
+   133→
+   134→  if (level === 1) {
+   135→    // Level 1: 5 rows standard
+   136→    for (let row = 0; row < 5; row++) {
+   137→      for (let col = 0; col < BRICK_COLS; col++) {
+   138→        bricks.push({
+   139→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   140→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   141→          w: brickW, h: BRICK_H, typeIndex: row, alive: true,
+   142→        });
+   143→      }
+   144→    }
+   145→  } else if (level === 2) {
+   146→    // Level 2: 6 rows with diamond cutouts
+   147→    for (let row = 0; row < 6; row++) {
+   148→      const ti = Math.min(row, BRICK_TYPES.length - 1);
+   149→      for (let col = 0; col < BRICK_COLS; col++) {
+   150→        if (row === 2 && (col === 0 || col === 7)) continue;
+   151→        if (row === 3 && (col === 3 || col === 4)) continue;
+   152→        bricks.push({
+   153→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   154→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   155→          w: brickW, h: BRICK_H, typeIndex: ti, alive: true,
+   156→        });
+   157→      }
+   158→    }
+   159→  } else if (level === 3) {
+   160→    // Level 3: 7 rows, checkerboard pattern
+   161→    for (let row = 0; row < 7; row++) {
+   162→      const ti = Math.min(row, BRICK_TYPES.length - 1);
+   163→      for (let col = 0; col < BRICK_COLS; col++) {
+   164→        if ((row + col) % 2 === 0) continue;
+   165→        bricks.push({
+   166→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   167→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   168→          w: brickW, h: BRICK_H, typeIndex: ti, alive: true,
+   169→        });
+   170→      }
+   171→    }
+   172→  } else if (level === 4) {
+   173→    // Level 4: 8 rows, X pattern cutout
+   174→    for (let row = 0; row < 8; row++) {
+   175→      const ti = Math.min(row, BRICK_TYPES.length - 1);
+   176→      for (let col = 0; col < BRICK_COLS; col++) {
+   177→        // X-shaped cutout
+   178→        const diag1 = row - col;
+   179→        const diag2 = row - (7 - col);
+   180→        if (Math.abs(diag1) <= 0 && row < 8) continue;
+   181→        if (Math.abs(diag2) <= 0 && row < 8) continue;
+   182→        bricks.push({
+   183→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   184→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   185→          w: brickW, h: BRICK_H, typeIndex: ti, alive: true,
+   186→        });
+   187→      }
+   188→    }
+   189→  } else {
+   190→    // Level 5: 8 rows, dense, fortress pattern
+   191→    for (let row = 0; row < 8; row++) {
+   192→      const ti = Math.min(row, BRICK_TYPES.length - 1);
+   193→      for (let col = 0; col < BRICK_COLS; col++) {
+   194→        // Arrow cutout
+   195→        if (row === 1 && col >= 3 && col <= 4) continue;
+   196→        if (row === 2 && col === 3) continue;
+   197→        if (row === 3 && col === 2) continue;
+   198→        if (row === 3 && col === 5) continue;
+   199→        if (row === 4 && col === 2) continue;
+   200→        if (row === 4 && col === 5) continue;
+   201→        if (row === 5 && col === 3) continue;
+   202→        if (row === 6 && col >= 3 && col <= 4) continue;
+   203→        bricks.push({
+   204→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   205→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   206→          w: brickW, h: BRICK_H, typeIndex: ti, alive: true,
+   207→        });
+   208→      }
+   209→    }
+   210→  }
+   211→  return bricks;
+   212→}
+   213→
+   214→function roundRect(
+   215→  ctx: CanvasRenderingContext2D,
+   216→  x: number, y: number, w: number, h: number, r: number
+   217→) {
+   218→  const rr = Math.min(r, w / 2, h / 2);
+   219→  ctx.beginPath();
+   220→  ctx.moveTo(x + rr, y);
+   221→  ctx.lineTo(x + w - rr, y);
+   222→  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+   223→  ctx.lineTo(x + w, y + h - rr);
+   224→  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+   225→  ctx.lineTo(x + rr, y + h);
+   226→  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+   227→  ctx.lineTo(x, y + rr);
+   228→  ctx.quadraticCurveTo(x, y, x + rr, y);
+   229→  ctx.closePath();
+   230→}
+   231→
+   232→export default function BreakoutGame({ onBack }: BreakoutGameProps) {
+   233→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   234→  const containerRef = useRef<HTMLDivElement>(null);
+   235→  const animFrameRef = useRef<number>(0);
+   236→  const canvasWRef = useRef<number>(CANVAS_MAX_W);
+   237→
+   238→  const paddleRef = useRef({ x: 0, w: PADDLE_W });
+   239→  const ballsRef = useRef<Ball[]>([]);
+   240→  const bricksRef = useRef<Brick[]>([]);
+   241→  const powerUpsRef = useRef<PowerUp[]>([]);
+   242→  const particlesRef = useRef<Particle[]>([]);
+   243→  const trailsRef = useRef<TrailPoint[]>([]);
+   244→  const scoreRef = useRef(0);
+   245→  const livesRef = useRef(MAX_LIVES);
+   246→  const levelRef = useRef(1);
+   247→  const gameStatusRef = useRef<GameStatus>('idle');
+   248→  const keysRef = useRef<Set<string>>(new Set());
+   249→
+   250→  // Effect timers
+   251→  const effectTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+   252→  // Combo system
+   253→  const comboCountRef = useRef(0);
+   254→  // Fireball state
+   255→  const isFireballRef = useRef(false);
+   256→  // Magnet state
+   257→  const isMagnetRef = useRef(false);
+   258→
+   259→  const [score, setScore] = useState(0);
+   260→  const [lives, setLives] = useState(MAX_LIVES);
+   261→  const [level, setLevel] = useState(1);
+   262→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   263→  const [highScore, setHighScore] = useState(0);
+   264→  const [loadingHighScore, setLoadingHighScore] = useState(true);
+   265→  const [isNewRecord, setIsNewRecord] = useState(false);
+   266→  const [paused, setPaused] = useState(false);
+   267→  const pausedRef = useRef(false);
+   268→  const [combo, setCombo] = useState(0);
+   269→  const [activeEffects, setActiveEffects] = useState<string[]>([]);
+   270→
+   271→  const getPaddleY = useCallback(() => CANVAS_H - PADDLE_Y_OFFSET, []);
+   272→
+   273→  const updateEffectsUI = useCallback(() => {
+   274→    const now = Date.now();
+   275→    const effects: string[] = [];
+   276→    if (paddleRef.current.w > PADDLE_W) {
+   277→      const ext = effectTimersRef.current.get('extend');
+   278→      if (ext) {
+   279→        // We can't easily read timeout remaining, just show the label
+   280→      }
+   281→      effects.push('📏 加长挡板');
+   282→    }
+   283→    if (isFireballRef.current) effects.push('🔥 火球穿透');
+   284→    if (isMagnetRef.current) effects.push('🧲 磁力挡板');
+   285→    // Check if any ball is speed-boosted
+   286→    const boosted = ballsRef.current.some(b => b.speed > BALL_SPEED + (levelRef.current - 1) * 0.5 + 1);
+   287→    if (boosted) effects.push('⚡ 加速球');
+   288→    setActiveEffects(effects);
+   289→  }, []);
+   290→
+   291→  const clearEffectTimers = useCallback(() => {
+   292→    effectTimersRef.current.forEach(t => clearTimeout(t));
+   293→    effectTimersRef.current.clear();
+   294→  }, []);
+   295→
+   296→  const createBall = useCallback(
+   297→    (canvasW: number, stuck?: boolean) => {
+   298→      const speed = BALL_SPEED + (levelRef.current - 1) * 0.4;
+   299→      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+   300→      return {
+   301→        x: canvasW / 2,
+   302→        y: getPaddleY() - PADDLE_H / 2 - BALL_RADIUS - 1,
+   303→        dx: Math.cos(angle) * speed,
+   304→        dy: Math.sin(angle) * speed,
+   305→        radius: BALL_RADIUS,
+   306→        speed,
+   307→        stuck: !!stuck,
+   308→        stuckOffset: 0,
+   309→      };
+   310→    },
+   311→    [getPaddleY]
+   312→  );
+   313→
+   314→  const spawnParticles = useCallback((brick: Brick) => {
+   315→    const brickType = BRICK_TYPES[brick.typeIndex];
+   316→    const cx = brick.x + brick.w / 2;
+   317→    const cy = brick.y + brick.h / 2;
+   318→    for (let i = 0; i < 8; i++) {
+   319→      const angle = Math.random() * Math.PI * 2;
+   320→      const speed = 1 + Math.random() * 3;
+   321→      particlesRef.current.push({
+   322→        x: cx + (Math.random() - 0.5) * brick.w * 0.6,
+   323→        y: cy + (Math.random() - 0.5) * brick.h * 0.6,
+   324→        dx: Math.cos(angle) * speed,
+   325→        dy: Math.sin(angle) * speed,
+   326→        life: 30 + Math.random() * 20,
+   327→        maxLife: 50,
+   328→        color: brickType.color,
+   329→        size: 2 + Math.random() * 3,
+   330→      });
+   331→    }
+   332→  }, []);
+   333→
+   334→  const trySpawnPowerUp = useCallback((brick: Brick) => {
+   335→    if (Math.random() > POWERUP_CHANCE) return;
+   336→    const types = [
+   337→      PowerUpType.Extend,
+   338→      PowerUpType.Speed,
+   339→      PowerUpType.Life,
+   340→      PowerUpType.Fireball,
+   341→      PowerUpType.Magnet,
+   342→    ];
+   343→    const type = types[Math.floor(Math.random() * types.length)];
+   344→    powerUpsRef.current.push({
+   345→      x: brick.x + brick.w / 2,
+   346→      y: brick.y + brick.h / 2,
+   347→      type,
+   348→      frame: 0,
+   349→    });
+   350→  }, []);
+   351→
+   352→  // Launch stuck balls
+   353→  const launchStuckBalls = useCallback(() => {
+   354→    ballsRef.current.forEach(ball => {
+   355→      if (ball.stuck) {
+   356→        ball.stuck = false;
+   357→        const angle = -Math.PI / 2 + (ball.stuckOffset / (paddleRef.current.w / 2)) * (Math.PI / 3);
+   358→        ball.dx = Math.sin(angle) * ball.speed;
+   359→        ball.dy = -Math.cos(angle) * ball.speed;
+   360→      }
+   361→    });
+   362→  }, []);
+   363→
+   364→  const applyPowerUp = useCallback(
+   365→    (pu: PowerUp) => {
+   366→      if (pu.type === PowerUpType.Extend) {
+   367→        paddleRef.current.w = Math.min(PADDLE_W * 1.6, canvasWRef.current - 20);
+   368→        const oldTimer = effectTimersRef.current.get('extend');
+   369→        if (oldTimer) clearTimeout(oldTimer);
+   370→        effectTimersRef.current.set('extend', setTimeout(() => {
+   371→          paddleRef.current.w = PADDLE_W;
+   372→          effectTimersRef.current.delete('extend');
+   373→          updateEffectsUI();
+   374→        }, 15000));
+   375→      } else if (pu.type === PowerUpType.Speed) {
+   376→        ballsRef.current.forEach(b => {
+   377→          if (!b.stuck) {
+   378→            const factor = 1.35;
+   379→            b.dx *= factor;
+   380→            b.dy *= factor;
+   381→            b.speed *= factor;
+   382→          }
+   383→        });
+   384→        // Speed boost doesn't need timer - it's permanent for current balls
+   385→      } else if (pu.type === PowerUpType.Life) {
+   386→        livesRef.current = Math.min(livesRef.current + 1, 5);
+   387→        setLives(livesRef.current);
+   388→      } else if (pu.type === PowerUpType.Fireball) {
+   389→        isFireballRef.current = true;
+   390→        const oldTimer = effectTimersRef.current.get('fireball');
+   391→        if (oldTimer) clearTimeout(oldTimer);
+   392→        effectTimersRef.current.set('fireball', setTimeout(() => {
+   393→          isFireballRef.current = false;
+   394→          effectTimersRef.current.delete('fireball');
+   395→          updateEffectsUI();
+   396→        }, 10000));
+   397→      } else if (pu.type === PowerUpType.Magnet) {
+   398→        isMagnetRef.current = true;
+   399→        const oldTimer = effectTimersRef.current.get('magnet');
+   400→        if (oldTimer) clearTimeout(oldTimer);
+   401→        effectTimersRef.current.set('magnet', setTimeout(() => {
+   402→          isMagnetRef.current = false;
+   403→          // Launch any stuck balls
+   404→          launchStuckBalls();
+   405→          effectTimersRef.current.delete('magnet');
+   406→          updateEffectsUI();
+   407→        }, 15000));
+   408→      }
+   409→      updateEffectsUI();
+   410→    },
+   411→    [updateEffectsUI, launchStuckBalls]
+   412→  );
+   413→
+   414→  const initLevel = useCallback(
+   415→    (lvl: number) => {
+   416→      const canvasW = canvasWRef.current;
+   417→      bricksRef.current = generateBricks(lvl, canvasW);
+   418→      ballsRef.current = [createBall(canvasW)];
+   419→      powerUpsRef.current = [];
+   420→      particlesRef.current = [];
+   421→      trailsRef.current = [];
+   422→      paddleRef.current.w = PADDLE_W;
+   423→      paddleRef.current.x = canvasW / 2 - PADDLE_W / 2;
+   424→      clearEffectTimers();
+   425→      isFireballRef.current = false;
+   426→      isMagnetRef.current = false;
+   427→      comboCountRef.current = 0;
+   428→      setCombo(0);
+   429→      levelRef.current = lvl;
+   430→      setLevel(lvl);
+   431→      updateEffectsUI();
+   432→    },
+   433→    [createBall, clearEffectTimers, updateEffectsUI]
+   434→  );
+   435→
+   436→  const update = useCallback(() => {
+   437→    const canvasW = canvasWRef.current;
+   438→    const paddle = paddleRef.current;
+   439→    const paddleY = getPaddleY();
+   440→    const balls = ballsRef.current;
+   441→    const bricks = bricksRef.current;
+   442→    const powerUps = powerUpsRef.current;
+   443→    const particles = particlesRef.current;
+   444→    const trails = trailsRef.current;
+   445→    const keys = keysRef.current;
+   446→
+   447→    // Paddle keyboard control
+   448→    const moveSpeed = 7;
+   449→    if (keys.has('ArrowLeft') || keys.has('a') || keys.has('A')) {
+   450→      paddle.x = Math.max(0, paddle.x - moveSpeed);
+   451→    }
+   452→    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) {
+   453→      paddle.x = Math.min(canvasW - paddle.w, paddle.x + moveSpeed);
+   454→    }
+   455→
+   456→    // Update stuck balls to follow paddle
+   457→    balls.forEach(ball => {
+   458→      if (ball.stuck) {
+   459→        ball.x = paddle.x + paddle.w / 2 + ball.stuckOffset;
+   460→        ball.y = paddleY - PADDLE_H / 2 - ball.radius - 1;
+   461→      }
+   462→    });
+   463→
+   464→    // Update balls
+   465→    const ballsToRemove: number[] = [];
+   466→    let hitBrickThisFrame = false;
+   467→
+   468→    balls.forEach((ball, idx) => {
+   469→      if (ball.stuck) return;
+   470→
+   471→      trails.push({ x: ball.x, y: ball.y, alpha: 1 });
+   472→
+   473→      ball.x += ball.dx;
+   474→      ball.y += ball.dy;
+   475→
+   476→      // Wall collisions
+   477→      if (ball.x - ball.radius <= 0) {
+   478→        ball.x = ball.radius;
+   479→        ball.dx = Math.abs(ball.dx);
+   480→      }
+   481→      if (ball.x + ball.radius >= canvasW) {
+   482→        ball.x = canvasW - ball.radius;
+   483→        ball.dx = -Math.abs(ball.dx);
+   484→      }
+   485→      if (ball.y - ball.radius <= 0) {
+   486→        ball.y = ball.radius;
+   487→        ball.dy = Math.abs(ball.dy);
+   488→      }
+   489→
+   490→      // Bottom out
+   491→      if (ball.y - ball.radius > CANVAS_H) {
+   492→        ballsToRemove.push(idx);
+   493→        // Reset combo
+   494→        comboCountRef.current = 0;
+   495→        setCombo(0);
+   496→        return;
+   497→      }
+   498→
+   499→      // Paddle collision
+   500→      const pLeft = paddle.x;
+   501→      const pRight = paddle.x + paddle.w;
+   502→      const pTop = paddleY - PADDLE_H / 2;
+   503→      const pBottom = paddleY + PADDLE_H / 2;
+   504→      if (
+   505→        ball.dy > 0 &&
+   506→        ball.y + ball.radius >= pTop &&
+   507→        ball.y + ball.radius <= pBottom + 4 &&
+   508→        ball.x >= pLeft - ball.radius &&
+   509→        ball.x <= pRight + ball.radius
+   510→      ) {
+   511→        if (isMagnetRef.current) {
+   512→          // Magnet: stick ball to paddle
+   513→          ball.stuck = true;
+   514→          ball.stuckOffset = ball.x - (paddle.x + paddle.w / 2);
+   515→          ball.y = pTop - ball.radius - 1;
+   516→        } else {
+   517→          ball.y = pTop - ball.radius;
+   518→          const hitPos = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+   519→          const maxAngle = Math.PI / 3;
+   520→          const angle = hitPos * maxAngle;
+   521→          const spd = ball.speed;
+   522→          ball.dx = Math.sin(angle) * spd;
+   523→          ball.dy = -Math.cos(angle) * spd;
+   524→        }
+   525→      }
+   526→
+   527→      // Brick collision
+   528→      bricks.forEach((brick) => {
+   529→        if (!brick.alive) return;
+   530→        const bLeft = brick.x;
+   531→        const bRight = brick.x + brick.w;
+   532→        const bTop = brick.y;
+   533→        const bBottom = brick.y + brick.h;
+   534→
+   535→        if (
+   536→          ball.x + ball.radius > bLeft &&
+   537→          ball.x - ball.radius < bRight &&
+   538→          ball.y + ball.radius > bTop &&
+   539→          ball.y - ball.radius < bBottom
+   540→        ) {
+   541→          brick.alive = false;
+   542→          hitBrickThisFrame = true;
+   543→
+   544→          // Combo system
+   545→          comboCountRef.current += 1;
+   546→          setCombo(comboCountRef.current);
+   547→
+   548→          // Score with combo multiplier
+   549→          const baseScore = BRICK_TYPES[brick.typeIndex].score;
+   550→          const comboMultiplier = 1 + Math.floor(comboCountRef.current / 3) * 0.5;
+   551→          scoreRef.current += Math.round(baseScore * comboMultiplier);
+   552→          setScore(scoreRef.current);
+   553→
+   554→          spawnParticles(brick);
+   555→          trySpawnPowerUp(brick);
+   556→
+   557→          // Fireball: no bounce, pierce through
+   558→          if (!isFireballRef.current) {
+   559→            const overlapLeft = ball.x + ball.radius - bLeft;
+   560→            const overlapRight = bRight - (ball.x - ball.radius);
+   561→            const overlapTop = ball.y + ball.radius - bTop;
+   562→            const overlapBottom = bBottom - (ball.y - ball.radius);
+   563→            const minOverlapX = Math.min(overlapLeft, overlapRight);
+   564→            const minOverlapY = Math.min(overlapTop, overlapBottom);
+   565→
+   566→            if (minOverlapX < minOverlapY) {
+   567→              ball.dx = -ball.dx;
+   568→            } else {
+   569→              ball.dy = -ball.dy;
+   570→            }
+   571→          }
+   572→        }
+   573→      });
+   574→    });
+   575→
+   576→    // Remove out-of-bounds balls
+   577→    for (let i = ballsToRemove.length - 1; i >= 0; i--) {
+   578→      balls.splice(ballsToRemove[i], 1);
+   579→    }
+   580→
+   581→    // All balls lost
+   582→    if (balls.length === 0) {
+   583→      livesRef.current -= 1;
+   584→      setLives(livesRef.current);
+   585→      comboCountRef.current = 0;
+   586→      setCombo(0);
+   587→      if (livesRef.current <= 0) {
+   588→        gameStatusRef.current = 'over';
+   589→        setGameStatus('over');
+   590→      } else {
+   591→        ballsRef.current = [createBall(canvasW)];
+   592→      }
+   593→    }
+   594→
+   595→    // Level clear
+   596→    if (bricks.every((b) => !b.alive) && gameStatusRef.current === 'playing') {
+   597→      if (levelRef.current >= MAX_LEVEL) {
+   598→        gameStatusRef.current = 'over';
+   599→        setGameStatus('over');
+   600→      } else {
+   601→        gameStatusRef.current = 'levelUp';
+   602→        setGameStatus('levelUp');
+   603→        setTimeout(() => {
+   604→          initLevel(levelRef.current + 1);
+   605→          gameStatusRef.current = 'playing';
+   606→          setGameStatus('playing');
+   607→        }, 1500);
+   608→      }
+   609→    }
+   610→
+   611→    // Update power-ups
+   612→    const puToRemove: number[] = [];
+   613→    powerUps.forEach((pu, idx) => {
+   614→      pu.y += POWERUP_SPEED;
+   615→      pu.frame += 1;
+   616→
+   617→      if (
+   618→        pu.y + POWERUP_SIZE / 2 >= paddleY - PADDLE_H / 2 &&
+   619→        pu.y - POWERUP_SIZE / 2 <= paddleY + PADDLE_H / 2 &&
+   620→        pu.x + POWERUP_SIZE / 2 >= paddle.x &&
+   621→        pu.x - POWERUP_SIZE / 2 <= paddle.x + paddle.w
+   622→      ) {
+   623→        applyPowerUp(pu);
+   624→        puToRemove.push(idx);
+   625→      }
+   626→
+   627→      if (pu.y > CANVAS_H + 20) puToRemove.push(idx);
+   628→    });
+   629→    for (let i = puToRemove.length - 1; i >= 0; i--) {
+   630→      powerUps.splice(puToRemove[i], 1);
+   631→    }
+   632→
+   633→    // Update particles
+   634→    for (let i = particles.length - 1; i >= 0; i--) {
+   635→      const p = particles[i];
+   636→      p.x += p.dx;
+   637→      p.y += p.dy;
+   638→      p.dy += 0.08;
+   639→      p.life -= 1;
+   640→      if (p.life <= 0) particles.splice(i, 1);
+   641→    }
+   642→
+   643→    // Update trails
+   644→    for (let i = trails.length - 1; i >= 0; i--) {
+   645→      trails[i].alpha -= 0.08;
+   646→      if (trails[i].alpha <= 0) trails.splice(i, 1);
+   647→    }
+   648→  }, [createBall, spawnParticles, trySpawnPowerUp, applyPowerUp, getPaddleY, initLevel]);
+   649→
+   650→  const draw = useCallback(() => {
+   651→    const canvas = canvasRef.current;
+   652→    if (!canvas) return;
+   653→    const ctx = canvas.getContext('2d');
+   654→    if (!ctx) return;
+   655→
+   656→    const w = canvasWRef.current;
+   657→    const h = CANVAS_H;
+   658→    const paddle = paddleRef.current;
+   659→    const paddleY = getPaddleY();
+   660→    const balls = ballsRef.current;
+   661→    const bricks = bricksRef.current;
+   662→    const powerUps = powerUpsRef.current;
+   663→    const particles = particlesRef.current;
+   664→    const trails = trailsRef.current;
+   665→
+   666→    // Background
+   667→    ctx.fillStyle = '#0f0f1a';
+   668→    ctx.fillRect(0, 0, w, h);
+   669→
+   670→    // Grid
+   671→    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+   672→    ctx.lineWidth = 0.5;
+   673→    for (let i = 0; i < w; i += 40) {
+   674→      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+   675→    }
+   676→    for (let j = 0; j < h; j += 40) {
+   677→      ctx.beginPath(); ctx.moveTo(0, j); ctx.lineTo(w, j); ctx.stroke();
+   678→    }
+   679→
+   680→    // Trails
+   681→    trails.forEach((t) => {
+   682→      ctx.beginPath();
+   683→      ctx.arc(t.x, t.y, BALL_RADIUS * 0.6, 0, Math.PI * 2);
+   684→      ctx.fillStyle = isFireballRef.current
+   685→        ? `rgba(245, 158, 11, ${t.alpha * 0.4})`
+   686→        : `rgba(255,255,255,${t.alpha * 0.3})`;
+   687→      ctx.fill();
+   688→    });
+   689→
+   690→    // Bricks
+   691→    bricks.forEach((brick) => {
+   692→      if (!brick.alive) return;
+   693→      const bt = BRICK_TYPES[brick.typeIndex];
+   694→      const grad = ctx.createLinearGradient(brick.x, brick.y, brick.x, brick.y + brick.h);
+   695→      grad.addColorStop(0, bt.gradient[0]);
+   696→      grad.addColorStop(1, bt.gradient[1]);
+   697→      ctx.fillStyle = grad;
+   698→      roundRect(ctx, brick.x, brick.y, brick.w, brick.h, 4);
+   699→      ctx.fill();
+   700→      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+   701→      ctx.lineWidth = 1;
+   702→      roundRect(ctx, brick.x + 1, brick.y + 1, brick.w - 2, brick.h / 2, 3);
+   703→      ctx.stroke();
+   704→    });
+   705→
+   706→    // Paddle
+   707→    const paddleGrad = ctx.createLinearGradient(
+   708→      paddle.x, paddleY - PADDLE_H / 2,
+   709→      paddle.x, paddleY + PADDLE_H / 2
+   710→    );
+   711→    if (isMagnetRef.current) {
+   712→      paddleGrad.addColorStop(0, '#22d3ee');
+   713→      paddleGrad.addColorStop(0.5, '#06b6d4');
+   714→      paddleGrad.addColorStop(1, '#0891b2');
+   715→    } else {
+   716→      paddleGrad.addColorStop(0, '#60a5fa');
+   717→      paddleGrad.addColorStop(0.5, '#3b82f6');
+   718→      paddleGrad.addColorStop(1, '#2563eb');
+   719→    }
+   720→    ctx.fillStyle = paddleGrad;
+   721→    roundRect(ctx, paddle.x, paddleY - PADDLE_H / 2, paddle.w, PADDLE_H, 6);
+   722→    ctx.fill();
+   723→    // Paddle highlight
+   724→    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+   725→    roundRect(ctx, paddle.x + 4, paddleY - PADDLE_H / 2 + 1, paddle.w - 8, PADDLE_H / 3, 3);
+   726→    ctx.fill();
+   727→    // Magnet indicator
+   728→    if (isMagnetRef.current) {
+   729→      ctx.strokeStyle = 'rgba(34, 211, 238, 0.5)';
+   730→      ctx.lineWidth = 2;
+   731→      roundRect(ctx, paddle.x - 2, paddleY - PADDLE_H / 2 - 2, paddle.w + 4, PADDLE_H + 4, 8);
+   732→      ctx.stroke();
+   733→    }
+   734→
+   735→    // Balls
+   736→    balls.forEach((ball) => {
+   737→      if (isFireballRef.current && !ball.stuck) {
+   738→        // Fire ball rendering
+   739→        ctx.shadowColor = '#f59e0b';
+   740→        ctx.shadowBlur = 16;
+   741→        ctx.fillStyle = '#fbbf24';
+   742→        ctx.beginPath();
+   743→        ctx.arc(ball.x, ball.y, ball.radius + 2, 0, Math.PI * 2);
+   744→        ctx.fill();
+   745→        ctx.fillStyle = '#ffffff';
+   746→        ctx.beginPath();
+   747→        ctx.arc(ball.x, ball.y, ball.radius * 0.7, 0, Math.PI * 2);
+   748→        ctx.fill();
+   749→      } else {
+   750→        ctx.shadowColor = '#ffffff';
+   751→        ctx.shadowBlur = 12;
+   752→        ctx.fillStyle = '#ffffff';
+   753→        ctx.beginPath();
+   754→        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+   755→        ctx.fill();
+   756→        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+   757→        ctx.beginPath();
+   758→        ctx.arc(ball.x - 1.5, ball.y - 1.5, ball.radius * 0.35, 0, Math.PI * 2);
+   759→        ctx.fill();
+   760→      }
+   761→      ctx.shadowBlur = 0;
+   762→    });
+   763→
+   764→    // Power-ups
+   765→    powerUps.forEach((pu) => {
+   766→      const color = POWERUP_COLORS[pu.type];
+   767→      const blink = Math.sin(pu.frame * 0.3) * 0.3 + 0.7;
+   768→      ctx.globalAlpha = blink;
+   769→      ctx.fillStyle = color;
+   770→      ctx.shadowColor = color;
+   771→      ctx.shadowBlur = 8;
+   772→      roundRect(ctx, pu.x - POWERUP_SIZE / 2, pu.y - POWERUP_SIZE / 2, POWERUP_SIZE, POWERUP_SIZE, 6);
+   773→      ctx.fill();
+   774→      ctx.shadowBlur = 0;
+   775→      ctx.fillStyle = '#ffffff';
+   776→      ctx.font = 'bold 14px sans-serif';
+   777→      ctx.textAlign = 'center';
+   778→      ctx.textBaseline = 'middle';
+   779→      ctx.fillText(pu.type, pu.x, pu.y + 1);
+   780→      ctx.globalAlpha = 1;
+   781→    });
+   782→
+   783→    // Particles
+   784→    particles.forEach((p) => {
+   785→      const alpha = p.life / p.maxLife;
+   786→      ctx.globalAlpha = alpha;
+   787→      ctx.fillStyle = p.color;
+   788→      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+   789→    });
+   790→    ctx.globalAlpha = 1;
+   791→
+   792→    // Combo display
+   793→    const comboCount = comboCountRef.current;
+   794→    if (comboCount >= 3 && gameStatusRef.current === 'playing') {
+   795→      const multiplier = 1 + Math.floor(comboCount / 3) * 0.5;
+   796→      ctx.fillStyle = '#fbbf24';
+   797→      ctx.font = 'bold 18px sans-serif';
+   798→      ctx.textAlign = 'right';
+   799→      ctx.textBaseline = 'top';
+   800→      ctx.fillText(`${comboCount} COMBO! x${multiplier.toFixed(1)}`, w - 10, 10);
+   801→    }
+   802→
+   803→    // Level up overlay
+   804→    if (gameStatusRef.current === 'levelUp') {
+   805→      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+   806→      ctx.fillRect(0, 0, w, h);
+   807→      ctx.fillStyle = '#fbbf24';
+   808→      ctx.font = 'bold 36px sans-serif';
+   809→      ctx.textAlign = 'center';
+   810→      ctx.textBaseline = 'middle';
+   811→      ctx.fillText(`第 ${levelRef.current} 关通过！`, w / 2, h / 2 - 20);
+   812→      ctx.fillStyle = '#ffffff';
+   813→      ctx.font = '20px sans-serif';
+   814→      ctx.fillText('准备进入下一关...', w / 2, h / 2 + 25);
+   815→    }
+   816→
+   817→    // Pause overlay
+   818→    if (pausedRef.current && gameStatusRef.current === 'playing') {
+   819→      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+   820→      ctx.fillRect(0, 0, w, h);
+   821→      ctx.fillStyle = '#ffffff';
+   822→      ctx.font = 'bold 32px sans-serif';
+   823→      ctx.textAlign = 'center';
+   824→      ctx.textBaseline = 'middle';
+   825→      ctx.fillText('已暂停', w / 2, h / 2 - 10);
+   826→      ctx.font = '16px sans-serif';
+   827→      ctx.fillStyle = '#a1a1aa';
+   828→      ctx.fillText('按 Esc 继续', w / 2, h / 2 + 25);
+   829→    }
+   830→
+   831→    // Idle overlay
+   832→    if (gameStatusRef.current === 'idle') {
+   833→      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+   834→      ctx.fillRect(0, 0, w, h);
+   835→      ctx.fillStyle = '#ffffff';
+   836→      ctx.font = 'bold 28px sans-serif';
+   837→      ctx.textAlign = 'center';
+   838→      ctx.textBaseline = 'middle';
+   839→      ctx.fillText('打砖块', w / 2, h / 2 - 30);
+   840→      ctx.font = '16px sans-serif';
+   841→      ctx.fillStyle = '#a1a1aa';
+   842→      ctx.fillText('按「开始游戏」开始', w / 2, h / 2 + 15);
+   843→    }
+   844→
+   845→    // Game over overlay
+   846→    if (gameStatusRef.current === 'over') {
+   847→      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+   848→      ctx.fillRect(0, 0, w, h);
+   849→      const isWin = livesRef.current > 0;
+   850→      ctx.fillStyle = isWin ? '#4ade80' : '#ef4444';
+   851→      ctx.font = 'bold 36px sans-serif';
+   852→      ctx.textAlign = 'center';
+   853→      ctx.textBaseline = 'middle';
+   854→      ctx.fillText(isWin ? '恭喜通关！' : '游戏结束', w / 2, h / 2 - 40);
+   855→      ctx.fillStyle = '#fbbf24';
+   856→      ctx.font = 'bold 24px sans-serif';
+   857→      ctx.fillText(`最终得分: ${scoreRef.current}`, w / 2, h / 2 + 10);
+   858→      if (isWin) {
+   859→        ctx.fillStyle = '#a1a1aa';
+   860→        ctx.font = '16px sans-serif';
+   861→        ctx.fillText('所有关卡已通关！', w / 2, h / 2 + 45);
+   862→      }
+   863→    }
+   864→  }, [getPaddleY]);
+   865→
+   866→  const gameLoop = useCallback(() => {
+   867→    if (gameStatusRef.current === 'playing' && !pausedRef.current) {
+   868→      update();
+   869→    }
+   870→    draw();
+   871→    animFrameRef.current = requestAnimationFrame(gameLoop);
+   872→  }, [update, draw]);
+   873→
+   874→  const endGame = useCallback(async () => {
+   875→    if (animFrameRef.current) {
+   876→      cancelAnimationFrame(animFrameRef.current);
+   877→      animFrameRef.current = 0;
+   878→    }
+   879→
+   880→    if (scoreRef.current > highScore) {
+   881→      setIsNewRecord(true);
+   882→      try {
+   883→        const res = await fetch('/api/games/scores', {
+   884→          method: 'POST',
+   885→          headers: { 'Content-Type': 'application/json' },
+   886→          body: JSON.stringify({ game: GAME_NAME, score: scoreRef.current }),
+   887→        });
+   888→        if (res.ok) {
+   889→          const data = await res.json();
+   890→          if (data.data?.score !== undefined) setHighScore(data.data.score);
+   891→        }
+   892→      } catch { /* silent */ }
+   893→    } else {
+   894→      setIsNewRecord(false);
+   895→    }
+   896→  }, [highScore]);
+   897→
+   898→  useEffect(() => {
+   899→    if (gameStatus === 'over') endGame();
+   900→  }, [gameStatus, endGame]);
+   901→
+   902→  const startGame = useCallback(() => {
+   903→    scoreRef.current = 0;
+   904→    livesRef.current = MAX_LIVES;
+   905→    setScore(0);
+   906→    setLives(MAX_LIVES);
+   907→    setIsNewRecord(false);
+   908→    comboCountRef.current = 0;
+   909→    setCombo(0);
+   910→    initLevel(1);
+   911→    gameStatusRef.current = 'playing';
+   912→    setGameStatus('playing');
+   913→
+   914→    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+   915→    animFrameRef.current = requestAnimationFrame(gameLoop);
+   916→  }, [initLevel, gameLoop]);
+   917→
+   918→  // Keyboard events
+   919→  useEffect(() => {
+   920→    const onKeyDown = (e: KeyboardEvent) => {
+   921→      if (e.key === 'Escape' && gameStatusRef.current === 'playing') {
+   922→        e.preventDefault();
+   923→        pausedRef.current = !pausedRef.current;
+   924→        setPaused(pausedRef.current);
+   925→        return;
+   926→      }
+   927→      // Space to launch stuck balls
+   928→      if (e.key === ' ' && gameStatusRef.current === 'playing') {
+   929→        e.preventDefault();
+   930→        launchStuckBalls();
+   931→        return;
+   932→      }
+   933→      keysRef.current.add(e.key);
+   934→      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+   935→        e.preventDefault();
+   936→      }
+   937→    };
+   938→    const onKeyUp = (e: KeyboardEvent) => {
+   939→      keysRef.current.delete(e.key);
+   940→    };
+   941→    window.addEventListener('keydown', onKeyDown);
+   942→    window.addEventListener('keyup', onKeyUp);
+   943→    return () => {
+   944→      window.removeEventListener('keydown', onKeyDown);
+   945→      window.removeEventListener('keyup', onKeyUp);
+   946→    };
+   947→  }, [launchStuckBalls]);
+   948→
+   949→  // Mouse control
+   950→  useEffect(() => {
+   951→    const canvas = canvasRef.current;
+   952→    if (!canvas) return;
+   953→    const onMouseMove = (e: MouseEvent) => {
+   954→      if (gameStatusRef.current !== 'playing') return;
+   955→      const rect = canvas.getBoundingClientRect();
+   956→      const scaleX = canvasWRef.current / rect.width;
+   957→      const mouseX = (e.clientX - rect.left) * scaleX;
+   958→      const paddle = paddleRef.current;
+   959→      paddle.x = Math.max(0, Math.min(canvasWRef.current - paddle.w, mouseX - paddle.w / 2));
+   960→    };
+   961→    canvas.addEventListener('mousemove', onMouseMove);
+   962→    return () => canvas.removeEventListener('mousemove', onMouseMove);
+   963→  }, []);
+   964→
+   965→  // Touch control
+   966→  useEffect(() => {
+   967→    const canvas = canvasRef.current;
+   968→    if (!canvas) return;
+   969→    const onTouchMove = (e: TouchEvent) => {
+   970→      if (gameStatusRef.current !== 'playing') return;
+   971→      e.preventDefault();
+   972→      const touch = e.touches[0];
+   973→      const rect = canvas.getBoundingClientRect();
+   974→      const scaleX = canvasWRef.current / rect.width;
+   975→      const touchX = (touch.clientX - rect.left) * scaleX;
+   976→      const paddle = paddleRef.current;
+   977→      paddle.x = Math.max(0, Math.min(canvasWRef.current - paddle.w, touchX - paddle.w / 2));
+   978→    };
+   979→    const onTouchStart = (e: TouchEvent) => {
+   980→      // Tap to launch stuck balls on mobile
+   981→      if (gameStatusRef.current === 'playing' && isMagnetRef.current) {
+   982→        launchStuckBalls();
+   983→      }
+   984→    };
+   985→    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+   986→    canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+   987→    return () => {
+   988→      canvas.removeEventListener('touchmove', onTouchMove);
+   989→      canvas.removeEventListener('touchstart', onTouchStart);
+   990→    };
+   991→  }, [launchStuckBalls]);
+   992→
+   993→  // Fetch high score
+   994→  useEffect(() => {
+   995→    const fetchHighScore = async () => {
+   996→      try {
+   997→        const res = await fetch('/api/games/scores');
+   998→        if (res.ok) {
+   999→          const data = await res.json();
+  1000→          if (Array.isArray(data.data)) {
+  1001→            const found = data.data.find(
+  1002→              (item: { game: string; score: number }) => item.game === GAME_NAME
+  1003→            );
+  1004→            if (found) setHighScore(found.score);
+  1005→          }
+  1006→        }
+  1007→      } catch { /* silent */ }
+  1008→      finally { setLoadingHighScore(false); }
+  1009→    };
+  1010→    fetchHighScore();
+  1011→  }, []);
+  1012→
+  1013→  // Canvas sizing
+  1014→  useEffect(() => {
+  1015→    const updateSize = () => {
+  1016→      const container = containerRef.current;
+  1017→      const canvas = canvasRef.current;
+  1018→      if (!container || !canvas) return;
+  1019→      const containerWidth = container.clientWidth;
+  1020→      const w = Math.min(containerWidth, CANVAS_MAX_W);
+  1021→      const dpr = window.devicePixelRatio || 1;
+  1022→      canvas.width = w * dpr;
+  1023→      canvas.height = CANVAS_H * dpr;
+  1024→      canvas.style.width = `${w}px`;
+  1025→      canvas.style.height = `${CANVAS_H}px`;
+  1026→      const ctx = canvas.getContext('2d');
+  1027→      if (ctx) ctx.scale(dpr, dpr);
+  1028→      canvasWRef.current = w;
+  1029→    };
+  1030→    updateSize();
+  1031→    window.addEventListener('resize', updateSize);
+  1032→    return () => window.removeEventListener('resize', updateSize);
+  1033→  }, []);
+  1034→
+  1035→  // Cleanup
+  1036→  useEffect(() => {
+  1037→    return () => {
+  1038→      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+  1039→      clearEffectTimers();
+  1040→    };
+  1041→  }, [clearEffectTimers]);
+  1042→
+  1043→  const maxDisplayLives = Math.max(lives, MAX_LIVES);
+  1044→  const heartsDisplay = Array.from({ length: maxDisplayLives }, (_, i) => (
+  1045→    <span
+  1046→      key={i}
+  1047→      className={i < lives ? 'opacity-100' : 'opacity-25'}
+  1048→    >
+  1049→      ❤️
+  1050→    </span>
+  1051→  ));
+  1052→
+  1053→  return (
+  1054→    <div className="flex flex-col items-center w-full max-w-md mx-auto px-2 py-2 gap-2">
+  1055→      <div className="flex items-center justify-between w-full">
+  1056→        <div className="flex items-center gap-1">
+  1057→          <Button
+  1058→            variant="ghost"
+  1059→            size="sm"
+  1060→            onClick={onBack}
+  1061→            className="text-muted-foreground hover:text-foreground"
+  1062→          >
+  1063→            <ArrowLeft className="h-4 w-4 mr-1" />
+  1064→            返回大厅
+  1065→          </Button>
+  1066→          {gameStatus === 'playing' && <GameControlsHelp info={breakoutControlsInfo} variant="button" />}
+  1067→        </div>
+  1068→        <h2 className="text-lg font-bold tracking-wide">🧱 打砖块</h2>
+  1069→        <div className="w-8" />
+  1070→      </div>
+  1071→
+  1072→      <div className="grid grid-cols-4 gap-2 w-full text-center">
+  1073→        <div className="flex flex-col items-center gap-0.5">
+  1074→          <span className="text-xs text-muted-foreground">分数</span>
+  1075→          <span className="text-xl font-bold text-primary tabular-nums">{score}</span>
+  1076→        </div>
+  1077→        <div className="flex flex-col items-center gap-0.5">
+  1078→          <span className="text-xs text-muted-foreground flex items-center gap-1">
+  1079→            <Trophy className="h-3 w-3 text-yellow-500" />
+  1080→            最高分
+  1081→          </span>
+  1082→          <span className="text-xl font-bold text-yellow-500 tabular-nums">
+  1083→            {loadingHighScore ? '...' : highScore}
+  1084→          </span>
+  1085→        </div>
+  1086→        <div className="flex flex-col items-center gap-0.5">
+  1087→          <span className="text-xs text-muted-foreground">生命</span>
+  1088→          <div className="text-base leading-tight">{heartsDisplay}</div>
+  1089→        </div>
+  1090→        <div className="flex flex-col items-center gap-0.5">
+  1091→          <span className="text-xs text-muted-foreground">关卡</span>
+  1092→          <span className="text-xl font-bold tabular-nums">
+  1093→            {level}/{MAX_LEVEL}
+  1094→          </span>
+  1095→        </div>
+  1096→      </div>
+  1097→
+  1098→      {activeEffects.length > 0 && (
+  1099→        <div className="flex flex-wrap gap-1.5 justify-center">
+  1100→          {activeEffects.map((effect, i) => (
+  1101→            <span
+  1102→              key={i}
+  1103→              className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground"
+  1104→            >
+  1105→              {effect}
+  1106→            </span>
+  1107→          ))}
+  1108→        </div>
+  1109→      )}
+  1110→
+  1111→      {combo >= 3 && gameStatus === 'playing' && (
+  1112→        <div className="text-center">
+  1113→          <span className="text-sm font-bold text-yellow-400">
+  1114→            🔥 {combo} 连击! x{(1 + Math.floor(combo / 3) * 0.5).toFixed(1)}
+  1115→          </span>
+  1116→        </div>
+  1117→      )}
+  1118→
+  1119→      <div ref={containerRef} className="w-full flex justify-center">
+  1120→        <canvas
+  1121→          ref={canvasRef}
+  1122→          className="rounded-lg border border-border/30 shadow-lg"
+  1123→          style={{ touchAction: 'none' }}
+  1124→        />
+  1125→      </div>
+  1126→
+  1127→      <div className="flex flex-col items-center gap-3 w-full">
+  1128→        {gameStatus === 'over' && isNewRecord && (
+  1129→          <p className="text-sm font-semibold text-yellow-500 animate-pulse">
+  1130→            🎉 新纪录！
+  1131→          </p>
+  1132→        )}
+  1133→
+  1134→        <Button
+  1135→          onClick={startGame}
+  1136→          size="lg"
+  1137→          className="w-full max-w-xs text-base font-semibold"
+  1138→          disabled={gameStatus === 'playing' || gameStatus === 'levelUp'}
+  1139→        >
+  1140→          <RotateCcw className="h-4 w-4 mr-2" />
+  1141→          {gameStatus === 'playing'
+  1142→            ? '游戏中...'
+  1143→            : gameStatus === 'levelUp'
+  1144→              ? '过关中...'
+  1145→              : '开始游戏'}
+  1146→        </Button>
+  1147→      </div>
+  1148→    </div>
+  1149→  );
+  1150→}
+  1151→

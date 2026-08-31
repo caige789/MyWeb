@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#16a34a"/>
+  <!-- leaf / flower shape -->
+  <g transform="translate(256,256)">
+    <!-- center circle -->
+    <circle r="32" fill="#fff" opacity="0.95"/>
+    <!-- top petal -->
+    <ellipse cx="0" cy="-72" rx="36" ry="52" fill="#fff" opacity="0.85" transform="rotate(0)"/>
+    <!-- right petal -->
+    <ellipse cx="0" cy="-72" rx="36" ry="52" fill="#fff" opacity="0.85" transform="rotate(72)"/>
+    <!-- bottom-right petal -->
+    <ellipse cx="0" cy="-72" rx="36" ry="52" fill="#fff" opacity="0.85" transform="rotate(144)"/>
+    <!-- bottom-left petal -->
+    <ellipse cx="0" cy="-72" rx="36" ry="52" fill="#fff" opacity="0.85" transform="rotate(216)"/>
+    <!-- left petal -->
+    <ellipse cx="0" cy="-72" rx="36" ry="52" fill="#fff" opacity="0.85" transform="rotate(288)"/>
+  </g>
+  <!-- stem -->
+  <path d="M256 310 Q256 380 240 430" stroke="#fff" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7"/>
+  <!-- small leaf on stem -->
+  <path d="M248 370 Q220 350 230 330" stroke="#fff" stroke-width="6" fill="#fff" opacity="0.5"/>
+</svg>

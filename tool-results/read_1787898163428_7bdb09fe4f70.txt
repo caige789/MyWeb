@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { ArrowLeft, Trophy, ShoppingCart } from 'lucide-react';
+     6→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     7→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+     8→
+     9→const aircraftControlsInfo: GameControlsInfo = {
+    10→  gameName: '\u98de\u673a\u5927\u6218',
+    11→  desktop: [
+    12→    { action: '\u9f20\u6807\u79fb\u52a8 / WASD / \u65b9\u5411\u952e', keys: ['W', 'A', 'S', 'D', '\u2190', '\u2191', '\u2192', '\u2193'], description: '\u79fb\u52a8\u98de\u673a\u4f4d\u7f6e(\u4e0a\u4e0b\u5de6\u53f3)' },
+    13→    { action: '\u7a7a\u683c / \u9f20\u6807\u70b9\u51fb', keys: ['Space'], description: '\u53d1\u5c04\u5b50\u5f39' },
+    14→    { action: '\u6682\u505c', keys: ['Escape'], description: '\u6682\u505c/\u7ee7\u7eed\u6e38\u620f' },
+    15→  ],
+    16→  mobile: [
+    17→    { action: '\u89e6\u6478\u6ed1\u52a8', keys: [], description: '\u62d6\u52a8\u624b\u6307\u63a7\u5236\u98de\u673a\u79fb\u52a8(\u4e0a\u4e0b\u5de6\u53f3)' },
+    18→    { action: '\u81ea\u52a8\u53d1\u5c04', keys: [], description: '\u89e6\u6478\u5c4f\u5e55\u65f6\u81ea\u52a8\u8fde\u7eed\u53d1\u5c04\u5b50\u5f39' },
+    19→  ],
+    20→  rules: [
+    21→    '\u517110\u4e2a\u5173\u5361\uff0c\u6bcf\u5173\u51fb\u843d20\u4e2a\u654c\u4eba\u540e\u6311\u6218Boss',
+    22→    '\u51fb\u8d25Boss\u8fdb\u5165\u4e0b\u4e00\u5173\uff0cBoss\u67095\u79cd\u4e0d\u540c\u7c7b\u578b',
+    23→    '\u88ab\u654c\u673a\u3001\u5b50\u5f39\u78b0\u5230\u635f\u59311\u751f\u547d\u5e76\u964d\u7ea7\u6b66\u5668',
+    24→    '\u6536\u96c6\u6389\u843d\u9053\u5177\uff1a\u6b66\u5668\u5347\u7ea7\u3001\u56de\u8840\u3001\u70b8\u5f39\u3001\u62a4\u76fe',
+    25→    '\u51fb\u6740\u654c\u4eba\u83b7\u5f97\u91d1\u5e01\uff0c\u7528\u4e8e\u5546\u5e97\u8d2d\u4e70\u76ae\u80a4',
+    26→  ],
+    27→  tips: [
+    28→    '\u6ce8\u610fBoss\u9884\u8b66\uff0c\u63d0\u524d\u51c6\u5907\u95ea\u907f',
+    29→    '\u62a4\u76feBoss\u9700\u5148\u7834\u76fe\u518d\u8f93\u51fa',
+    30→    '\u62fe\u53d6\u6b66\u5668\u5347\u7ea7\u9053\u5177\u63d0\u5347\u706b\u529b',
+    31→    '\u7b2c7\u5173\u8d77\u654c\u4eba\u4f1a\u53cd\u51fb\uff0c\u6ce8\u610f\u8d70\u4f4d',
+    32→    '\u4e0d\u540c\u76ae\u80a4\u6709\u4e0d\u540c\u7684\u5b50\u5f39\u7279\u6548\u548c\u5c5e\u6027\u52a0\u6210',
+    33→  ],
+    34→};
+    35→
+    36→// ==================== TYPES & CONSTANTS ====================
+    37→
+    38→interface AircraftGameProps {
+    39→  onBack: () => void;
+    40→}
+    41→
+    42→const LOGIC_W = 480;
+    43→const LOGIC_H = 640;
+    44→const GAME_NAME = 'aircraft';
+    45→const PLAYER_W = 40;
+    46→const PLAYER_H = 48;
+    47→const BASE_PLAYER_SPEED = 6;
+    48→const BULLET_W = 4;
+    49→const BULLET_H = 14;
+    50→const BASE_SHOOT_INTERVAL = 10;
+    51→const POWERUP_CHANCE = 0.20;
+    52→const SHIELD_DURATION = 300;
+    53→const INVINCIBLE_DURATION = 90;
+    54→const STAGE_INVINCIBLE_DURATION = 180;
+    55→const MAX_WEAPON_LEVEL = 4;
+    56→const BASE_MAX_LIVES = 5;
+    57→const BASE_INITIAL_LIVES = 3;
+    58→const BOSS_W = 64;
+    59→const BOSS_H = 56;
+    60→const BOSS_BULLET_SPEED = 3.5;
+    61→const BOSS_SPREAD_ANGLE = Math.PI / 6;
+    62→const BOSS_SHOOT_INTERVAL = 80;
+    63→const SCREEN_FLASH_FRAMES = 15;
+    64→
+    65→// Stage system constants
+    66→const STAGE_KILLS_NEEDED = 35;
+    67→const TOTAL_STAGES = 10;
+    68→const WARNING_THRESHOLD = 18;
+    69→const WARNING_DURATION = 120;
+    70→const STAGE_TRANSITION_DURATION = 180;
+    71→const ENEMY_SHOOT_STAGE = 7;
+    72→const ENEMY_SHOOT_CHANCE = 0.10;
+    73→const ENEMY_SHOOT_INTERVAL = 120;
+    74→
+    75→// ==================== SKIN DEFINITIONS ====================
+    76→
+    77→interface SkinDef {
+    78→  id: string;
+    79→  name: string;
+    80→  emoji: string;
+    81→  cost: number;
+    82→  bonusDesc: string;
+    83→  attackType: string;
+    84→  desc: string;
+    85→  speedBonus: number;
+    86→  lifeBonus: number;
+    87→  fireRateBonus: number;
+    88→}
+    89→
+    90→const SKINS: SkinDef[] = [
+    91→  { id: 'default', name: 'Default Fighter', emoji: '\u2708\ufe0f', cost: 0, bonusDesc: 'None', attackType: 'Normal', desc: 'Free default', speedBonus: 0, lifeBonus: 0, fireRateBonus: 0 },
+    92→  { id: 'thunder', name: 'Thunder', emoji: '\u26a1', cost: 100, bonusDesc: '+10% speed', attackType: 'Lightning', desc: 'Electric attacks', speedBonus: 0.1, lifeBonus: 0, fireRateBonus: 0 },
+    93→  { id: 'phoenix', name: 'Phoenix', emoji: '\ud83d\udd25', cost: 250, bonusDesc: '+1 max life', attackType: 'Fire', desc: 'Reborn from ashes', speedBonus: 0, lifeBonus: 1, fireRateBonus: 0 },
+    94→  { id: 'ice', name: 'Ice Dragon', emoji: '\ud83d\udc09', cost: 400, bonusDesc: '+20% fire rate', attackType: 'Ice', desc: 'Freeze everything', speedBonus: 0, lifeBonus: 0, fireRateBonus: 0.2 },
+    95→  { id: 'star', name: 'Star Destroyer', emoji: '\u2b50', cost: 600, bonusDesc: '+2 max lives, +10% speed', attackType: 'Star', desc: 'Ultimate power', speedBonus: 0.1, lifeBonus: 2, fireRateBonus: 0 },
+    96→  { id: 'shadow', name: 'Shadow', emoji: '\ud83e\udd87', cost: 1000, bonusDesc: '+15% speed, +1 life', attackType: 'Shadow', desc: 'Darkness reigns', speedBonus: 0.15, lifeBonus: 1, fireRateBonus: 0 },
+    97→];
+    98→
+    99→function getSkinDef(id: string): SkinDef {
+   100→  return SKINS.find((s) => s.id === id) || SKINS[0];
+   101→}
+   102→
+   103→// ==================== SKIN STORAGE ====================
+   104→
+   105→interface SkinStorage {
+   106→  owned: string[];
+   107→  equipped: string;
+   108→}
+   109→
+   110→const DEFAULT_SKIN_STORAGE: SkinStorage = { owned: ['default'], equipped: 'default' };
+   111→
+   112→function loadSkins(): SkinStorage {
+   113→  try {
+   114→    const raw = localStorage.getItem('aircraft-skins');
+   115→    if (raw) {
+   116→      const parsed = JSON.parse(raw) as SkinStorage;
+   117→      if (parsed.owned && parsed.equipped && parsed.owned.includes(parsed.equipped)) {
+   118→        return parsed;
+   119→      }
+   120→    }
+   121→  } catch {
+   122→    // fall through
+   123→  }
+   124→  return { ...DEFAULT_SKIN_STORAGE };
+   125→}
+   126→
+   127→function saveSkins(skins: SkinStorage) {
+   128→  localStorage.setItem('aircraft-skins', JSON.stringify(skins));
+   129→}
+   130→
+   131→function loadWallet(): number {
+   132→  try {
+   133→    const raw = localStorage.getItem('aircraft-coins');
+   134→    if (raw) return parseInt(raw, 10) || 0;
+   135→  } catch {
+   136→    // fall through
+   137→  }
+   138→  return 0;
+   139→}
+   140→
+   141→function saveWallet(coins: number) {
+   142→  localStorage.setItem('aircraft-coins', String(coins));
+   143→}
+   144→
+   145→// ==================== ENEMY TYPES ====================
+   146→
+   147→enum EnemyType {
+   148→  Normal = 'normal',
+   149→  Fast = 'fast',
+   150→  Tank = 'tank',
+   151→}
+   152→
+   153→const ENEMY_CONFIG: Record<EnemyType, { w: number; h: number; hp: number; score: number; speed: number; coins: number }> = {
+   154→  [EnemyType.Normal]: { w: 30, h: 30, hp: 1, score: 10, speed: 2.0, coins: 1 },
+   155→  [EnemyType.Fast]: { w: 22, h: 22, hp: 1, score: 15, speed: 4.0, coins: 2 },
+   156→  [EnemyType.Tank]: { w: 48, h: 48, hp: 3, score: 30, speed: 1.0, coins: 3 },
+   157→};
+   158→
+   159→const BOSS_EMOJIS = ['', '\ud83d\udc7d', '\ud83d\udef8', '\ud83e\udd81', '\ud83d\udc09', '\ud83d\udc7f'];
+   160→const BOSS_TYPE_NAMES = ['', 'SPREAD', 'RAPID FIRE', 'SHIELD', 'SUMMONER', 'ULTIMATE'];
+   161→
+   162→// Power-up types
+   163→enum PowerUpType {
+   164→  Weapon = 'weapon',
+   165→  Heal = 'heal',
+   166→  Bomb = 'bomb',
+   167→  Shield = 'shield',
+   168→}
+   169→
+   170→const POWERUP_EMOJIS: Record<PowerUpType, string> = {
+   171→  [PowerUpType.Weapon]: '\ud83d\udd2b',
+   172→  [PowerUpType.Heal]: '\ud83d\udc9a',
+   173→  [PowerUpType.Bomb]: '\ud83d\udca3',
+   174→  [PowerUpType.Shield]: '\ud83d\udee1\ufe0f',
+   175→};
+   176→
+   177→const POWERUP_COLORS: Record<PowerUpType, string> = {
+   178→  [PowerUpType.Weapon]: '#f59e0b',
+   179→  [PowerUpType.Heal]: '#22c55e',
+   180→  [PowerUpType.Bomb]: '#ef4444',
+   181→  [PowerUpType.Shield]: '#06b6d4',
+   182→};
+   183→
+   184→// ==================== GAME OBJECTS ====================
+   185→
+   186→interface Star {
+   187→  x: number; y: number; r: number; alpha: number; twinkleSpeed: number; phase: number;
+   188→}
+   189→
+   190→interface Player {
+   191→  x: number; y: number;
+   192→  shieldTimer: number;
+   193→  weaponLevel: number;
+   194→  lives: number;
+   195→  maxLives: number;
+   196→  invincibleTimer: number;
+   197→}
+   198→
+   199→interface Bullet {
+   200→  x: number; y: number; vx: number; vy: number;
+   201→  pierce: number;
+   202→  slowFrames: number;
+   203→  dmgMul: number;
+   204→}
+   205→
+   206→interface EnemyBullet {
+   207→  x: number; y: number; vx: number; vy: number;
+   208→}
+   209→
+   210→interface Enemy {
+   211→  x: number; y: number;
+   212→  type: EnemyType;
+   213→  hp: number; maxHp: number;
+   214→  speed: number;
+   215→  baseSpeed: number;
+   216→  w: number; h: number;
+   217→  score: number;
+   218→  coins: number;
+   219→  shootTimer: number;
+   220→  slowTimer: number;
+   221→}
+   222→
+   223→interface Boss {
+   224→  x: number; y: number;
+   225→  hp: number; maxHp: number;
+   226→  bossType: number;
+   227→  emoji: string;
+   228→  flashTimer: number;
+   229→  shootTimer: number;
+   230→  dirX: number;
+   231→  score: number;
+   232→  entered: boolean;
+   233→  shieldHp: number;
+   234→  shieldMaxHp: number;
+   235→  shieldRegenTimer: number;
+   236→  summonTimer: number;
+   237→  specialTimer: number;
+   238→  spiralAngle: number;
+   239→  enraged: boolean;
+   240→  aimedShotTimer: number;
+   241→  shotCount: number;
+   242→}
+   243→
+   244→interface Particle {
+   245→  x: number; y: number; vx: number; vy: number;
+   246→  life: number; maxLife: number; color: string; r: number;
+   247→}
+   248→
+   249→interface PowerUp {
+   250→  x: number; y: number;
+   251→  type: PowerUpType;
+   252→  phase: number;
+   253→}
+   254→
+   255→type GameStatus = 'idle' | 'playing' | 'over' | 'shop';
+   256→
+   257→// ==================== HELPERS ====================
+   258→
+   259→function createStars(count: number): Star[] {
+   260→  const stars: Star[] = [];
+   261→  for (let i = 0; i < count; i++) {
+   262→    stars.push({
+   263→      x: Math.random() * LOGIC_W,
+   264→      y: Math.random() * LOGIC_H,
+   265→      r: Math.random() * 1.5 + 0.5,
+   266→      alpha: Math.random() * 0.6 + 0.4,
+   267→      twinkleSpeed: Math.random() * 0.03 + 0.01,
+   268→      phase: Math.random() * Math.PI * 2,
+   269→    });
+   270→  }
+   271→  return stars;
+   272→}
+   273→
+   274→function createExplosion(x: number, y: number, color: string, count: number): Particle[] {
+   275→  const particles: Particle[] = [];
+   276→  for (let i = 0; i < count; i++) {
+   277→    const angle = Math.random() * Math.PI * 2;
+   278→    const speed = Math.random() * 3 + 1;
+   279→    particles.push({
+   280→      x, y,
+   281→      vx: Math.cos(angle) * speed,
+   282→      vy: Math.sin(angle) * speed,
+   283→      life: Math.random() * 20 + 15,
+   284→      maxLife: 35,
+   285→      color,
+   286→      r: Math.random() * 3 + 1,
+   287→    });
+   288→  }
+   289→  return particles;
+   290→}
+   291→
+   292→function rectCollide(
+   293→  ax: number, ay: number, aw: number, ah: number,
+   294→  bx: number, by: number, bw: number, bh: number,
+   295→): boolean {
+   296→  return Math.abs(ax - bx) < (aw + bw) / 2 && Math.abs(ay - by) < (ah + bh) / 2;
+   297→}
+   298→
+   299→function getBossTypeForStage(stage: number): number {
+   300→  if (stage <= 2) return 1;
+   301→  if (stage <= 4) return 2;
+   302→  if (stage <= 6) return 3;
+   303→  if (stage <= 8) return 4;
+   304→  return 5;
+   305→}
+   306→
+   307→// ==================== DRAWING FUNCTIONS ====================
+   308→
+   309→function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, frame: number, skinEmoji: string, skinAttackType: string) {
+   310→  ctx.save();
+   311→  ctx.translate(p.x, p.y);
+   312→
+   313→  if (p.invincibleTimer > 0 && Math.floor(frame / 3) % 2 === 0) {
+   314→    ctx.globalAlpha = 0.35;
+   315→  }
+   316→
+   317→  // Tail flame
+   318→  let flameColor1 = '#38bdf8';
+   319→  let flameColor2 = '#f97316';
+   320→  if (skinAttackType === 'Fire') { flameColor1 = '#f97316'; flameColor2 = '#ef4444'; }
+   321→  else if (skinAttackType === 'Ice') { flameColor1 = '#06b6d4'; flameColor2 = '#a5f3fc'; }
+   322→  else if (skinAttackType === 'Star') { flameColor1 = '#fbbf24'; flameColor2 = '#f472b6'; }
+   323→  else if (skinAttackType === 'Shadow') { flameColor1 = '#7c3aed'; flameColor2 = '#1e1b4b'; }
+   324→  else if (skinAttackType === 'Lightning') { flameColor1 = '#fbbf24'; flameColor2 = '#fde047'; }
+   325→
+   326→  const flameLen = 12 + Math.sin(frame * 0.5) * 4;
+   327→  const flameW = 8 + Math.sin(frame * 0.7) * 2;
+   328→  const flameGrad = ctx.createLinearGradient(0, PLAYER_H / 2, 0, PLAYER_H / 2 + flameLen);
+   329→  flameGrad.addColorStop(0, flameColor1);
+   330→  flameGrad.addColorStop(0.4, flameColor2);
+   331→  flameGrad.addColorStop(1, 'rgba(0,0,0,0)');
+   332→  ctx.fillStyle = flameGrad;
+   333→  ctx.beginPath();
+   334→  ctx.moveTo(-flameW, PLAYER_H / 2 - 2);
+   335→  ctx.lineTo(flameW, PLAYER_H / 2 - 2);
+   336→  ctx.lineTo(0, PLAYER_H / 2 + flameLen);
+   337→  ctx.closePath();
+   338→  ctx.fill();
+   339→
+   340→  // Skin emoji
+   341→  ctx.font = '32px sans-serif';
+   342→  ctx.textAlign = 'center';
+   343→  ctx.textBaseline = 'middle';
+   344→  ctx.fillText(skinEmoji, 0, -2);
+   345→
+   346→  // Shield bubble
+   347→  if (p.shieldTimer > 0) {
+   348→    const shieldAlpha = p.shieldTimer < 60 ? (Math.sin(frame * 0.3) * 0.3 + 0.4) : 0.5;
+   349→    ctx.strokeStyle = `rgba(6, 182, 212, ${shieldAlpha})`;
+   350→    ctx.lineWidth = 2.5;
+   351→    ctx.beginPath();
+   352→    ctx.ellipse(0, 0, PLAYER_W / 2 + 8, PLAYER_H / 2 + 8, 0, 0, Math.PI * 2);
+   353→    ctx.stroke();
+   354→  }
+   355→
+   356→  ctx.restore();
+   357→}
+   358→
+   359→function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy) {
+   360→  ctx.save();
+   361→  ctx.translate(e.x, e.y);
+   362→
+   363→  if (e.type === EnemyType.Normal) {
+   364→    ctx.fillStyle = '#ef4444';
+   365→    ctx.beginPath();
+   366→    ctx.moveTo(0, e.h / 2);
+   367→    ctx.lineTo(-e.w / 2, -e.h / 2);
+   368→    ctx.lineTo(e.w / 2, -e.h / 2);
+   369→    ctx.closePath();
+   370→    ctx.fill();
+   371→    ctx.strokeStyle = '#fca5a5';
+   372→    ctx.lineWidth = 1;
+   373→    ctx.beginPath();
+   374→    ctx.moveTo(0, e.h / 2 - 6);
+   375→    ctx.lineTo(-e.w / 4, -e.h / 4);
+   376→    ctx.moveTo(0, e.h / 2 - 6);
+   377→    ctx.lineTo(e.w / 4, -e.h / 4);
+   378→    ctx.stroke();
+   379→  } else if (e.type === EnemyType.Fast) {
+   380→    ctx.fillStyle = '#f59e0b';
+   381→    ctx.beginPath();
+   382→    ctx.moveTo(0, e.h / 2);
+   383→    ctx.lineTo(-e.w / 2, -e.h / 3);
+   384→    ctx.lineTo(-e.w / 4, -e.h / 2);
+   385→    ctx.lineTo(e.w / 4, -e.h / 2);
+   386→    ctx.lineTo(e.w / 2, -e.h / 3);
+   387→    ctx.closePath();
+   388→    ctx.fill();
+   389→    ctx.fillStyle = '#fcd34d';
+   390→    ctx.beginPath();
+   391→    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+   392→    ctx.fill();
+   393→  } else if (e.type === EnemyType.Tank) {
+   394→    const r = e.w / 2;
+   395→    ctx.fillStyle = '#a855f7';
+   396→    ctx.beginPath();
+   397→    for (let i = 0; i < 6; i++) {
+   398→      const angle = (Math.PI / 3) * i - Math.PI / 2;
+   399→      const px = Math.cos(angle) * r;
+   400→      const py = Math.sin(angle) * r;
+   401→      if (i === 0) ctx.moveTo(px, py);
+   402→      else ctx.lineTo(px, py);
+   403→    }
+   404→    ctx.closePath();
+   405→    ctx.fill();
+   406→    ctx.strokeStyle = '#d8b4fe';
+   407→    ctx.lineWidth = 1.5;
+   408→    ctx.beginPath();
+   409→    for (let i = 0; i < 6; i++) {
+   410→      const angle = (Math.PI / 3) * i - Math.PI / 2;
+   411→      const px = Math.cos(angle) * (r * 0.55);
+   412→      const py = Math.sin(angle) * (r * 0.55);
+   413→      if (i === 0) ctx.moveTo(px, py);
+   414→      else ctx.lineTo(px, py);
+   415→    }
+   416→    ctx.closePath();
+   417→    ctx.stroke();
+   418→    ctx.fillStyle = '#e9d5ff';
+   419→    ctx.beginPath();
+   420→    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+   421→    ctx.fill();
+   422→  }
+   423→
+   424→  // Slow indicator
+   425→  if (e.slowTimer > 0) {
+   426→    ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+   427→    ctx.lineWidth = 2;
+   428→    ctx.beginPath();
+   429→    ctx.arc(0, 0, e.w / 2 + 4, 0, Math.PI * 2);
+   430→    ctx.stroke();
+   431→  }
+   432→
+   433→  ctx.restore();
+   434→
+   435→  // HP bar
+   436→  if (e.hp < e.maxHp) {
+   437→    const barW = e.w * 0.8;
+   438→    const barH = 3;
+   439→    const barX = e.x - barW / 2;
+   440→    const barY = e.y - e.h / 2 - 6;
+   441→    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+   442→    ctx.fillRect(barX, barY, barW, barH);
+   443→    ctx.fillStyle = '#22c55e';
+   444→    ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH);
+   445→  }
+   446→}
+   447→
+   448→function drawBoss(ctx: CanvasRenderingContext2D, boss: Boss, frame: number) {
+   449→  ctx.save();
+   450→  ctx.translate(boss.x, boss.y);
+   451→
+   452→  if (boss.flashTimer > 0) {
+   453→    ctx.globalAlpha = 0.5 + Math.sin(frame) * 0.5;
+   454→    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+   455→    ctx.beginPath();
+   456→    ctx.ellipse(0, 0, BOSS_W / 2 + 4, BOSS_H / 2 + 4, 0, 0, Math.PI * 2);
+   457→    ctx.fill();
+   458→    ctx.globalAlpha = 1;
+   459→  }
+   460→
+   461→  if (boss.enraged) {
+   462→    const enrageAlpha = 0.15 + Math.sin(frame * 0.2) * 0.1;
+   463→    ctx.fillStyle = `rgba(255, 0, 0, ${enrageAlpha})`;
+   464→    ctx.beginPath();
+   465→    ctx.ellipse(0, 0, BOSS_W / 2 + 12, BOSS_H / 2 + 12, 0, 0, Math.PI * 2);
+   466→    ctx.fill();
+   467→  }
+   468→
+   469→  ctx.font = `${BOSS_H}px sans-serif`;
+   470→  ctx.textAlign = 'center';
+   471→  ctx.textBaseline = 'middle';
+   472→  ctx.fillText(boss.emoji, 0, 2);
+   473→
+   474→  ctx.restore();
+   475→
+   476→  // Boss HP bar
+   477→  const barW = LOGIC_W * 0.6;
+   478→  const barH = 8;
+   479→  const barX = (LOGIC_W - barW) / 2;
+   480→  const barY = 6;
+   481→
+   482→  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+   483→  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+   484→
+   485→  const hpRatio = boss.hp / boss.maxHp;
+   486→  const hpColor = hpRatio > 0.5 ? '#ef4444' : hpRatio > 0.25 ? '#f97316' : '#fbbf24';
+   487→  ctx.fillStyle = hpColor;
+   488→  ctx.fillRect(barX, barY, barW * hpRatio, barH);
+   489→
+   490→  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+   491→  ctx.lineWidth = 1;
+   492→  ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
+   493→
+   494→  ctx.fillStyle = '#ffffff';
+   495→  ctx.font = 'bold 11px sans-serif';
+   496→  ctx.textAlign = 'center';
+   497→  ctx.textBaseline = 'top';
+   498→  ctx.fillText(`BOSS - ${BOSS_TYPE_NAMES[boss.bossType]}`, LOGIC_W / 2, barY + barH + 2);
+   499→
+   500→  if (boss.bossType === 3 && boss.shieldMaxHp > 0) {
+   501→    const shieldBarY = barY + barH + 16;
+   502→    const shieldRatio = boss.shieldHp / boss.shieldMaxHp;
+   503→    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   504→    ctx.fillRect(barX - 1, shieldBarY - 1, barW + 2, 5 + 2);
+   505→    ctx.fillStyle = shieldRatio > 0 ? '#3b82f6' : '#1e3a5f';
+   506→    ctx.fillRect(barX, shieldBarY, barW * shieldRatio, 5);
+   507→    ctx.strokeStyle = 'rgba(100,180,255,0.4)';
+   508→    ctx.strokeRect(barX - 1, shieldBarY - 1, barW + 2, 5 + 2);
+   509→    ctx.fillStyle = '#93c5fd';
+   510→    ctx.font = '9px sans-serif';
+   511→    ctx.textAlign = 'center';
+   512→    ctx.textBaseline = 'top';
+   513→    ctx.fillText('SHIELD', LOGIC_W / 2, shieldBarY + 6);
+   514→  }
+   515→}
+   516→
+   517→function drawPowerUp(ctx: CanvasRenderingContext2D, pw: PowerUp) {
+   518→  const glow = 0.3 + Math.sin(pw.phase) * 0.2;
+   519→  const color = POWERUP_COLORS[pw.type];
+   520→
+   521→  ctx.save();
+   522→  ctx.globalAlpha = glow;
+   523→  ctx.fillStyle = color;
+   524→  ctx.beginPath();
+   525→  ctx.arc(pw.x, pw.y, 16, 0, Math.PI * 2);
+   526→  ctx.fill();
+   527→  ctx.restore();
+   528→
+   529→  ctx.fillStyle = color;
+   530→  ctx.beginPath();
+   531→  ctx.arc(pw.x, pw.y, 12, 0, Math.PI * 2);
+   532→  ctx.fill();
+   533→
+   534→  ctx.font = '14px sans-serif';
+   535→  ctx.textAlign = 'center';
+   536→  ctx.textBaseline = 'middle';
+   537→  ctx.fillText(POWERUP_EMOJIS[pw.type], pw.x, pw.y);
+   538→}
+   539→
+   540→function drawEnemyBullet(ctx: CanvasRenderingContext2D, b: EnemyBullet) {
+   541→  ctx.save();
+   542→  ctx.shadowColor = '#ef4444';
+   543→  ctx.shadowBlur = 5;
+   544→  ctx.fillStyle = '#fca5a5';
+   545→  ctx.beginPath();
+   546→  ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+   547→  ctx.fill();
+   548→  ctx.shadowBlur = 0;
+   549→  ctx.restore();
+   550→}
+   551→
+   552→function drawCanvasHUD(
+   553→  ctx: CanvasRenderingContext2D,
+   554→  p: Player,
+   555→  bossActive: boolean,
+   556→  stage: number,
+   557→  stageKills: number,
+   558→  coins: number,
+   559→) {
+   560→  const topOffset = bossActive ? 32 : 4;
+   561→  const extraOffset = bossActive ? 12 : 0;
+   562→
+   563→  ctx.font = '14px sans-serif';
+   564→  ctx.textAlign = 'left';
+   565→  ctx.textBaseline = 'top';
+   566→  let heartsStr = '';
+   567→  for (let i = 0; i < p.lives; i++) heartsStr += '\u2764';
+   568→  ctx.fillStyle = '#ef4444';
+   569→  ctx.fillText(heartsStr, 6, topOffset + extraOffset);
+   570→
+   571→  ctx.fillStyle = '#e2e8f0';
+   572→  ctx.font = 'bold 11px sans-serif';
+   573→  ctx.textAlign = 'left';
+   574→  ctx.textBaseline = 'top';
+   575→  ctx.fillText(`STAGE ${stage}`, 6, topOffset + extraOffset + 18);
+   576→
+   577→  ctx.fillStyle = '#94a3b8';
+   578→  ctx.font = '10px sans-serif';
+   579→  ctx.fillText(`ENEMIES: ${stageKills}/${STAGE_KILLS_NEEDED}`, 6, topOffset + extraOffset + 32);
+   580→
+   581→  // Coin counter
+   582→  ctx.fillStyle = '#fbbf24';
+   583→  ctx.font = 'bold 12px sans-serif';
+   584→  ctx.textAlign = 'left';
+   585→  ctx.fillText(`\ud83e\ude99 ${coins}`, 6, topOffset + extraOffset + 46);
+   586→
+   587→  ctx.textAlign = 'right';
+   588→  ctx.fillStyle = '#fbbf24';
+   589→  ctx.font = 'bold 12px sans-serif';
+   590→  const wpnNames = ['', 'I', 'II', 'III', 'IV'];
+   591→  ctx.fillText(`WPN ${wpnNames[p.weaponLevel]}`, LOGIC_W - 6, topOffset + extraOffset);
+   592→  ctx.fillStyle = '#ffffff';
+   593→}
+   594→
+   595→// ==================== MAIN COMPONENT ====================
+   596→
+   597→export default function AircraftGame({ onBack }: AircraftGameProps) {
+   598→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   599→  const containerRef = useRef<HTMLDivElement>(null);
+   600→  const scaleRef = useRef(1);
+   601→  const dprRef = useRef(Math.min(window.devicePixelRatio || 1, 2));
+   602→  const rafRef = useRef<number>(0);
+   603→  const frameRef = useRef<number>(0);
+   604→  const statusRef = useRef<GameStatus>('idle');
+   605→  const playerRef = useRef<Player>({ x: LOGIC_W / 2, y: LOGIC_H - 60, shieldTimer: 0, weaponLevel: 1, lives: BASE_INITIAL_LIVES, maxLives: BASE_MAX_LIVES, invincibleTimer: 0 });
+   606→  const bulletsRef = useRef<Bullet[]>([]);
+   607→  const enemyBulletsRef = useRef<EnemyBullet[]>([]);
+   608→  const enemiesRef = useRef<Enemy[]>([]);
+   609→  const bossRef = useRef<Boss | null>(null);
+   610→  const particlesRef = useRef<Particle[]>([]);
+   611→  const powerupsRef = useRef<PowerUp[]>([]);
+   612→  const starsRef = useRef<Star[]>(createStars(80));
+   613→  const scoreRef = useRef<number>(0);
+   614→  const coinsRef = useRef<number>(0);
+   615→  const killCountRef = useRef<number>(0);
+   616→  const stageRef = useRef<number>(1);
+   617→  const stageKillsRef = useRef<number>(0);
+   618→  const warningRef = useRef<number>(0);
+   619→  const stageTransitionRef = useRef<number>(0);
+   620→  const victoryRef = useRef<boolean>(false);
+   621→  const lastShootRef = useRef<number>(0);
+   622→  const inputXRef = useRef<number | null>(null);
+   623→  const inputYRef = useRef<number | null>(null);
+   624→  const isMobileRef = useRef<boolean>(false);
+   625→  const shootRequestRef = useRef<boolean>(false);
+   626→  const highScoreRef = useRef<number>(0);
+   627→  const screenFlashRef = useRef<number>(0);
+   628→  const scoreSubmittedRef = useRef<boolean>(false);
+   629→  const keysDownRef = useRef<Set<string>>(new Set());
+   630→  const skinIdRef = useRef<string>('default');
+   631→  const playerSpeedRef = useRef<number>(BASE_PLAYER_SPEED);
+   632→  const maxLivesRef = useRef<number>(BASE_MAX_LIVES);
+   633→  const initialLivesRef = useRef<number>(BASE_INITIAL_LIVES);
+   634→  const shootIntervalMulRef = useRef<number>(1);
+   635→
+   636→  // UI state
+   637→  const [score, setScore] = useState<number>(0);
+   638→  const [highScore, setHighScore] = useState<number>(0);
+   639→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   640→  const [isNewRecord, setIsNewRecord] = useState<boolean>(false);
+   641→  const [stage, setStage] = useState<number>(1);
+   642→  const [loadingHighScore, setLoadingHighScore] = useState<boolean>(true);
+   643→  const [paused, setPaused] = useState<boolean>(false);
+   644→  const pausedRef = useRef<boolean>(false);
+   645→  const [lives, setLives] = useState<number>(BASE_INITIAL_LIVES);
+   646→  const [weaponLevel, setWeaponLevel] = useState<number>(1);
+   647→  const [victory, setVictory] = useState<boolean>(false);
+   648→  const [sessionCoins, setSessionCoins] = useState<number>(0);
+   649→  const [walletCoins, setWalletCoins] = useState<number>(0);
+   650→  const [skinStorage, setSkinStorage] = useState<SkinStorage>(loadSkins);
+   651→
+   652→  const equippedSkin = skinStorage.equipped;
+   653→
+   654→  // Damage the player
+   655→  const damagePlayer = useCallback(() => {
+   656→    const p = playerRef.current;
+   657→    if (p.shieldTimer > 0 || p.invincibleTimer > 0) return;
+   658→
+   659→    p.lives--;
+   660→    p.weaponLevel = Math.max(1, p.weaponLevel - 1);
+   661→    p.invincibleTimer = INVINCIBLE_DURATION;
+   662→
+   663→    setLives(p.lives);
+   664→    setWeaponLevel(p.weaponLevel);
+   665→
+   666→    particlesRef.current.push(...createExplosion(p.x, p.y, '#38bdf8', 12));
+   667→
+   668→    if (p.lives <= 0) {
+   669→      statusRef.current = 'over';
+   670→      setGameStatus('over');
+   671→      setVictory(victoryRef.current);
+   672→      particlesRef.current.push(...createExplosion(p.x, p.y, '#f97316', 25));
+   673→    }
+   674→  }, []);
+   675→
+   676→  // Spawn a regular enemy
+   677→  const spawnEnemy = useCallback(() => {
+   678→    const stg = stageRef.current;
+   679→    const rand = Math.random();
+   680→    let type: EnemyType;
+   681→
+   682→    const tankChance = stg >= 4 ? Math.min(0.15 + (stg - 4) * 0.04, 0.40) : Math.min(0.08 + stg * 0.03, 0.25);
+   683→    const fastChance = Math.min(0.15 + stg * 0.03, 0.40);
+   684→
+   685→    if (rand < tankChance) {
+   686→      type = EnemyType.Tank;
+   687→    } else if (rand < tankChance + fastChance) {
+   688→      type = EnemyType.Fast;
+   689→    } else {
+   690→      type = EnemyType.Normal;
+   691→    }
+   692→
+   693→    const cfg = ENEMY_CONFIG[type];
+   694→    const speedMul = 1 + (stg - 1) * 0.1;
+   695→    const x = Math.random() * (LOGIC_W - cfg.w - 20) + cfg.w / 2 + 10;
+   696→
+   697→    enemiesRef.current.push({
+   698→      x, y: -cfg.h,
+   699→      type,
+   700→      hp: cfg.hp,
+   701→      maxHp: cfg.hp,
+   702→      speed: cfg.speed * speedMul,
+   703→      baseSpeed: cfg.speed * speedMul,
+   704→      w: cfg.w,
+   705→      h: cfg.h,
+   706→      score: cfg.score,
+   707→      coins: cfg.coins,
+   708→      shootTimer: 0,
+   709→      slowTimer: 0,
+   710→    });
+   711→  }, []);
+   712→
+   713→  // Spawn boss
+   714→  const spawnBoss = useCallback(() => {
+   715→    const stg = stageRef.current;
+   716→    const bossType = getBossTypeForStage(stg);
+   717→    const emoji = BOSS_EMOJIS[bossType];
+   718→
+   719→    let hp: number;
+   720→    let bossScore: number;
+   721→    let moveSpeed: number;
+   722→    let shootInterval: number;
+   723→    let shieldHp = 0;
+   724→    let shieldMaxHp = 0;
+   725→
+   726→    switch (bossType) {
+   727→      case 1:
+   728→        hp = 30 + stg * 10; bossScore = 200 + stg * 50; moveSpeed = 1.5; shootInterval = BOSS_SHOOT_INTERVAL; break;
+   729→      case 2:
+   730→        hp = 50 + stg * 15; bossScore = 350 + stg * 60; moveSpeed = 2.5; shootInterval = 50; break;
+   731→      case 3:
+   732→        hp = 60 + stg * 15; bossScore = 400 + stg * 70; moveSpeed = 1.2; shootInterval = 70;
+   733→        shieldMaxHp = 20 + stg * 5; shieldHp = shieldMaxHp; break;
+   734→      case 4:
+   735→        hp = 80 + stg * 20; bossScore = 500 + stg * 80; moveSpeed = 0.8; shootInterval = 60; break;
+   736→      case 5:
+   737→      default:
+   738→        hp = 100 + stg * 25; bossScore = 700 + stg * 100; moveSpeed = 3.0; shootInterval = 60; break;
+   739→    }
+   740→
+   741→    bossRef.current = {
+   742→      x: LOGIC_W / 2, y: -BOSS_H, hp, maxHp: hp, bossType, emoji,
+   743→      flashTimer: 0, shootTimer: 0, dirX: moveSpeed, score: bossScore,
+   744→      entered: false, shieldHp, shieldMaxHp, shieldRegenTimer: 0,
+   745→      summonTimer: 0, specialTimer: 0, spiralAngle: 0,
+   746→      enraged: false, aimedShotTimer: 0, shotCount: 0,
+   747→    };
+   748→  }, []);
+   749→
+   750→  // Fire player bullets based on weapon level and skin
+   751→  const shoot = useCallback(() => {
+   752→    const p = playerRef.current;
+   753→    const speed = 8;
+   754→    const bx = p.x;
+   755→    const by = p.y - PLAYER_H / 2;
+   756→    const bullets = bulletsRef.current;
+   757→    const skin = getSkinDef(skinIdRef.current);
+   758→
+   759→    const basePierce = skin.attackType === 'Fire' ? 1 : 0;
+   760→    const baseSlow = skin.attackType === 'Ice' ? 60 : 0;
+   761→    const baseDmgMul = skin.attackType === 'Star' ? 2 : 1;
+   762→
+   763→    const makeBullet = (x: number, y: number, vx: number, vy: number): Bullet => ({
+   764→      x, y, vx, vy, pierce: basePierce, slowFrames: baseSlow, dmgMul: baseDmgMul,
+   765→    });
+   766→
+   767→    // Shadow skin: fan pattern at weapon level 1
+   768→    if (skin.attackType === 'Shadow' && p.weaponLevel === 1) {
+   769→      const fanAngle = 15 * Math.PI / 180;
+   770→      bullets.push(
+   771→        makeBullet(bx, by, Math.sin(-fanAngle) * speed, -Math.cos(fanAngle) * speed),
+   772→        makeBullet(bx, by, 0, -speed),
+   773→        makeBullet(bx, by, Math.sin(fanAngle) * speed, -Math.cos(fanAngle) * speed),
+   774→      );
+   775→      return;
+   776→    }
+   777→
+   778→    switch (p.weaponLevel) {
+   779→      case 1:
+   780→        bullets.push(makeBullet(bx, by, 0, -speed));
+   781→        break;
+   782→      case 2:
+   783→        bullets.push(
+   784→          makeBullet(bx - 8, by, 0, -speed),
+   785→          makeBullet(bx + 8, by, 0, -speed),
+   786→        );
+   787→        break;
+   788→      case 3: {
+   789→        const a = Math.PI / 12;
+   790→        const svx = Math.sin(a) * speed;
+   791→        const svy = -Math.cos(a) * speed;
+   792→        bullets.push(
+   793→          makeBullet(bx, by, 0, -speed),
+   794→          makeBullet(bx, by, svx, svy),
+   795→          makeBullet(bx, by, -svx, svy),
+   796→        );
+   797→        break;
+   798→      }
+   799→      case 4: {
+   800→        const a1 = Math.PI / 18;
+   801→        const a2 = Math.PI / 9;
+   802→        bullets.push(
+   803→          makeBullet(bx, by, 0, -speed),
+   804→          makeBullet(bx, by, Math.sin(a1) * speed, -Math.cos(a1) * speed),
+   805→          makeBullet(bx, by, -Math.sin(a1) * speed, -Math.cos(a1) * speed),
+   806→          makeBullet(bx, by, Math.sin(a2) * speed, -Math.cos(a2) * speed),
+   807→          makeBullet(bx, by, -Math.sin(a2) * speed, -Math.cos(a2) * speed),
+   808→        );
+   809→        break;
+   810→      }
+   811→      default:
+   812→        break;
+   813→    }
+   814→  }, []);
+   815→
+   816→  const getShootInterval = useCallback(() => {
+   817→    const base = Math.max(BASE_SHOOT_INTERVAL - playerRef.current.weaponLevel + 1, 6);
+   818→    return Math.max(Math.floor(base / shootIntervalMulRef.current), 4);
+   819→  }, []);
+   820→
+   821→  const getSpawnInterval = useCallback(() => {
+   822→    const stg = stageRef.current;
+   823→    return Math.max(40 - (stg - 1) * 3, 18);
+   824→  }, []);
+   825→
+   826→  // Activate bomb
+   827→  const activateBomb = useCallback(() => {
+   828→    screenFlashRef.current = SCREEN_FLASH_FRAMES;
+   829→
+   830→    for (const e of enemiesRef.current) {
+   831→      scoreRef.current += e.score;
+   832→      coinsRef.current += e.coins;
+   833→      const expColor = e.type === EnemyType.Fast ? '#f59e0b'
+   834→        : e.type === EnemyType.Tank ? '#a855f7' : '#ef4444';
+   835→      particlesRef.current.push(...createExplosion(e.x, e.y, expColor, 10));
+   836→    }
+   837→    setScore(scoreRef.current);
+   838→    setSessionCoins(coinsRef.current);
+   839→    enemiesRef.current = [];
+   840→    enemyBulletsRef.current = [];
+   841→
+   842→    const boss = bossRef.current;
+   843→    if (boss) {
+   844→      const dmg = Math.ceil(boss.maxHp * 0.3);
+   845→      boss.hp = Math.max(1, boss.hp - dmg);
+   846→      boss.flashTimer = 10;
+   847→      particlesRef.current.push(...createExplosion(boss.x, boss.y, '#fbbf24', 20));
+   848→
+   849→      if (boss.hp <= 1) {
+   850→        scoreRef.current += boss.score;
+   851→        coinsRef.current += stageRef.current * 10;
+   852→        setScore(scoreRef.current);
+   853→        setSessionCoins(coinsRef.current);
+   854→        particlesRef.current.push(...createExplosion(boss.x, boss.y, '#f97316', 30));
+   855→        const dropTypes = [PowerUpType.Weapon, PowerUpType.Heal, PowerUpType.Shield];
+   856→        for (const dt of dropTypes) {
+   857→          powerupsRef.current.push({
+   858→            x: boss.x + (Math.random() - 0.5) * 60,
+   859→            y: boss.y + (Math.random() - 0.5) * 30,
+   860→            type: dt,
+   861→            phase: Math.random() * Math.PI * 2,
+   862→          });
+   863→        }
+   864→        stageTransitionRef.current = STAGE_TRANSITION_DURATION;
+   865→        scoreRef.current += stageRef.current * 100;
+   866→        coinsRef.current += stageRef.current * 5;
+   867→        setScore(scoreRef.current);
+   868→        setSessionCoins(coinsRef.current);
+   869→        bossRef.current = null;
+   870→      }
+   871→    }
+   872→  }, []);
+   873→
+   874→  // Submit score and coins on game over
+   875→  const submitOnGameOver = useCallback(() => {
+   876→    const totalCoins = coinsRef.current;
+   877→
+   878→    // Save coins to wallet
+   879→    const currentWallet = loadWallet();
+   880→    const newWallet = currentWallet + totalCoins;
+   881→    saveWallet(newWallet);
+   882→    setWalletCoins(newWallet);
+   883→
+   884→    // Submit score
+   885→    if (scoreRef.current > highScoreRef.current) {
+   886→      setIsNewRecord(true);
+   887→      fetch('/api/games/scores', {
+   888→        method: 'POST',
+   889→        headers: { 'Content-Type': 'application/json' },
+   890→        body: JSON.stringify({ game: GAME_NAME, score: scoreRef.current }),
+   891→      })
+   892→        .then((r) => r.json())
+   893→        .then((data) => {
+   894→          if (data.data?.score !== undefined) {
+   895→            setHighScore(data.data.score);
+   896→            highScoreRef.current = data.data.score;
+   897→          }
+   898→        })
+   899→        .catch(() => {});
+   900→    }
+   901→
+   902→    // Submit coins to server if logged in
+   903→    const token = localStorage.getItem('user-token');
+   904→    if (token && totalCoins > 0) {
+   905→      fetch('/api/games/scores', {
+   906→        method: 'POST',
+   907→        headers: { 'Content-Type': 'application/json' },
+   908→        body: JSON.stringify({ game: 'aircraft-coins', score: newWallet }),
+   909→      }).catch(() => {});
+   910→    }
+   911→  }, []);
+   912→
+   913→  // Main game loop
+   914→  const gameLoop = useCallback(() => {
+   915→    const canvas = canvasRef.current;
+   916→    if (!canvas) return;
+   917→    const ctx = canvas.getContext('2d');
+   918→    if (!ctx) return;
+   919→
+   920→    ctx.setTransform(dprRef.current * scaleRef.current, 0, 0, dprRef.current * scaleRef.current, 0, 0);
+   921→
+   922→    const frame = frameRef.current;
+   923→    frameRef.current++;
+   924→    const p = playerRef.current;
+   925→    const boss = bossRef.current;
+   926→    const stg = stageRef.current;
+   927→    const skin = getSkinDef(skinIdRef.current);
+   928→
+   929→    starsRef.current.forEach((s) => { s.phase += s.twinkleSpeed; });
+   930→
+   931→    if (statusRef.current === 'playing' && !pausedRef.current) {
+   932→      // Keyboard movement
+   933→      const keys = keysDownRef.current;
+   934→      const spd = playerSpeedRef.current;
+   935→      if (keys.has('ArrowLeft') || keys.has('KeyA')) p.x -= spd;
+   936→      if (keys.has('ArrowRight') || keys.has('KeyD')) p.x += spd;
+   937→      if (keys.has('ArrowUp') || keys.has('KeyW')) p.y -= spd;
+   938→      if (keys.has('ArrowDown') || keys.has('KeyS')) p.y += spd;
+   939→
+   940→      // Mouse/touch movement (smooth follow)
+   941→      if (inputXRef.current !== null) {
+   942→        const targetX = inputXRef.current;
+   943→        const diffX = targetX - p.x;
+   944→        if (Math.abs(diffX) > 2) {
+   945→          p.x += diffX * 0.15;
+   946→        } else {
+   947→          p.x = targetX;
+   948→        }
+   949→      }
+   950→      if (inputYRef.current !== null) {
+   951→        const targetY = inputYRef.current;
+   952→        const diffY = targetY - p.y;
+   953→        if (Math.abs(diffY) > 2) {
+   954→          p.y += diffY * 0.15;
+   955→        } else {
+   956→          p.y = targetY;
+   957→        }
+   958→      }
+   959→
+   960→      // Clamp position
+   961→      p.x = Math.max(PLAYER_W / 2, Math.min(LOGIC_W - PLAYER_W / 2, p.x));
+   962→      p.y = Math.max(PLAYER_H / 2, Math.min(LOGIC_H - PLAYER_H / 2, p.y));
+   963→
+   964→      // Update timers
+   965→      if (p.shieldTimer > 0) p.shieldTimer--;
+   966→      if (p.invincibleTimer > 0) p.invincibleTimer--;
+   967→      if (screenFlashRef.current > 0) screenFlashRef.current--;
+   968→
+   969→      // === STAGE TRANSITION ===
+   970→      if (stageTransitionRef.current > 0) {
+   971→        stageTransitionRef.current--;
+   972→        if (stageTransitionRef.current <= 0) {
+   973→          if (stg >= TOTAL_STAGES) {
+   974→            victoryRef.current = true;
+   975→            statusRef.current = 'over';
+   976→            setGameStatus('over');
+   977→            setVictory(true);
+   978→          } else {
+   979→            stageRef.current = stg + 1;
+   980→            stageKillsRef.current = 0;
+   981→            setStage(stageRef.current);
+   982→            p.invincibleTimer = STAGE_INVINCIBLE_DURATION;
+   983→          }
+   984→        }
+   985→      }
+   986→      else if (warningRef.current > 0) {
+   987→        warningRef.current--;
+   988→        if (warningRef.current <= 0) {
+   989→          spawnBoss();
+   990→        }
+   991→      }
+   992→      else if (!boss) {
+   993→        const isMobile = isMobileRef.current;
+   994→        const interval = getShootInterval();
+   995→        if (isMobile) {
+   996→          if (frame - lastShootRef.current >= interval) {
+   997→            shoot();
+   998→            lastShootRef.current = frame;
+   999→          }
+  1000→        } else {
+  1001→          if (shootRequestRef.current) {
+  1002→            if (frame - lastShootRef.current >= interval) {
+  1003→              shoot();
+  1004→              lastShootRef.current = frame;
+  1005→            }
+  1006→          }
+  1007→        }
+  1008→        shootRequestRef.current = false;
+  1009→
+  1010→        const spawnInterval = getSpawnInterval();
+  1011→        if (frame % Math.round(spawnInterval) === 0) {
+  1012→          spawnEnemy();
+  1013→        }
+  1014→
+  1015→        if (stageKillsRef.current >= WARNING_THRESHOLD && warningRef.current <= 0) {
+  1016→          warningRef.current = WARNING_DURATION;
+  1017→        }
+  1018→      }
+  1019→      else {
+  1020→        const isMobile = isMobileRef.current;
+  1021→        const interval = getShootInterval();
+  1022→        if (isMobile) {
+  1023→          if (frame - lastShootRef.current >= interval) {
+  1024→            shoot();
+  1025→            lastShootRef.current = frame;
+  1026→          }
+  1027→        } else {
+  1028→          if (shootRequestRef.current) {
+  1029→            if (frame - lastShootRef.current >= interval) {
+  1030→              shoot();
+  1031→              lastShootRef.current = frame;
+  1032→            }
+  1033→          }
+  1034→        }
+  1035→        shootRequestRef.current = false;
+  1036→      }
+  1037→
+  1038→      // Update player bullets
+  1039→      bulletsRef.current = bulletsRef.current.filter((b) => {
+  1040→        b.x += b.vx;
+  1041→        b.y += b.vy;
+  1042→        return b.y > -BULLET_H && b.x > -BULLET_W && b.x < LOGIC_W + BULLET_W;
+  1043→      });
+  1044→
+  1045→      // Update enemy bullets
+  1046→      enemyBulletsRef.current = enemyBulletsRef.current.filter((b) => {
+  1047→        b.x += b.vx;
+  1048→        b.y += b.vy;
+  1049→        return b.y < LOGIC_H + 10 && b.x > -10 && b.x < LOGIC_W + 10;
+  1050→      });
+  1051→
+  1052→      // Update regular enemies
+  1053→      enemiesRef.current = enemiesRef.current.filter((e) => {
+  1054→        // Slow effect
+  1055→        if (e.slowTimer > 0) {
+  1056→          e.slowTimer--;
+  1057→          e.speed = e.baseSpeed * 0.5;
+  1058→        } else {
+  1059→          e.speed = e.baseSpeed;
+  1060→        }
+  1061→        e.y += e.speed;
+  1062→
+  1063→        if (stageRef.current >= ENEMY_SHOOT_STAGE && statusRef.current === 'playing') {
+  1064→          e.shootTimer++;
+  1065→          if (e.shootTimer >= ENEMY_SHOOT_INTERVAL) {
+  1066→            e.shootTimer = 0;
+  1067→            if (Math.random() < ENEMY_SHOOT_CHANCE) {
+  1068→              const dx = p.x - e.x;
+  1069→              const dy = p.y - e.y;
+  1070→              const dist = Math.sqrt(dx * dx + dy * dy);
+  1071→              if (dist > 0) {
+  1072→                enemyBulletsRef.current.push({
+  1073→                  x: e.x, y: e.y + e.h / 2,
+  1074→                  vx: (dx / dist) * 2.5, vy: (dy / dist) * 2.5,
+  1075→                });
+  1076→              }
+  1077→            }
+  1078→          }
+  1079→        }
+  1080→
+  1081→        return e.y < LOGIC_H + e.h;
+  1082→      });
+  1083→
+  1084→      // Update boss
+  1085→      if (boss) {
+  1086→        if (!boss.entered) {
+  1087→          boss.y += 1.5;
+  1088→          if (boss.y >= 80) { boss.y = 80; boss.entered = true; }
+  1089→        } else {
+  1090→          boss.x += boss.dirX;
+  1091→          if (boss.x > LOGIC_W - BOSS_W / 2 - 10) boss.dirX = -Math.abs(boss.dirX);
+  1092→          if (boss.x < BOSS_W / 2 + 10) boss.dirX = Math.abs(boss.dirX);
+  1093→
+  1094→          boss.shootTimer++;
+  1095→          boss.shotCount++;
+  1096→
+  1097→          switch (boss.bossType) {
+  1098→            case 1: {
+  1099→              if (boss.shootTimer >= BOSS_SHOOT_INTERVAL) {
+  1100→                boss.shootTimer = 0;
+  1101→                for (let i = -1; i <= 1; i++) {
+  1102→                  const angle = Math.PI / 2 + i * BOSS_SPREAD_ANGLE;
+  1103→                  enemyBulletsRef.current.push({
+  1104→                    x: boss.x, y: boss.y + BOSS_H / 2,
+  1105→                    vx: Math.cos(angle) * BOSS_BULLET_SPEED, vy: Math.sin(angle) * BOSS_BULLET_SPEED,
+  1106→                  });
+  1107→                }
+  1108→              }
+  1109→              break;
+  1110→            }
+  1111→            case 2: {
+  1112→              const interval2 = boss.enraged ? 35 : 50;
+  1113→              if (boss.shootTimer >= interval2) {
+  1114→                boss.shootTimer = 0;
+  1115→                boss.specialTimer++;
+  1116→                if (boss.specialTimer % 3 === 0) {
+  1117→                  const dx = p.x - boss.x;
+  1118→                  const dy = p.y - boss.y;
+  1119→                  const dist = Math.sqrt(dx * dx + dy * dy);
+  1120→                  if (dist > 0) {
+  1121→                    enemyBulletsRef.current.push({
+  1122→                      x: boss.x, y: boss.y + BOSS_H / 2,
+  1123→                      vx: (dx / dist) * (BOSS_BULLET_SPEED * 1.3), vy: (dy / dist) * (BOSS_BULLET_SPEED * 1.3),
+  1124→                    });
+  1125→                  }
+  1126→                } else {
+  1127→                  const narrowAngle = Math.PI / 12;
+  1128→                  for (let i = -2; i <= 2; i++) {
+  1129→                    const angle = Math.PI / 2 + i * narrowAngle;
+  1130→                    enemyBulletsRef.current.push({
+  1131→                      x: boss.x, y: boss.y + BOSS_H / 2,
+  1132→                      vx: Math.cos(angle) * BOSS_BULLET_SPEED, vy: Math.sin(angle) * BOSS_BULLET_SPEED,
+  1133→                    });
+  1134→                  }
+  1135→                }
+  1136→              }
+  1137→              break;
+  1138→            }
+  1139→            case 3: {
+  1140→              if (boss.shotCount % 30 === 0) {
+  1141→                const numBullets = 8;
+  1142→                for (let i = 0; i < numBullets; i++) {
+  1143→                  const angle = boss.spiralAngle + (Math.PI * 2 / numBullets) * i;
+  1144→                  enemyBulletsRef.current.push({
+  1145→                    x: boss.x, y: boss.y + BOSS_H / 2,
+  1146→                    vx: Math.cos(angle) * (BOSS_BULLET_SPEED * 0.9), vy: Math.sin(angle) * (BOSS_BULLET_SPEED * 0.9),
+  1147→                  });
+  1148→                }
+  1149→                boss.spiralAngle += Math.PI / 8;
+  1150→              }
+  1151→              if (boss.shotCount % 90 === 0) {
+  1152→                const dx = p.x - boss.x;
+  1153→                const dy = p.y - boss.y;
+  1154→                const dist = Math.sqrt(dx * dx + dy * dy);
+  1155→                if (dist > 0) {
+  1156→                  enemyBulletsRef.current.push({
+  1157→                    x: boss.x, y: boss.y + BOSS_H / 2,
+  1158→                    vx: (dx / dist) * BOSS_BULLET_SPEED, vy: (dy / dist) * BOSS_BULLET_SPEED,
+  1159→                  });
+  1160→                }
+  1161→              }
+  1162→              if (boss.shieldHp < boss.shieldMaxHp) {
+  1163→                boss.shieldRegenTimer++;
+  1164→                if (boss.shieldRegenTimer >= 300) {
+  1165→                  boss.shieldHp = Math.min(boss.shieldMaxHp, boss.shieldHp + Math.ceil(boss.shieldMaxHp * 0.3));
+  1166→                  boss.shieldRegenTimer = 0;
+  1167→                }
+  1168→              } else {
+  1169→                boss.shieldRegenTimer = 0;
+  1170→              }
+  1171→              break;
+  1172→            }
+  1173→            case 4: {
+  1174→              const summonInterval = boss.enraged ? 120 : 180;
+  1175→              if (boss.shootTimer >= 60) {
+  1176→                boss.shootTimer = 0;
+  1177→                const dx = p.x - boss.x;
+  1178→                const dy = p.y - boss.y;
+  1179→                const dist = Math.sqrt(dx * dx + dy * dy);
+  1180→                if (dist > 0) {
+  1181→                  enemyBulletsRef.current.push({
+  1182→                    x: boss.x, y: boss.y + BOSS_H / 2,
+  1183→                    vx: (dx / dist) * (BOSS_BULLET_SPEED * 1.1), vy: (dy / dist) * (BOSS_BULLET_SPEED * 1.1),
+  1184→                  });
+  1185→                }
+  1186→              }
+  1187→              boss.summonTimer++;
+  1188→              if (boss.summonTimer >= summonInterval) {
+  1189→                boss.summonTimer = 0;
+  1190→                const minionCount = boss.enraged ? 3 : 2;
+  1191→                for (let i = 0; i < minionCount; i++) {
+  1192→                  enemiesRef.current.push({
+  1193→                    x: boss.x + (Math.random() - 0.5) * 60, y: boss.y + BOSS_H / 2,
+  1194→                    type: EnemyType.Normal, hp: 1, maxHp: 1,
+  1195→                    speed: 2.0 + Math.random() * 0.5, baseSpeed: 2.0 + Math.random() * 0.5,
+  1196→                    w: 20, h: 20, score: 5, coins: 1, shootTimer: 0, slowTimer: 0,
+  1197→                  });
+  1198→                }
+  1199→              }
+  1200→              break;
+  1201→            }
+  1202→            case 5: {
+  1203→              if (!boss.enraged && boss.hp <= boss.maxHp * 0.5) {
+  1204→                boss.enraged = true;
+  1205→                boss.dirX = boss.dirX > 0 ? 3.5 : -3.5;
+  1206→                boss.flashTimer = 20;
+  1207→                particlesRef.current.push(...createExplosion(boss.x, boss.y, '#ff0000', 25));
+  1208→              }
+  1209→              const spreadInt = boss.enraged ? 35 : 60;
+  1210→              const aimedInt = boss.enraged ? 50 : 90;
+  1211→              const summonInt = boss.enraged ? 120 : 180;
+  1212→
+  1213→              if (boss.shotCount % spreadInt === 0) {
+  1214→                for (let i = -1; i <= 1; i++) {
+  1215→                  const angle = Math.PI / 2 + i * BOSS_SPREAD_ANGLE;
+  1216→                  enemyBulletsRef.current.push({
+  1217→                    x: boss.x, y: boss.y + BOSS_H / 2,
+  1218→                    vx: Math.cos(angle) * BOSS_BULLET_SPEED, vy: Math.sin(angle) * BOSS_BULLET_SPEED,
+  1219→                  });
+  1220→                }
+  1221→              }
+  1222→
+  1223→              boss.aimedShotTimer++;
+  1224→              if (boss.aimedShotTimer >= aimedInt) {
+  1225→                boss.aimedShotTimer = 0;
+  1226→                const dx = p.x - boss.x;
+  1227→                const dy = p.y - boss.y;
+  1228→                const dist = Math.sqrt(dx * dx + dy * dy);
+  1229→                if (dist > 0) {
+  1230→                  enemyBulletsRef.current.push({
+  1231→                    x: boss.x, y: boss.y + BOSS_H / 2,
+  1232→                    vx: (dx / dist) * (BOSS_BULLET_SPEED * 1.2), vy: (dy / dist) * (BOSS_BULLET_SPEED * 1.2),
+  1233→                  });
+  1234→                }
+  1235→              }
+  1236→
+  1237→              boss.summonTimer++;
+  1238→              if (boss.summonTimer >= summonInt) {
+  1239→                boss.summonTimer = 0;
+  1240→                const minionCount = boss.enraged ? 3 : 1;
+  1241→                for (let i = 0; i < minionCount; i++) {
+  1242→                  enemiesRef.current.push({
+  1243→                    x: boss.x + (Math.random() - 0.5) * 60, y: boss.y + BOSS_H / 2,
+  1244→                    type: EnemyType.Normal, hp: 1, maxHp: 1,
+  1245→                    speed: 2.5 + Math.random() * 0.5, baseSpeed: 2.5 + Math.random() * 0.5,
+  1246→                    w: 20, h: 20, score: 5, coins: 1, shootTimer: 0, slowTimer: 0,
+  1247→                  });
+  1248→                }
+  1249→              }
+  1250→              break;
+  1251→            }
+  1252→            default:
+  1253→              break;
+  1254→          }
+  1255→        }
+  1256→        if (boss.flashTimer > 0) boss.flashTimer--;
+  1257→      }
+  1258→
+  1259→      // Update powerups
+  1260→      powerupsRef.current = powerupsRef.current.filter((pw) => {
+  1261→        pw.y += 2;
+  1262→        pw.phase += 0.1;
+  1263→        return pw.y < LOGIC_H + 20;
+  1264→      });
+  1265→
+  1266→      // === COLLISION: player bullets vs enemies ===
+  1267→      const bullets = bulletsRef.current;
+  1268→      const enemies = enemiesRef.current;
+  1269→      const hitBullets = new Set<number>();
+  1270→
+  1271→      for (let bi = 0; bi < bullets.length; bi++) {
+  1272→        const b = bullets[bi];
+  1273→        for (let ei = 0; ei < enemies.length; ei++) {
+  1274→          const e = enemies[ei];
+  1275→          if (e.hp <= 0) continue;
+  1276→          if (rectCollide(b.x, b.y, BULLET_W, BULLET_H, e.x, e.y, e.w, e.h)) {
+  1277→            // Apply damage
+  1278→            const dmg = b.dmgMul >= 2 ? 2 : 1;
+  1279→            e.hp -= dmg;
+  1280→
+  1281→            // Apply slow
+  1282→            if (b.slowFrames > 0) {
+  1283→              e.slowTimer = b.slowFrames;
+  1284→            }
+  1285→
+  1286→            // Handle pierce
+  1287→            if (b.pierce > 0) {
+  1288→              b.pierce--;
+  1289→              if (b.pierce <= 0) hitBullets.add(bi);
+  1290→            } else {
+  1291→              hitBullets.add(bi);
+  1292→            }
+  1293→
+  1294→            if (e.hp <= 0) {
+  1295→              scoreRef.current += e.score;
+  1296→              coinsRef.current += e.coins;
+  1297→              killCountRef.current++;
+  1298→              stageKillsRef.current++;
+  1299→              setScore(scoreRef.current);
+  1300→              setSessionCoins(coinsRef.current);
+  1301→
+  1302→              const expColor = e.type === EnemyType.Fast ? '#f59e0b'
+  1303→                : e.type === EnemyType.Tank ? '#a855f7' : '#ef4444';
+  1304→              const expCount = e.type === EnemyType.Tank ? 18 : e.type === EnemyType.Normal ? 8 : 6;
+  1305→              particlesRef.current.push(...createExplosion(e.x, e.y, expColor, expCount));
+  1306→
+  1307→              if (Math.random() < POWERUP_CHANCE) {
+  1308→                const types = [PowerUpType.Weapon, PowerUpType.Heal, PowerUpType.Bomb, PowerUpType.Shield];
+  1309→                const weights = [0.35, 0.25, 0.15, 0.25];
+  1310→                let r = Math.random();
+  1311→                let chosen = PowerUpType.Shield;
+  1312→                for (let ti = 0; ti < types.length; ti++) {
+  1313→                  r -= weights[ti];
+  1314→                  if (r <= 0) { chosen = types[ti]; break; }
+  1315→                }
+  1316→                powerupsRef.current.push({ x: e.x, y: e.y, type: chosen, phase: 0 });
+  1317→              }
+  1318→            } else {
+  1319→              particlesRef.current.push(...createExplosion(b.x, b.y, '#fbbf24', 3));
+  1320→            }
+  1321→            if (!hitBullets.has(bi) || b.pierce <= 0) break;
+  1322→          }
+  1323→        }
+  1324→      }
+  1325→
+  1326→      bulletsRef.current = bullets.filter((_, i) => !hitBullets.has(i));
+  1327→      enemiesRef.current = enemies.filter((e) => e.hp > 0);
+  1328→
+  1329→      // === COLLISION: player bullets vs boss ===
+  1330→      const currentBoss = bossRef.current;
+  1331→      if (currentBoss && statusRef.current === 'playing') {
+  1332→        const bossBullets = bulletsRef.current;
+  1333→        const bossHitBullets = new Set<number>();
+  1334→        for (let bi = 0; bi < bossBullets.length; bi++) {
+  1335→          const b = bossBullets[bi];
+  1336→          if (rectCollide(b.x, b.y, BULLET_W, BULLET_H, currentBoss.x, currentBoss.y, BOSS_W, BOSS_H)) {
+  1337→            bossHitBullets.add(bi);
+  1338→
+  1339→            if (currentBoss.bossType === 3 && currentBoss.shieldHp > 0) {
+  1340→              currentBoss.shieldHp--;
+  1341→              currentBoss.shieldRegenTimer = 0;
+  1342→              particlesRef.current.push(...createExplosion(b.x, b.y, '#3b82f6', 2));
+  1343→            } else {
+  1344→              const dmg = b.dmgMul >= 2 ? 2 : 1;
+  1345→              currentBoss.hp -= dmg;
+  1346→              currentBoss.flashTimer = 4;
+  1347→              particlesRef.current.push(...createExplosion(b.x, b.y, '#fbbf24', 2));
+  1348→            }
+  1349→
+  1350→            if (currentBoss.hp <= 0) {
+  1351→              scoreRef.current += currentBoss.score;
+  1352→              coinsRef.current += stageRef.current * 10;
+  1353→              setScore(scoreRef.current);
+  1354→              setSessionCoins(coinsRef.current);
+  1355→              particlesRef.current.push(...createExplosion(currentBoss.x, currentBoss.y, '#f97316', 35));
+  1356→
+  1357→              const dropTypes = [PowerUpType.Weapon, PowerUpType.Heal, PowerUpType.Shield];
+  1358→              for (const dt of dropTypes) {
+  1359→                powerupsRef.current.push({
+  1360→                  x: currentBoss.x + (Math.random() - 0.5) * 80,
+  1361→                  y: currentBoss.y + (Math.random() - 0.5) * 30,
+  1362→                  type: dt, phase: Math.random() * Math.PI * 2,
+  1363→                });
+  1364→              }
+  1365→
+  1366→              const clearBonus = stageRef.current * 100;
+  1367→              const coinBonus = stageRef.current * 5;
+  1368→              scoreRef.current += clearBonus;
+  1369→              coinsRef.current += coinBonus;
+  1370→              setScore(scoreRef.current);
+  1371→              setSessionCoins(coinsRef.current);
+  1372→              stageTransitionRef.current = STAGE_TRANSITION_DURATION;
+  1373→              stageKillsRef.current = 0;
+  1374→              bossRef.current = null;
+  1375→              break;
+  1376→            }
+  1377→          }
+  1378→        }
+  1379→        bulletsRef.current = bossBullets.filter((_, i) => !bossHitBullets.has(i));
+  1380→      }
+  1381→
+  1382→      // === COLLISION: enemy bullets vs player ===
+  1383→      if (statusRef.current === 'playing') {
+  1384→        for (const eb of enemyBulletsRef.current) {
+  1385→          if (rectCollide(p.x, p.y, PLAYER_W * 0.5, PLAYER_H * 0.5, eb.x, eb.y, 8, 8)) {
+  1386→            damagePlayer();
+  1387→            break;
+  1388→          }
+  1389→        }
+  1390→      }
+  1391→
+  1392→      // === COLLISION: enemies vs player ===
+  1393→      if (statusRef.current === 'playing') {
+  1394→        for (const e of enemiesRef.current) {
+  1395→          if (rectCollide(p.x, p.y, PLAYER_W * 0.6, PLAYER_H * 0.6, e.x, e.y, e.w, e.h)) {
+  1396→            damagePlayer();
+  1397→            e.hp = 0;
+  1398→            break;
+  1399→          }
+  1400→        }
+  1401→        enemiesRef.current = enemiesRef.current.filter((e) => e.hp > 0);
+  1402→      }
+  1403→
+  1404→      // === COLLISION: boss vs player ===
+  1405→      if (bossRef.current && statusRef.current === 'playing') {
+  1406→        if (rectCollide(p.x, p.y, PLAYER_W * 0.6, PLAYER_H * 0.6, bossRef.current.x, bossRef.current.y, BOSS_W, BOSS_H)) {
+  1407→          damagePlayer();
+  1408→        }
+  1409→      }
+  1410→
+  1411→      // === COLLISION: powerups vs player ===
+  1412→      if (statusRef.current === 'playing') {
+  1413→        powerupsRef.current = powerupsRef.current.filter((pw) => {
+  1414→          if (rectCollide(p.x, p.y, PLAYER_W, PLAYER_H, pw.x, pw.y, 24, 24)) {
+  1415→            switch (pw.type) {
+  1416→              case PowerUpType.Weapon:
+  1417→                if (p.weaponLevel < MAX_WEAPON_LEVEL) {
+  1418→                  p.weaponLevel++;
+  1419→                  setWeaponLevel(p.weaponLevel);
+  1420→                }
+  1421→                break;
+  1422→              case PowerUpType.Heal:
+  1423→                if (p.lives < p.maxLives) {
+  1424→                  p.lives++;
+  1425→                  setLives(p.lives);
+  1426→                }
+  1427→                break;
+  1428→              case PowerUpType.Bomb:
+  1429→                activateBomb();
+  1430→                break;
+  1431→              case PowerUpType.Shield:
+  1432→                p.shieldTimer = SHIELD_DURATION;
+  1433→                break;
+  1434→            }
+  1435→            const pColor = POWERUP_COLORS[pw.type];
+  1436→            particlesRef.current.push(...createExplosion(pw.x, pw.y, pColor, 10));
+  1437→            return false;
+  1438→          }
+  1439→          return true;
+  1440→        });
+  1441→      }
+  1442→    }
+  1443→
+  1444→    // Submit on game over
+  1445→    if (statusRef.current === 'over' && !scoreSubmittedRef.current) {
+  1446→      scoreSubmittedRef.current = true;
+  1447→      submitOnGameOver();
+  1448→    }
+  1449→
+  1450→    // Update particles
+  1451→    particlesRef.current = particlesRef.current.filter((pt) => {
+  1452→      pt.x += pt.vx;
+  1453→      pt.y += pt.vy;
+  1454→      pt.life--;
+  1455→      pt.vx *= 0.97;
+  1456→      pt.vy *= 0.97;
+  1457→      return pt.life > 0;
+  1458→    });
+  1459→
+  1460→    // ==== DRAW LOGIC ====
+  1461→
+  1462→    const stgBg = stageRef.current % 10 || 10;
+  1463→    const BG_THEMES = [
+  1464→      ['#0a0e27', '#0f1638'],
+  1465→      ['#1a0a0a', '#2d1010'],
+  1466→      ['#0a1a0a', '#102d10'],
+  1467→      ['#1a1a0a', '#2d2d10'],
+  1468→      ['#0a0a1a', '#10102d'],
+  1469→      ['#1a0a1a', '#2d102d'],
+  1470→      ['#0a1a1a', '#102d2d'],
+  1471→      ['#1a100a', '#2d1a10'],
+  1472→      ['#100a1a', '#1a102d'],
+  1473→      ['#0a1a10', '#102d1a'],
+  1474→    ];
+  1475→    const [c1, c2] = BG_THEMES[(stgBg - 1) % BG_THEMES.length];
+  1476→    const bgGrad = ctx.createLinearGradient(0, 0, 0, LOGIC_H);
+  1477→    bgGrad.addColorStop(0, c1);
+  1478→    bgGrad.addColorStop(0.5, c2);
+  1479→    bgGrad.addColorStop(1, c1);
+  1480→    ctx.fillStyle = bgGrad;
+  1481→    ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1482→
+  1483→    starsRef.current.forEach((s) => {
+  1484→      const alpha = s.alpha * (0.5 + Math.sin(s.phase) * 0.5);
+  1485→      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+  1486→      ctx.beginPath();
+  1487→      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+  1488→      ctx.fill();
+  1489→    });
+  1490→
+  1491→    powerupsRef.current.forEach((pw) => drawPowerUp(ctx, pw));
+  1492→
+  1493→    // Draw player bullets based on skin
+  1494→    const at = skin.attackType;
+  1495→    if (at === 'Lightning') {
+  1496→      ctx.shadowColor = '#fbbf24';
+  1497→      ctx.shadowBlur = 8;
+  1498→      ctx.fillStyle = '#fde047';
+  1499→      bulletsRef.current.forEach((b) => {
+  1500→        ctx.fillRect(b.x - 3, b.y - BULLET_H / 2, 6, BULLET_H);
+  1501→      });
+  1502→      ctx.shadowBlur = 0;
+  1503→    } else if (at === 'Fire') {
+  1504→      ctx.shadowColor = '#f97316';
+  1505→      ctx.shadowBlur = 6;
+  1506→      ctx.fillStyle = '#fb923c';
+  1507→      bulletsRef.current.forEach((b) => {
+  1508→        ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+  1509→      });
+  1510→      ctx.shadowBlur = 0;
+  1511→    } else if (at === 'Ice') {
+  1512→      ctx.shadowColor = '#06b6d4';
+  1513→      ctx.shadowBlur = 6;
+  1514→      ctx.fillStyle = '#67e8f9';
+  1515→      bulletsRef.current.forEach((b) => {
+  1516→        ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+  1517→      });
+  1518→      ctx.shadowBlur = 0;
+  1519→    } else if (at === 'Star') {
+  1520→      ctx.shadowBlur = 6;
+  1521→      const hue = (frame * 4) % 360;
+  1522→      ctx.shadowColor = `hsl(${hue}, 100%, 60%)`;
+  1523→      ctx.fillStyle = `hsl(${hue}, 90%, 65%)`;
+  1524→      bulletsRef.current.forEach((b) => {
+  1525→        ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+  1526→      });
+  1527→      ctx.shadowBlur = 0;
+  1528→    } else if (at === 'Shadow') {
+  1529→      ctx.shadowColor = '#7c3aed';
+  1530→      ctx.shadowBlur = 8;
+  1531→      ctx.fillStyle = '#a78bfa';
+  1532→      bulletsRef.current.forEach((b) => {
+  1533→        ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+  1534→      });
+  1535→      ctx.shadowBlur = 0;
+  1536→    } else {
+  1537→      ctx.shadowColor = '#38bdf8';
+  1538→      ctx.shadowBlur = 6;
+  1539→      ctx.fillStyle = '#7dd3fc';
+  1540→      bulletsRef.current.forEach((b) => {
+  1541→        ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+  1542→      });
+  1543→      ctx.shadowBlur = 0;
+  1544→    }
+  1545→
+  1546→    enemyBulletsRef.current.forEach((b) => drawEnemyBullet(ctx, b));
+  1547→    enemiesRef.current.forEach((e) => drawEnemy(ctx, e));
+  1548→
+  1549→    if (bossRef.current) {
+  1550→      drawBoss(ctx, bossRef.current, frame);
+  1551→    }
+  1552→
+  1553→    particlesRef.current.forEach((pt) => {
+  1554→      const alpha = pt.life / pt.maxLife;
+  1555→      ctx.globalAlpha = alpha;
+  1556→      ctx.fillStyle = pt.color;
+  1557→      ctx.beginPath();
+  1558→      ctx.arc(pt.x, pt.y, pt.r * alpha, 0, Math.PI * 2);
+  1559→      ctx.fill();
+  1560→    });
+  1561→    ctx.globalAlpha = 1;
+  1562→
+  1563→    if (statusRef.current !== 'over') {
+  1564→      drawPlayer(ctx, p, frame, skin.emoji, skin.attackType);
+  1565→    }
+  1566→
+  1567→    if (statusRef.current === 'playing' || statusRef.current === 'over') {
+  1568→      drawCanvasHUD(ctx, p, !!bossRef.current, stageRef.current, stageKillsRef.current, coinsRef.current);
+  1569→    }
+  1570→
+  1571→    // Warning effect
+  1572→    if (warningRef.current > 0) {
+  1573→      const flash = Math.floor(frame / 6) % 2 === 0;
+  1574→      if (flash) {
+  1575→        ctx.fillStyle = 'rgba(255, 0, 0, 0.12)';
+  1576→        ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1577→      }
+  1578→      ctx.strokeStyle = flash ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 100, 100, 0.4)';
+  1579→      ctx.lineWidth = 4;
+  1580→      ctx.strokeRect(2, 2, LOGIC_W - 4, LOGIC_H - 4);
+  1581→
+  1582→      ctx.fillStyle = flash ? '#ff0000' : '#ff6666';
+  1583→      ctx.font = 'bold 40px sans-serif';
+  1584→      ctx.textAlign = 'center';
+  1585→      ctx.textBaseline = 'middle';
+  1586→      ctx.fillText('WARNING', LOGIC_W / 2, LOGIC_H / 2 - 50);
+  1587→
+  1588→      ctx.font = '16px sans-serif';
+  1589→      ctx.fillStyle = '#fca5a5';
+  1590→      ctx.fillText(`STAGE ${stageRef.current} BOSS INCOMING`, LOGIC_W / 2, LOGIC_H / 2 - 10);
+  1591→    }
+  1592→
+  1593→    // Stage transition
+  1594→    if (stageTransitionRef.current > 0) {
+  1595→      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+  1596→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1597→
+  1598→      const pulse = 0.8 + Math.sin(frame * 0.1) * 0.2;
+  1599→      ctx.globalAlpha = pulse;
+  1600→      ctx.fillStyle = '#fbbf24';
+  1601→      ctx.font = 'bold 36px sans-serif';
+  1602→      ctx.textAlign = 'center';
+  1603→      ctx.textBaseline = 'middle';
+  1604→      ctx.fillText(`STAGE ${stageRef.current} CLEAR!`, LOGIC_W / 2, LOGIC_H / 2 - 25);
+  1605→
+  1606→      ctx.globalAlpha = 1;
+  1607→      ctx.fillStyle = '#ffffff';
+  1608→      ctx.font = '20px sans-serif';
+  1609→      ctx.fillText(`+${stageRef.current * 100}`, LOGIC_W / 2, LOGIC_H / 2 + 20);
+  1610→
+  1611→      ctx.fillStyle = '#fbbf24';
+  1612→      ctx.font = '14px sans-serif';
+  1613→      ctx.fillText(`\ud83e\ude99 +${stageRef.current * 5}`, LOGIC_W / 2, LOGIC_H / 2 + 48);
+  1614→
+  1615→      if (stageRef.current < TOTAL_STAGES) {
+  1616→        ctx.fillStyle = '#94a3b8';
+  1617→        ctx.font = '14px sans-serif';
+  1618→        ctx.fillText(`NEXT: STAGE ${stageRef.current + 1}`, LOGIC_W / 2, LOGIC_H / 2 + 75);
+  1619→      } else {
+  1620→        ctx.fillStyle = '#fbbf24';
+  1621→        ctx.font = '16px sans-serif';
+  1622→        ctx.fillText('\u6240\u6709\u5173\u5361\u901a\u5173\uff01', LOGIC_W / 2, LOGIC_H / 2 + 75);
+  1623→      }
+  1624→    }
+  1625→
+  1626→    // Screen flash
+  1627→    if (screenFlashRef.current > 0) {
+  1628→      const flashAlpha = (screenFlashRef.current / SCREEN_FLASH_FRAMES) * 0.6;
+  1629→      ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+  1630→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1631→    }
+  1632→
+  1633→    // Overlay: idle screen
+  1634→    if (statusRef.current === 'idle') {
+  1635→      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  1636→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1637→      ctx.fillStyle = '#ffffff';
+  1638→      ctx.font = 'bold 28px sans-serif';
+  1639→      ctx.textAlign = 'center';
+  1640→      ctx.textBaseline = 'middle';
+  1641→      ctx.fillText(`${skin.emoji} \u98de\u673a\u5927\u6218`, LOGIC_W / 2, LOGIC_H / 2 - 90);
+  1642→      ctx.font = '14px sans-serif';
+  1643→      ctx.fillStyle = '#94a3b8';
+  1644→      ctx.fillText(`\u5171${TOTAL_STAGES}\u4e2a\u5173\u5361\uff0c\u6bcf\u5173\u51fb\u843d${STAGE_KILLS_NEEDED}\u4e2a\u654c\u4eba\u540e\u6311\u6218Boss`, LOGIC_W / 2, LOGIC_H / 2 - 50);
+  1645→      ctx.fillText('\u6bcf\u4e2aBoss\u90fd\u6709\u72ec\u7279\u7684\u653b\u51fb\u6a21\u5f0f', LOGIC_W / 2, LOGIC_H / 2 - 28);
+  1646→      ctx.fillText('\u6536\u96c6\u9053\u5177\u5347\u7ea7\u6b66\u5668\u548c\u56de\u8840\uff0c\u51fb\u6740\u654c\u4eba\u83b7\u5f97\u91d1\u5e01', LOGIC_W / 2, LOGIC_H / 2 - 6);
+  1647→      ctx.fillStyle = '#fbbf24';
+  1648→      ctx.font = '13px sans-serif';
+  1649→      ctx.fillText(`\ud83e\ude99 \u94b1\u5305: ${walletCoins}`, LOGIC_W / 2, LOGIC_H / 2 + 22);
+  1650→      ctx.fillStyle = '#94a3b8';
+  1651→      ctx.font = '14px sans-serif';
+  1652→      ctx.fillText('\u70b9\u51fb\u4e0b\u65b9\u6309\u94ae\u5f00\u59cb', LOGIC_W / 2, LOGIC_H / 2 + 55);
+  1653→    }
+  1654→
+  1655→    // Overlay: paused
+  1656→    if (pausedRef.current && statusRef.current === 'playing') {
+  1657→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  1658→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1659→      ctx.fillStyle = '#ffffff';
+  1660→      ctx.font = 'bold 32px sans-serif';
+  1661→      ctx.textAlign = 'center';
+  1662→      ctx.textBaseline = 'middle';
+  1663→      ctx.fillText('\u5df2\u6682\u505c', LOGIC_W / 2, LOGIC_H / 2 - 10);
+  1664→      ctx.font = '16px sans-serif';
+  1665→      ctx.fillStyle = '#94a3b8';
+  1666→      ctx.fillText('\u6309 Esc \u7ee7\u7eed', LOGIC_W / 2, LOGIC_H / 2 + 25);
+  1667→    }
+  1668→
+  1669→    // Overlay: game over
+  1670→    if (statusRef.current === 'over') {
+  1671→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  1672→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1673→
+  1674→      if (victoryRef.current) {
+  1675→        ctx.fillStyle = '#fbbf24';
+  1676→        ctx.font = 'bold 32px sans-serif';
+  1677→        ctx.textAlign = 'center';
+  1678→        ctx.textBaseline = 'middle';
+  1679→        ctx.fillText('ALL STAGES CLEAR!', LOGIC_W / 2, LOGIC_H / 2 - 65);
+  1680→
+  1681→        ctx.font = '18px sans-serif';
+  1682→        ctx.fillStyle = '#ffffff';
+  1683→        ctx.fillText(`\u6700\u7ec8\u5f97\u5206: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 - 25);
+  1684→
+  1685→        ctx.fillStyle = '#fbbf24';
+  1686→        ctx.font = '16px sans-serif';
+  1687→        ctx.fillText(`\ud83e\ude99 +${coinsRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 5);
+  1688→
+  1689→        ctx.font = '14px sans-serif';
+  1690→        ctx.fillStyle = '#94a3b8';
+  1691→        ctx.fillText('\u70b9\u51fb\u91cd\u65b0\u5f00\u59cb', LOGIC_W / 2, LOGIC_H / 2 + 40);
+  1692→      } else {
+  1693→        ctx.fillStyle = '#ffffff';
+  1694→        ctx.font = 'bold 32px sans-serif';
+  1695→        ctx.textAlign = 'center';
+  1696→        ctx.textBaseline = 'middle';
+  1697→        ctx.fillText('\u6e38\u620f\u7ed3\u675f', LOGIC_W / 2, LOGIC_H / 2 - 65);
+  1698→
+  1699→        ctx.font = '18px sans-serif';
+  1700→        ctx.fillStyle = '#fbbf24';
+  1701→        ctx.fillText(`\u5f97\u5206: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 - 28);
+  1702→
+  1703→        ctx.fillStyle = '#fbbf24';
+  1704→        ctx.font = '16px sans-serif';
+  1705→        ctx.fillText(`\ud83e\ude99 +${coinsRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 0);
+  1706→
+  1707→        ctx.font = '14px sans-serif';
+  1708→        ctx.fillStyle = '#94a3b8';
+  1709→        ctx.fillText(`\u5230\u8fbe\u5173\u5361: ${stageRef.current}/${TOTAL_STAGES}`, LOGIC_W / 2, LOGIC_H / 2 + 30);
+  1710→        ctx.fillText('\u70b9\u51fb\u91cd\u65b0\u5f00\u59cb', LOGIC_W / 2, LOGIC_H / 2 + 55);
+  1711→      }
+  1712→    }
+  1713→
+  1714→    rafRef.current = requestAnimationFrame(gameLoop);
+  1715→  }, [shoot, spawnEnemy, spawnBoss, getShootInterval, getSpawnInterval, damagePlayer, activateBomb, submitOnGameOver, walletCoins]);
+  1716→
+  1717→  // Start / restart game
+  1718→  const startGame = useCallback(() => {
+  1719→    const skin = getSkinDef(equippedSkin);
+  1720→    const effectiveMaxLives = Math.min(BASE_MAX_LIVES + skin.lifeBonus, 7);
+  1721→    const effectiveInitialLives = Math.min(BASE_INITIAL_LIVES + skin.lifeBonus, effectiveMaxLives);
+  1722→    const effectiveSpeed = BASE_PLAYER_SPEED * (1 + skin.speedBonus);
+  1723→    const effectiveFireRate = 1 + skin.fireRateBonus;
+  1724→
+  1725→    skinIdRef.current = equippedSkin;
+  1726→    playerSpeedRef.current = effectiveSpeed;
+  1727→    maxLivesRef.current = effectiveMaxLives;
+  1728→    initialLivesRef.current = effectiveInitialLives;
+  1729→    shootIntervalMulRef.current = effectiveFireRate;
+  1730→
+  1731→    playerRef.current = {
+  1732→      x: LOGIC_W / 2, y: LOGIC_H - 60,
+  1733→      shieldTimer: 0, weaponLevel: 1,
+  1734→      lives: effectiveInitialLives, maxLives: effectiveMaxLives, invincibleTimer: 0,
+  1735→    };
+  1736→    bulletsRef.current = [];
+  1737→    enemyBulletsRef.current = [];
+  1738→    enemiesRef.current = [];
+  1739→    bossRef.current = null;
+  1740→    particlesRef.current = [];
+  1741→    powerupsRef.current = [];
+  1742→    scoreRef.current = 0;
+  1743→    coinsRef.current = 0;
+  1744→    killCountRef.current = 0;
+  1745→    stageRef.current = 1;
+  1746→    stageKillsRef.current = 0;
+  1747→    warningRef.current = 0;
+  1748→    stageTransitionRef.current = 0;
+  1749→    victoryRef.current = false;
+  1750→    frameRef.current = 0;
+  1751→    lastShootRef.current = 0;
+  1752→    inputXRef.current = null;
+  1753→    inputYRef.current = null;
+  1754→    shootRequestRef.current = false;
+  1755→    screenFlashRef.current = 0;
+  1756→    scoreSubmittedRef.current = false;
+  1757→    keysDownRef.current = new Set();
+  1758→
+  1759→    setScore(0);
+  1760→    setSessionCoins(0);
+  1761→    setStage(1);
+  1762→    setLives(effectiveInitialLives);
+  1763→    setWeaponLevel(1);
+  1764→    setIsNewRecord(false);
+  1765→    setVictory(false);
+  1766→    pausedRef.current = false;
+  1767→    setPaused(false);
+  1768→    statusRef.current = 'playing';
+  1769→    setGameStatus('playing');
+  1770→  }, [equippedSkin]);
+  1771→
+  1772→  const handleCanvasClick = useCallback(() => {
+  1773→    if (statusRef.current === 'over') {
+  1774→      startGame();
+  1775→    }
+  1776→  }, [startGame]);
+  1777→
+  1778→  // Skin shop actions
+  1779→  const buySkin = useCallback((skinId: string) => {
+  1780→    const skin = getSkinDef(skinId);
+  1781→    const current = loadSkins();
+  1782→    const currentWallet = loadWallet();
+  1783→
+  1784→    if (current.owned.includes(skinId)) {
+  1785→      // Equip
+  1786→      const updated = { ...current, equipped: skinId };
+  1787→      saveSkins(updated);
+  1788→      setSkinStorage(updated);
+  1789→      return;
+  1790→    }
+  1791→
+  1792→    if (currentWallet < skin.cost) return;
+  1793→
+  1794→    const newWallet = currentWallet - skin.cost;
+  1795→    saveWallet(newWallet);
+  1796→    setWalletCoins(newWallet);
+  1797→
+  1798→    const updated = { ...current, owned: [...current.owned, skinId], equipped: skinId };
+  1799→    saveSkins(updated);
+  1800→    setSkinStorage(updated);
+  1801→  }, []);
+  1802→
+  1803→  const openShop = useCallback(() => {
+  1804→    statusRef.current = 'shop';
+  1805→    setGameStatus('shop');
+  1806→  }, []);
+  1807→
+  1808→  const closeShop = useCallback(() => {
+  1809→    statusRef.current = 'idle';
+  1810→    setGameStatus('idle');
+  1811→  }, []);
+  1812→
+  1813→  // Detect touch device
+  1814→  useEffect(() => {
+  1815→    isMobileRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  1816→  }, []);
+  1817→
+  1818→  // Mouse / keyboard events
+  1819→  useEffect(() => {
+  1820→    const handleMouseMove = (e: MouseEvent) => {
+  1821→      if (statusRef.current !== 'playing' || pausedRef.current) return;
+  1822→      const canvas = canvasRef.current;
+  1823→      if (!canvas) return;
+  1824→      const rect = canvas.getBoundingClientRect();
+  1825→      const scaleX = LOGIC_W / rect.width;
+  1826→      const scaleY = LOGIC_H / rect.height;
+  1827→      inputXRef.current = (e.clientX - rect.left) * scaleX;
+  1828→      inputYRef.current = (e.clientY - rect.top) * scaleY;
+  1829→    };
+  1830→
+  1831→    const handleMouseLeave = () => {
+  1832→      inputXRef.current = null;
+  1833→      inputYRef.current = null;
+  1834→    };
+  1835→
+  1836→    const handleMouseDown = () => {
+  1837→      if (statusRef.current === 'playing' && !pausedRef.current) {
+  1838→        shootRequestRef.current = true;
+  1839→      }
+  1840→    };
+  1841→
+  1842→    const handleKeyDown = (e: KeyboardEvent) => {
+  1843→      keysDownRef.current.add(e.code);
+  1844→      if (e.code === 'Escape' && statusRef.current === 'playing') {
+  1845→        e.preventDefault();
+  1846→        pausedRef.current = !pausedRef.current;
+  1847→        setPaused(pausedRef.current);
+  1848→        return;
+  1849→      }
+  1850→      if (e.code === 'Space' && statusRef.current === 'playing' && !pausedRef.current) {
+  1851→        e.preventDefault();
+  1852→        shootRequestRef.current = true;
+  1853→      }
+  1854→    };
+  1855→
+  1856→    const handleKeyUp = (e: KeyboardEvent) => {
+  1857→      keysDownRef.current.delete(e.code);
+  1858→    };
+  1859→
+  1860→    window.addEventListener('mousemove', handleMouseMove);
+  1861→    window.addEventListener('mouseleave', handleMouseLeave);
+  1862→    window.addEventListener('mousedown', handleMouseDown);
+  1863→    window.addEventListener('keydown', handleKeyDown);
+  1864→    window.addEventListener('keyup', handleKeyUp);
+  1865→    return () => {
+  1866→      window.removeEventListener('mousemove', handleMouseMove);
+  1867→      window.removeEventListener('mouseleave', handleMouseLeave);
+  1868→      window.removeEventListener('mousedown', handleMouseDown);
+  1869→      window.removeEventListener('keydown', handleKeyDown);
+  1870→      window.removeEventListener('keyup', handleKeyUp);
+  1871→    };
+  1872→  }, []);
+  1873→
+  1874→  // Touch events
+  1875→  useEffect(() => {
+  1876→    const canvas = canvasRef.current;
+  1877→    if (!canvas) return;
+  1878→
+  1879→    const handleTouchMove = (e: TouchEvent) => {
+  1880→      if (statusRef.current !== 'playing' || pausedRef.current) return;
+  1881→      e.preventDefault();
+  1882→      const touch = e.touches[0];
+  1883→      const rect = canvas.getBoundingClientRect();
+  1884→      const scaleX = LOGIC_W / rect.width;
+  1885→      const scaleY = LOGIC_H / rect.height;
+  1886→      inputXRef.current = (touch.clientX - rect.left) * scaleX;
+  1887→      inputYRef.current = (touch.clientY - rect.top) * scaleY;
+  1888→    };
+  1889→
+  1890→    const handleTouchStart = (e: TouchEvent) => {
+  1891→      if (statusRef.current === 'over') {
+  1892→        startGame();
+  1893→        return;
+  1894→      }
+  1895→      if (statusRef.current === 'playing') {
+  1896→        e.preventDefault();
+  1897→        const touch = e.touches[0];
+  1898→        const rect = canvas.getBoundingClientRect();
+  1899→        const scaleX = LOGIC_W / rect.width;
+  1900→        const scaleY = LOGIC_H / rect.height;
+  1901→        inputXRef.current = (touch.clientX - rect.left) * scaleX;
+  1902→        inputYRef.current = (touch.clientY - rect.top) * scaleY;
+  1903→      }
+  1904→    };
+  1905→
+  1906→    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+  1907→    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+  1908→    return () => {
+  1909→      canvas.removeEventListener('touchmove', handleTouchMove);
+  1910→      canvas.removeEventListener('touchstart', handleTouchStart);
+  1911→    };
+  1912→  }, [startGame]);
+  1913→
+  1914→  const resizeCanvasRef = useRef<() => void>(null!);
+  1915→
+  1916→  // Canvas setup and render loop
+  1917→  useEffect(() => {
+  1918→    const canvas = canvasRef.current;
+  1919→    const container = containerRef.current;
+  1920→    if (!canvas || !container) return;
+  1921→
+  1922→    const resizeCanvas = () => {
+  1923→      dprRef.current = Math.min(window.devicePixelRatio || 1, 2);
+  1924→      const containerW = canvas.clientWidth;
+  1925→      if (containerW <= 0) return;
+  1926→      const displayW = Math.min(containerW, LOGIC_W);
+  1927→      const displayH = displayW * (LOGIC_H / LOGIC_W);
+  1928→      const scale = displayW / LOGIC_W;
+  1929→      scaleRef.current = scale;
+  1930→      canvas.width = displayW * dprRef.current;
+  1931→      canvas.height = displayH * dprRef.current;
+  1932→    };
+  1933→
+  1934→    resizeCanvasRef.current = resizeCanvas;
+  1935→    const ro = new ResizeObserver(resizeCanvas);
+  1936→    ro.observe(container);
+  1937→    resizeCanvas();
+  1938→
+  1939→    const onVisibilityChange = () => {
+  1940→      if (document.hidden) {
+  1941→        pausedRef.current = true;
+  1942→        setPaused(true);
+  1943→      } else if (statusRef.current === 'playing') {
+  1944→        pausedRef.current = false;
+  1945→        setPaused(false);
+  1946→      }
+  1947→    };
+  1948→    document.addEventListener('visibilitychange', onVisibilityChange);
+  1949→
+  1950→    rafRef.current = requestAnimationFrame(gameLoop);
+  1951→
+  1952→    return () => {
+  1953→      ro.disconnect();
+  1954→      document.removeEventListener('visibilitychange', onVisibilityChange);
+  1955→      cancelAnimationFrame(rafRef.current);
+  1956→    };
+  1957→  }, []);
+  1958→
+  1959→  // Fetch high score and server coins on mount
+  1960→  useEffect(() => {
+  1961→    const fetchData = async () => {
+  1962→      try {
+  1963→        const res = await fetch('/api/games/scores');
+  1964→        if (res.ok) {
+  1965→          const data = await res.json();
+  1966→          if (Array.isArray(data.data)) {
+  1967→            const s = data.data.find(
+  1968→              (item: { game: string; score: number }) => item.game === GAME_NAME,
+  1969→            );
+  1970→            if (s) {
+  1971→              setHighScore(s.score);
+  1972→              highScoreRef.current = s.score;
+  1973→            }
+  1974→            const cs = data.data.find(
+  1975→              (item: { game: string; score: number }) => item.game === 'aircraft-coins',
+  1976→            );
+  1977→            if (cs) {
+  1978→              const serverCoins = cs.score;
+  1979→              const localCoins = loadWallet();
+  1980→              const finalCoins = Math.max(serverCoins, localCoins);
+  1981→              saveWallet(finalCoins);
+  1982→              setWalletCoins(finalCoins);
+  1983→            } else {
+  1984→              setWalletCoins(loadWallet());
+  1985→            }
+  1986→          }
+  1987→        }
+  1988→      } catch {
+  1989→        // silent
+  1990→      } finally {
+  1991→        setLoadingHighScore(false);
+  1992→      }
+  1993→    };
+  1994→    fetchData();
+  1995→  }, []);
+  1996→
+  1997→  // ==================== JSX ====================
+  1998→
+  1999→  return (
+  2000→    <div className="flex flex-col items-center w-full max-w-lg mx-auto py-2 gap-3">
+
+[showing lines 1-2000 of 2142; use offset=2001 with limit to continue reading]

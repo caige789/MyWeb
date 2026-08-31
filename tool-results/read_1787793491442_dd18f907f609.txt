@@ -1,0 +1,886 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Card, CardContent } from '@/components/ui/card';
+     6→import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react';
+     7→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     8→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+     9→
+    10→const snakeControlsInfo: GameControlsInfo = {
+    11→  gameName: '贪吃蛇',
+    12→  desktop: [
+    13→    { action: '方向键 ↑↓←→', keys: ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'], description: '控制蛇的移动方向' },
+    14→    { action: 'WASD', keys: ['KeyW','KeyA','KeyS','KeyD'], description: '备选方向控制' },
+    15→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏 (Esc)' },
+    16→  ],
+    17→  mobile: [
+    18→    { action: '滑动', keys: [], description: '在游戏区域滑动手指改变方向' },
+    19→    { action: '虚拟方向键', keys: [], description: '使用屏幕下方的方向按钮 (手机端自动显示)' },
+    20→  ],
+    21→  rules: [
+    22→    '吃到食物蛇身变长，得分增加',
+    23→    '蛇穿墙不死，从另一边出来',
+    24→    '每吃5个食物速度加快一档(共5档)',
+    25→    '收集道具获得特殊能力',
+    26→    '金色食物+30分，紫色食物蛇缩短2节',
+    27→  ],
+    28→  tips: [
+    29→    '护盾可以让你免死一次',
+    30→    '双倍分数期间多吃食物',
+    31→    '紫色食物可以缩短蛇身，适合高分长蛇',
+    32→  ],
+    33→};
+    34→
+    35→interface SnakeGameProps {
+    36→  onBack: () => void;
+    37→}
+    38→
+    39→// Grid and rendering constants
+    40→const GRID_SIZE = 20;
+    41→const CELL_SIZE = 20;
+    42→const BASE_SPEED = 150;
+    43→const SCORE_PER_FOOD = 10;
+    44→const GAME_NAME = 'snake';
+    45→const MAX_DIFFICULTY = 5;
+    46→const FOODS_PER_DIFFICULTY = 5;
+    47→const SPEED_REDUCTION_PER_LEVEL = 18;
+    48→
+    49→enum Direction {
+    50→  Up = 'UP',
+    51→  Down = 'DOWN',
+    52→  Left = 'LEFT',
+    53→  Right = 'RIGHT',
+    54→}
+    55→
+    56→interface Position {
+    57→  x: number;
+    58→  y: number;
+    59→}
+    60→
+    61→// Power-up types
+    62→enum PowerUpKind {
+    63→  Speed = 'speed',
+    64→  Shield = 'shield',
+    65→  Slow = 'slow',
+    66→  DoubleScore = 'double',
+    67→}
+    68→
+    69→interface PowerUp {
+    70→  x: number;
+    71→  y: number;
+    72→  kind: PowerUpKind;
+    73→  frame: number;
+    74→}
+    75→
+    76→// Special food types
+    77→enum FoodType {
+    78→  Normal = 'normal',
+    79→  Gold = 'gold',
+    80→  Purple = 'purple',
+    81→}
+    82→
+    83→interface Food {
+    84→  x: number;
+    85→  y: number;
+    86→  type: FoodType;
+    87→}
+    88→
+    89→type GameStatus = 'idle' | 'playing' | 'over';
+    90→
+    91→// Power-up visual config
+    92→const POWERUP_CONFIG: Record<PowerUpKind, { color: string; glow: string; symbol: string }> = {
+    93→  [PowerUpKind.Speed]: { color: '#fbbf24', glow: '#f59e0b', symbol: '⚡' },
+    94→  [PowerUpKind.Shield]: { color: '#38bdf8', glow: '#0ea5e9', symbol: '🛡' },
+    95→  [PowerUpKind.Slow]: { color: '#a5f3fc', glow: '#67e8f9', symbol: '❄' },
+    96→  [PowerUpKind.DoubleScore]: { color: '#facc15', glow: '#eab308', symbol: '★' },
+    97→};
+    98→
+    99→// Food visual config
+   100→const FOOD_CONFIG: Record<FoodType, { color: string; glow: string; label: string }> = {
+   101→  [FoodType.Normal]: { color: '#ef4444', glow: '#ef4444', label: '' },
+   102→  [FoodType.Gold]: { color: '#fbbf24', glow: '#f59e0b', label: '+30' },
+   103→  [FoodType.Purple]: { color: '#c084fc', glow: '#a855f7', label: '-2' },
+   104→};
+   105→
+   106→export default function SnakeGame({ onBack }: SnakeGameProps) {
+   107→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   108→  const gameLoopRef = useRef<number | null>(null);
+   109→  const snakeRef = useRef<Position[]>([]);
+   110→  const directionRef = useRef<Direction>(Direction.Right);
+   111→  const nextDirectionRef = useRef<Direction>(Direction.Right);
+   112→  const foodRef = useRef<Food>({ x: 15, y: 10, type: FoodType.Normal });
+   113→  const powerUpRef = useRef<PowerUp | null>(null);
+   114→  const powerUpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   115→  const scoreRef = useRef<number>(0);
+   116→  const foodsEatenRef = useRef<number>(0);
+   117→  const difficultyRef = useRef<number>(0);
+   118→  const gameStatusRef = useRef<GameStatus>('idle');
+   119→  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+   120→  const containerRef = useRef<HTMLDivElement>(null);
+   121→  const canvasSizeRef = useRef<number>(GRID_SIZE * CELL_SIZE);
+   122→  // Active effects
+   123→  const hasShieldRef = useRef<boolean>(false);
+   124→  const isDoubleScoreRef = useRef<boolean>(false);
+   125→  const isSpeedBoostedRef = useRef<boolean>(false);
+   126→  const isSlowedRef = useRef<boolean>(false);
+   127→  const currentSpeedRef = useRef<number>(BASE_SPEED);
+   128→  // Power-up spawn timer
+   129→  const powerUpSpawnTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   130→
+   131→  const [score, setScore] = useState<number>(0);
+   132→  const [highScore, setHighScore] = useState<number>(0);
+   133→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   134→  const [isNewRecord, setIsNewRecord] = useState<boolean>(false);
+   135→  const [loadingHighScore, setLoadingHighScore] = useState<boolean>(true);
+   136→  const [paused, setPaused] = useState<boolean>(false);
+   137→  const pausedRef = useRef<boolean>(false);
+   138→  // UI for active effects
+   139→  const [activeEffects, setActiveEffects] = useState<string[]>([]);
+   140→  const [difficulty, setDifficulty] = useState(0);
+   141→
+   142→  const updateActiveEffectsUI = useCallback(() => {
+   143→    const effects: string[] = [];
+   144→    if (hasShieldRef.current) effects.push('🛡 护盾');
+   145→    if (isDoubleScoreRef.current) effects.push('★ 双倍分数');
+   146→    if (isSpeedBoostedRef.current) effects.push('⚡ 加速');
+   147→    if (isSlowedRef.current) effects.push('❄ 减速');
+   148→    setActiveEffects(effects);
+   149→  }, []);
+   150→
+   151→  const getSpeed = useCallback(() => {
+   152→    const base = BASE_SPEED - difficultyRef.current * SPEED_REDUCTION_PER_LEVEL;
+   153→    let speed = Math.max(base, BASE_SPEED - SPEED_REDUCTION_PER_LEVEL * MAX_DIFFICULTY);
+   154→    if (isSpeedBoostedRef.current) speed = Math.max(speed * 0.55, 40);
+   155→    if (isSlowedRef.current) speed = speed * 2;
+   156→    return speed;
+   157→  }, []);
+   158→
+   159→  const restartGameLoop = useCallback((speed?: number) => {
+   160→    if (gameLoopRef.current) {
+   161→      clearInterval(gameLoopRef.current);
+   162→      gameLoopRef.current = null;
+   163→    }
+   164→    if (gameStatusRef.current === 'playing' && !pausedRef.current) {
+   165→      gameLoopRef.current = window.setInterval(
+   166→        () => { /* noop, actual step called from gameStep */ },
+   167→        speed ?? getSpeed()
+   168→      );
+   169→    }
+   170→  }, [getSpeed]);
+   171→
+   172→  const clearAllTimers = useCallback(() => {
+   173→    if (gameLoopRef.current) {
+   174→      clearInterval(gameLoopRef.current);
+   175→      gameLoopRef.current = null;
+   176→    }
+   177→    if (powerUpTimerRef.current) {
+   178→      clearTimeout(powerUpTimerRef.current);
+   179→      powerUpTimerRef.current = null;
+   180→    }
+   181→    if (powerUpSpawnTimerRef.current) {
+   182→      clearInterval(powerUpSpawnTimerRef.current);
+   183→      powerUpSpawnTimerRef.current = null;
+   184→    }
+   185→  }, []);
+   186→
+   187→  const applyPowerUpEffect = useCallback((kind: PowerUpKind) => {
+   188→    if (kind === PowerUpKind.Shield) {
+   189→      hasShieldRef.current = true;
+   190→      updateActiveEffectsUI();
+   191→      return;
+   192→    }
+   193→
+   194→    let duration = 0;
+   195→    if (kind === PowerUpKind.Speed) {
+   196→      isSpeedBoostedRef.current = true;
+   197→      isSlowedRef.current = false;
+   198→      duration = 3000;
+   199→    } else if (kind === PowerUpKind.Slow) {
+   200→      isSlowedRef.current = true;
+   201→      isSpeedBoostedRef.current = false;
+   202→      duration = 5000;
+   203→    } else if (kind === PowerUpKind.DoubleScore) {
+   204→      isDoubleScoreRef.current = true;
+   205→      duration = 10000;
+   206→    }
+   207→
+   208→    updateActiveEffectsUI();
+   209→
+   210→    if (powerUpTimerRef.current) {
+   211→      clearTimeout(powerUpTimerRef.current);
+   212→    }
+   213→    powerUpTimerRef.current = setTimeout(() => {
+   214→      if (kind === PowerUpKind.Speed) isSpeedBoostedRef.current = false;
+   215→      if (kind === PowerUpKind.Slow) isSlowedRef.current = false;
+   216→      if (kind === PowerUpKind.DoubleScore) isDoubleScoreRef.current = false;
+   217→      powerUpTimerRef.current = null;
+   218→      updateActiveEffectsUI();
+   219→      // Restart loop with updated speed
+   220→      const newSpeed = getSpeed();
+   221→      currentSpeedRef.current = newSpeed;
+   222→      if (gameStatusRef.current === 'playing' && !pausedRef.current) {
+   223→        if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+   224→        gameLoopRef.current = window.setInterval(gameStepRef.current, newSpeed);
+   225→      }
+   226→    }, duration);
+   227→  }, [updateActiveEffectsUI, getSpeed]);
+   228→
+   229→  const initSnake = useCallback(() => {
+   230→    const centerX = Math.floor(GRID_SIZE / 2);
+   231→    const centerY = Math.floor(GRID_SIZE / 2);
+   232→    snakeRef.current = [
+   233→      { x: centerX, y: centerY },
+   234→      { x: centerX - 1, y: centerY },
+   235→      { x: centerX - 2, y: centerY },
+   236→    ];
+   237→  }, []);
+   238→
+   239→  // Check if a position is occupied by snake or power-up
+   240→  const isOccupied = useCallback((pos: Position, exclude?: Position) => {
+   241→    for (const seg of snakeRef.current) {
+   242→      if (seg.x === pos.x && seg.y === pos.y) return true;
+   243→    }
+   244→    if (powerUpRef.current && powerUpRef.current.x === pos.x && powerUpRef.current.y === pos.y) return true;
+   245→    if (exclude && exclude.x === pos.x && exclude.y === pos.y) return false;
+   246→    return false;
+   247→  }, []);
+   248→
+   249→  const spawnFood = useCallback(() => {
+   250→    const snake = snakeRef.current;
+   251→    let pos: Position;
+   252→    let attempts = 0;
+   253→    do {
+   254→      pos = {
+   255→        x: Math.floor(Math.random() * GRID_SIZE),
+   256→        y: Math.floor(Math.random() * GRID_SIZE),
+   257→      };
+   258→      attempts++;
+   259→    } while (snake.some((seg) => seg.x === pos.x && seg.y === pos.y) && attempts < 200);
+   260→
+   261→    // Decide food type: 10% gold, 8% purple, 82% normal
+   262→    const roll = Math.random();
+   263→    let type = FoodType.Normal;
+   264→    if (roll < 0.10) type = FoodType.Gold;
+   265→    else if (roll < 0.18) type = FoodType.Purple;
+   266→
+   267→    foodRef.current = { x: pos.x, y: pos.y, type };
+   268→  }, []);
+   269→
+   270→  const spawnPowerUp = useCallback(() => {
+   271→    if (powerUpRef.current) return; // Only one power-up at a time
+   272→    if (gameStatusRef.current !== 'playing' || pausedRef.current) return;
+   273→
+   274→    let pos: Position;
+   275→    let attempts = 0;
+   276→    do {
+   277→      pos = {
+   278→        x: Math.floor(Math.random() * GRID_SIZE),
+   279→        y: Math.floor(Math.random() * GRID_SIZE),
+   280→      };
+   281→      attempts++;
+   282→    } while (isOccupied(pos) || (foodRef.current.x === pos.x && foodRef.current.y === pos.y) && attempts < 200);
+   283→
+   284→    if (attempts >= 200) return;
+   285→
+   286→    const kinds = [PowerUpKind.Speed, PowerUpKind.Shield, PowerUpKind.Slow, PowerUpKind.DoubleScore];
+   287→    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+   288→    powerUpRef.current = { x: pos.x, y: pos.y, kind, frame: 0 };
+   289→  }, [isOccupied]);
+   290→
+   291→  const draw = useCallback(() => {
+   292→    const canvas = canvasRef.current;
+   293→    if (!canvas) return;
+   294→    const ctx = canvas.getContext('2d');
+   295→    if (!ctx) return;
+   296→
+   297→    const size = canvasSizeRef.current;
+   298→    const cellSize = size / GRID_SIZE;
+   299→
+   300→    // Background
+   301→    ctx.fillStyle = '#1a1a2e';
+   302→    ctx.fillRect(0, 0, size, size);
+   303→
+   304→    // Grid
+   305→    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+   306→    ctx.lineWidth = 0.5;
+   307→    for (let i = 0; i <= GRID_SIZE; i++) {
+   308→      const pos = i * cellSize;
+   309→      ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, size); ctx.stroke();
+   310→      ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(size, pos); ctx.stroke();
+   311→    }
+   312→
+   313→    // Draw power-up
+   314→    const pu = powerUpRef.current;
+   315→    if (pu) {
+   316→      const config = POWERUP_CONFIG[pu.kind];
+   317→      const cx = pu.x * cellSize + cellSize / 2;
+   318→      const cy = pu.y * cellSize + cellSize / 2;
+   319→      const radius = Math.max(cellSize / 2 - 1, 1);
+   320→      const pulse = Math.sin(pu.frame * 0.15) * 0.25 + 0.75;
+   321→
+   322→      ctx.shadowColor = config.glow;
+   323→      ctx.shadowBlur = 10 * pulse;
+   324→      ctx.fillStyle = config.color;
+   325→      ctx.globalAlpha = pulse;
+   326→      ctx.beginPath();
+   327→      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+   328→      ctx.fill();
+   329→      ctx.globalAlpha = 1;
+   330→      ctx.shadowBlur = 0;
+   331→
+   332→      // Symbol
+   333→      ctx.fillStyle = '#ffffff';
+   334→      ctx.font = `bold ${Math.round(cellSize * 0.6)}px sans-serif`;
+   335→      ctx.textAlign = 'center';
+   336→      ctx.textBaseline = 'middle';
+   337→      ctx.fillText(config.symbol, cx, cy + 1);
+   338→    }
+   339→
+   340→    // Draw food
+   341→    const food = foodRef.current;
+   342→    const foodCx = food.x * cellSize + cellSize / 2;
+   343→    const foodCy = food.y * cellSize + cellSize / 2;
+   344→    const foodR = Math.max(cellSize / 2 - 2, 1);
+   345→    const fConfig = FOOD_CONFIG[food.type];
+   346→
+   347→    ctx.shadowColor = fConfig.glow;
+   348→    ctx.shadowBlur = food.type === FoodType.Gold ? 14 : 8;
+   349→    ctx.fillStyle = fConfig.color;
+   350→    ctx.beginPath();
+   351→    ctx.arc(foodCx, foodCy, foodR, 0, Math.PI * 2);
+   352→    ctx.fill();
+   353→    ctx.shadowBlur = 0;
+   354→
+   355→    // Food label for special foods
+   356→    if (food.type !== FoodType.Normal && fConfig.label) {
+   357→      ctx.fillStyle = '#ffffff';
+   358→      ctx.font = `bold ${Math.round(cellSize * 0.5)}px sans-serif`;
+   359→      ctx.textAlign = 'center';
+   360→      ctx.textBaseline = 'middle';
+   361→      ctx.fillText(fConfig.label, foodCx, foodCy + 1);
+   362→    }
+   363→
+   364→    // Draw snake
+   365→    const snake = snakeRef.current;
+   366→    snake.forEach((seg, index) => {
+   367→      const x = seg.x * cellSize;
+   368→      const y = seg.y * cellSize;
+   369→      const padding = 1;
+   370→      const radius = 3;
+   371→
+   372→      if (index === 0) {
+   373→        ctx.shadowColor = '#4ade80';
+   374→        ctx.shadowBlur = 6;
+   375→        ctx.fillStyle = '#4ade80';
+   376→      } else {
+   377→        ctx.shadowBlur = 0;
+   378→        const ratio = 1 - (index / snake.length) * 0.5;
+   379→        const g = Math.round(180 * ratio + 60);
+   380→        ctx.fillStyle = `rgb(34, ${g}, 34)`;
+   381→      }
+   382→
+   383→      // Shield glow on head
+   384→      if (index === 0 && hasShieldRef.current) {
+   385→        ctx.shadowColor = '#38bdf8';
+   386→        ctx.shadowBlur = 12;
+   387→        ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+   388→        ctx.lineWidth = 2;
+   389→        ctx.beginPath();
+   390→        ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize / 2 + 2, 0, Math.PI * 2);
+   391→        ctx.stroke();
+   392→        ctx.shadowColor = '#4ade80';
+   393→        ctx.shadowBlur = 6;
+   394→      }
+   395→
+   396→      const rx = x + padding;
+   397→      const ry = y + padding;
+   398→      const rw = cellSize - padding * 2;
+   399→      const rh = cellSize - padding * 2;
+   400→      ctx.beginPath();
+   401→      ctx.moveTo(rx + radius, ry);
+   402→      ctx.lineTo(rx + rw - radius, ry);
+   403→      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + radius);
+   404→      ctx.lineTo(rx + rw, ry + rh - radius);
+   405→      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - radius, ry + rh);
+   406→      ctx.lineTo(rx + radius, ry + rh);
+   407→      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - radius);
+   408→      ctx.lineTo(rx, ry + radius);
+   409→      ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
+   410→      ctx.closePath();
+   411→      ctx.fill();
+   412→    });
+   413→
+   414→    ctx.shadowBlur = 0;
+   415→
+   416→    // Game over overlay
+   417→    if (gameStatusRef.current === 'over') {
+   418→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+   419→      ctx.fillRect(0, 0, size, size);
+   420→      ctx.fillStyle = '#ffffff';
+   421→      ctx.font = `bold ${Math.round(cellSize * 1.5)}px sans-serif`;
+   422→      ctx.textAlign = 'center';
+   423→      ctx.textBaseline = 'middle';
+   424→      ctx.fillText('游戏结束', size / 2, size / 2 - cellSize);
+   425→      ctx.font = `${Math.round(cellSize * 0.9)}px sans-serif`;
+   426→      ctx.fillStyle = '#fbbf24';
+   427→      ctx.fillText(`得分: ${scoreRef.current}`, size / 2, size / 2 + cellSize);
+   428→    }
+   429→
+   430→    // Paused overlay
+   431→    if (pausedRef.current && gameStatusRef.current === 'playing') {
+   432→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+   433→      ctx.fillRect(0, 0, size, size);
+   434→      ctx.fillStyle = '#ffffff';
+   435→      ctx.font = `bold ${Math.round(cellSize * 1.5)}px sans-serif`;
+   436→      ctx.textAlign = 'center';
+   437→      ctx.textBaseline = 'middle';
+   438→      ctx.fillText('已暂停', size / 2, size / 2);
+   439→    } else if (gameStatusRef.current === 'idle') {
+   440→      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+   441→      ctx.fillRect(0, 0, size, size);
+   442→      ctx.fillStyle = '#ffffff';
+   443→      ctx.font = `bold ${Math.round(cellSize * 1.2)}px sans-serif`;
+   444→      ctx.textAlign = 'center';
+   445→      ctx.textBaseline = 'middle';
+   446→      ctx.fillText('按「开始游戏」', size / 2, size / 2);
+   447→    }
+   448→  }, []);
+   449→
+   450→  // We need a ref to gameStep for the power-up timer callback
+   451→  const gameStepRef = useRef<() => void>(() => {});
+   452→
+   453→  const endGame = useCallback(async () => {
+   454→    gameStatusRef.current = 'over';
+   455→    setGameStatus('over');
+   456→    clearAllTimers();
+   457→    draw();
+   458→
+   459→    if (scoreRef.current > highScore) {
+   460→      setIsNewRecord(true);
+   461→      try {
+   462→        const res = await fetch('/api/games/scores', {
+   463→          method: 'POST',
+   464→          headers: { 'Content-Type': 'application/json' },
+   465→          body: JSON.stringify({ game: GAME_NAME, score: scoreRef.current }),
+   466→        });
+   467→        if (res.ok) {
+   468→          const data = await res.json();
+   469→          if (data.data?.score !== undefined) setHighScore(data.data.score);
+   470→        }
+   471→      } catch { /* silent */ }
+   472→    } else {
+   473→      setIsNewRecord(false);
+   474→    }
+   475→  }, [highScore, draw, clearAllTimers]);
+   476→
+   477→  const gameStep = useCallback(() => {
+   478→    const snake = snakeRef.current;
+   479→    const head = { ...snake[0] };
+   480→
+   481→    directionRef.current = nextDirectionRef.current;
+   482→    switch (directionRef.current) {
+   483→      case Direction.Up: head.y -= 1; break;
+   484→      case Direction.Down: head.y += 1; break;
+   485→      case Direction.Left: head.x -= 1; break;
+   486→      case Direction.Right: head.x += 1; break;
+   487→    }
+   488→
+   489→    // Wall wrap (pass-through mode)
+   490→    if (head.x < 0) head.x = GRID_SIZE - 1;
+   491→    else if (head.x >= GRID_SIZE) head.x = 0;
+   492→    if (head.y < 0) head.y = GRID_SIZE - 1;
+   493→    else if (head.y >= GRID_SIZE) head.y = 0;
+   494→
+   495→    // Self collision
+   496→    if (snake.some((seg) => seg.x === head.x && seg.y === head.y)) {
+   497→      if (hasShieldRef.current) {
+   498→        hasShieldRef.current = false;
+   499→        updateActiveEffectsUI();
+   500→        // Don't move, skip this frame
+   501→        draw();
+   502→        return;
+   503→      }
+   504→      endGame();
+   505→      return;
+   506→    }
+   507→
+   508→    snake.unshift(head);
+   509→
+   510→    // Check power-up collision
+   511→    if (powerUpRef.current && head.x === powerUpRef.current.x && head.y === powerUpRef.current.y) {
+   512→      applyPowerUpEffect(powerUpRef.current.kind);
+   513→      powerUpRef.current = null;
+   514→      // Restart loop if speed changed
+   515→      if (isSpeedBoostedRef.current || isSlowedRef.current) {
+   516→        const newSpeed = getSpeed();
+   517→        currentSpeedRef.current = newSpeed;
+   518→        if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+   519→        gameLoopRef.current = window.setInterval(gameStepRef.current, newSpeed);
+   520→      }
+   521→    } else {
+   522→      // Update power-up animation frame
+   523→      if (powerUpRef.current) powerUpRef.current.frame += 1;
+   524→    }
+   525→
+   526→    // Check food collision
+   527→    const food = foodRef.current;
+   528→    if (head.x === food.x && head.y === food.y) {
+   529→      let gained = 0;
+   530→      if (food.type === FoodType.Gold) {
+   531→        gained = 30;
+   532→      } else if (food.type === FoodType.Purple) {
+   533→        gained = 10;
+   534→        // Shrink snake by 2 segments (min length 1)
+   535→        const removeCount = Math.min(2, snake.length - 1);
+   536→        for (let i = 0; i < removeCount; i++) snake.pop();
+   537→      } else {
+   538→        gained = SCORE_PER_FOOD;
+   539→      }
+   540→
+   541→      if (isDoubleScoreRef.current) gained *= 2;
+   542→      scoreRef.current += gained;
+   543→      setScore(scoreRef.current);
+   544→
+   545→      // Difficulty scaling
+   546→      if (food.type !== FoodType.Purple) {
+   547→        foodsEatenRef.current += 1;
+   548→        const newDiff = Math.min(
+   549→          Math.floor(foodsEatenRef.current / FOODS_PER_DIFFICULTY),
+   550→          MAX_DIFFICULTY
+   551→        );
+   552→        if (newDiff !== difficultyRef.current) {
+   553→          difficultyRef.current = newDiff;
+   554→          setDifficulty(newDiff);
+   555→          const newSpeed = getSpeed();
+   556→          currentSpeedRef.current = newSpeed;
+   557→          if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+   558→          gameLoopRef.current = window.setInterval(gameStepRef.current, newSpeed);
+   559→        }
+   560→      }
+   561→
+   562→      spawnFood();
+   563→    } else {
+   564→      snake.pop();
+   565→    }
+   566→
+   567→    draw();
+   568→  }, [draw, spawnFood, endGame, applyPowerUpEffect, getSpeed, updateActiveEffectsUI]);
+   569→
+   570→  // Keep gameStepRef updated
+   571→  useEffect(() => {
+   572→    gameStepRef.current = gameStep;
+   573→  }, [gameStep]);
+   574→
+   575→  const startGame = useCallback(() => {
+   576→    clearAllTimers();
+   577→    initSnake();
+   578→    spawnFood();
+   579→    directionRef.current = Direction.Right;
+   580→    nextDirectionRef.current = Direction.Right;
+   581→    scoreRef.current = 0;
+   582→    setScore(0);
+   583→    foodsEatenRef.current = 0;
+   584→    difficultyRef.current = 0;
+   585→    setDifficulty(0);
+   586→    gameStatusRef.current = 'playing';
+   587→    setGameStatus('playing');
+   588→    setIsNewRecord(false);
+   589→    pausedRef.current = false;
+   590→    setPaused(false);
+   591→    powerUpRef.current = null;
+   592→    hasShieldRef.current = false;
+   593→    isDoubleScoreRef.current = false;
+   594→    isSpeedBoostedRef.current = false;
+   595→    isSlowedRef.current = false;
+   596→    currentSpeedRef.current = BASE_SPEED;
+   597→    setActiveEffects([]);
+   598→
+   599→    draw();
+   600→
+   601→    const speed = getSpeed();
+   602→    currentSpeedRef.current = speed;
+   603→    gameLoopRef.current = window.setInterval(gameStep, speed);
+   604→
+   605→    // Spawn power-ups periodically (every 8-15 seconds)
+   606→    const spawnPowerUpPeriodic = () => {
+   607→      spawnPowerUp();
+   608→      // Randomize next spawn: 8-15 seconds
+   609→      const nextDelay = 8000 + Math.random() * 7000;
+   610→      if (powerUpSpawnTimerRef.current) clearInterval(powerUpSpawnTimerRef.current);
+   611→      powerUpSpawnTimerRef.current = setTimeout(() => {
+   612→        spawnPowerUpPeriodic();
+   613→      }, nextDelay);
+   614→    };
+   615→    // First power-up after 5-10 seconds
+   616→    const firstDelay = 5000 + Math.random() * 5000;
+   617→    powerUpSpawnTimerRef.current = setTimeout(spawnPowerUpPeriodic, firstDelay);
+   618→  }, [initSnake, spawnFood, draw, gameStep, getSpeed, clearAllTimers, spawnPowerUp]);
+   619→
+   620→  const handleKeyDown = useCallback(
+   621→    (e: KeyboardEvent) => {
+   622→      if (gameStatusRef.current !== 'playing') return;
+   623→      if (e.key === 'Escape') {
+   624→        e.preventDefault();
+   625→        pausedRef.current = !pausedRef.current;
+   626→        setPaused(pausedRef.current);
+   627→        if (pausedRef.current) {
+   628→          if (gameLoopRef.current) {
+   629→            clearInterval(gameLoopRef.current);
+   630→            gameLoopRef.current = null;
+   631→          }
+   632→        } else {
+   633→          const speed = currentSpeedRef.current;
+   634→          gameLoopRef.current = window.setInterval(gameStepRef.current, speed);
+   635→        }
+   636→        draw();
+   637→        return;
+   638→      }
+   639→      if (pausedRef.current) return;
+   640→
+   641→      const current = directionRef.current;
+   642→      switch (e.key) {
+   643→        case 'ArrowUp': case 'w': case 'W':
+   644→          if (current !== Direction.Down) nextDirectionRef.current = Direction.Up;
+   645→          e.preventDefault(); break;
+   646→        case 'ArrowDown': case 's': case 'S':
+   647→          if (current !== Direction.Up) nextDirectionRef.current = Direction.Down;
+   648→          e.preventDefault(); break;
+   649→        case 'ArrowLeft': case 'a': case 'A':
+   650→          if (current !== Direction.Right) nextDirectionRef.current = Direction.Left;
+   651→          e.preventDefault(); break;
+   652→        case 'ArrowRight': case 'd': case 'D':
+   653→          if (current !== Direction.Left) nextDirectionRef.current = Direction.Right;
+   654→          e.preventDefault(); break;
+   655→      }
+   656→    },
+   657→    [draw]
+   658→  );
+   659→
+   660→  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+   661→    const touch = e.touches[0];
+   662→    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+   663→  }, []);
+   664→
+   665→  const handleTouchEnd = useCallback(
+   666→    (e: React.TouchEvent) => {
+   667→      if (gameStatusRef.current !== 'playing') return;
+   668→      if (pausedRef.current) return;
+   669→
+   670→      const touchStart = touchStartRef.current;
+   671→      if (!touchStart) return;
+   672→
+   673→      const touch = e.changedTouches[0];
+   674→      const dx = touch.clientX - touchStart.x;
+   675→      const dy = touch.clientY - touchStart.y;
+   676→
+   677→      const minSwipeDistance = 20;
+   678→      if (Math.abs(dx) < minSwipeDistance && Math.abs(dy) < minSwipeDistance) return;
+   679→
+   680→      const current = directionRef.current;
+   681→      if (Math.abs(dx) > Math.abs(dy)) {
+   682→        if (dx > 0 && current !== Direction.Left) nextDirectionRef.current = Direction.Right;
+   683→        else if (dx < 0 && current !== Direction.Right) nextDirectionRef.current = Direction.Left;
+   684→      } else {
+   685→        if (dy > 0 && current !== Direction.Up) nextDirectionRef.current = Direction.Down;
+   686→        else if (dy < 0 && current !== Direction.Down) nextDirectionRef.current = Direction.Up;
+   687→      }
+   688→    },
+   689→    []
+   690→  );
+   691→
+   692→  useEffect(() => {
+   693→    const fetchHighScore = async () => {
+   694→      try {
+   695→        const res = await fetch('/api/games/scores');
+   696→        if (res.ok) {
+   697→          const data = await res.json();
+   698→          if (Array.isArray(data.data)) {
+   699→            const snakeScore = data.data.find(
+   700→              (item: { game: string; score: number }) => item.game === GAME_NAME
+   701→            );
+   702→            if (snakeScore) setHighScore(snakeScore.score);
+   703→          }
+   704→        }
+   705→      } catch { /* silent */ }
+   706→      finally { setLoadingHighScore(false); }
+   707→    };
+   708→    fetchHighScore();
+   709→  }, []);
+   710→
+   711→  useEffect(() => {
+   712→    window.addEventListener('keydown', handleKeyDown);
+   713→    return () => window.removeEventListener('keydown', handleKeyDown);
+   714→  }, [handleKeyDown]);
+   715→
+   716→  useEffect(() => {
+   717→    return () => { clearAllTimers(); };
+   718→  }, [clearAllTimers]);
+   719→
+   720→  useEffect(() => {
+   721→    const updateCanvasSize = () => {
+   722→      const container = containerRef.current;
+   723→      const canvas = canvasRef.current;
+   724→      if (!container || !canvas) return;
+   725→
+   726→      const maxWidth = 400;
+   727→      const containerWidth = container.clientWidth;
+   728→      const size = Math.min(containerWidth, maxWidth);
+   729→      const dpr = window.devicePixelRatio || 1;
+   730→      canvas.width = size * dpr;
+   731→      canvas.height = size * dpr;
+   732→      canvas.style.width = `${size}px`;
+   733→      canvas.style.height = `${size}px`;
+   734→      const ctx = canvas.getContext('2d');
+   735→      if (ctx) ctx.scale(dpr, dpr);
+   736→      canvasSizeRef.current = size;
+   737→      draw();
+   738→    };
+   739→    updateCanvasSize();
+   740→    window.addEventListener('resize', updateCanvasSize);
+   741→    return () => window.removeEventListener('resize', updateCanvasSize);
+   742→  }, [draw]);
+   743→
+   744→  return (
+   745→    <div className="flex flex-col items-center w-full max-w-md mx-auto px-2 py-2 gap-2">
+   746→      <div className="flex items-center justify-between w-full">
+   747→        <Button
+   748→          variant="ghost"
+   749→          size="sm"
+   750→          onClick={onBack}
+   751→          className="text-muted-foreground hover:text-foreground"
+   752→        >
+   753→          <ArrowLeft className="h-4 w-4 mr-1" />
+   754→          返回大厅
+   755→        </Button>
+   756→        <h2 className="text-lg font-bold tracking-wide">🐍 贪吃蛇</h2>
+   757→        {gameStatus === 'playing' && <GameControlsHelp info={snakeControlsInfo} variant="button" />}
+   758→        {gameStatus !== 'playing' && <div className="w-8" />}
+   759→      </div>
+   760→
+   761→      <Card className="w-full border-border/50 bg-card/80">
+   762→        <CardContent className="flex items-center justify-between p-3">
+   763→          <div className="flex flex-col items-center gap-0.5">
+   764→            <span className="text-xs text-muted-foreground">分数</span>
+   765→            <span className="text-xl font-bold text-primary tabular-nums">{score}</span>
+   766→          </div>
+   767→          <div className="h-10 w-px bg-border" />
+   768→          <div className="flex flex-col items-center gap-0.5">
+   769→            <span className="text-xs text-muted-foreground flex items-center gap-1">
+   770→              <Trophy className="h-3 w-3 text-yellow-500" />
+   771→              最高分
+   772→            </span>
+   773→            <span className="text-xl font-bold text-yellow-500 tabular-nums">
+   774→              {loadingHighScore ? '...' : highScore}
+   775→            </span>
+   776→          </div>
+   777→          <div className="h-10 w-px bg-border" />
+   778→          <div className="flex flex-col items-center gap-0.5">
+   779→            <span className="text-xs text-muted-foreground">难度</span>
+   780→            <span className="text-xl font-bold text-orange-400 tabular-nums">
+   781→              {difficulty + 1}/{MAX_DIFFICULTY + 1}
+   782→            </span>
+   783→          </div>
+   784→        </CardContent>
+   785→      </Card>
+   786→
+   787→      {activeEffects.length > 0 && (
+   788→        <div className="flex flex-wrap gap-1.5 justify-center">
+   789→          {activeEffects.map((effect, i) => (
+   790→            <span
+   791→              key={i}
+   792→              className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground"
+   793→            >
+   794→              {effect}
+   795→            </span>
+   796→          ))}
+   797→        </div>
+   798→      )}
+   799→
+   800→      <div
+   801→        ref={containerRef}
+   802→        className="w-full flex justify-center"
+   803→        onTouchStart={handleTouchStart}
+   804→        onTouchEnd={handleTouchEnd}
+   805→      >
+   806→        <canvas
+   807→          ref={canvasRef}
+   808→          className="rounded-lg border border-border/30 shadow-lg"
+   809→          style={{ maxWidth: '400px', touchAction: 'none' }}
+   810→        />
+   811→      </div>
+   812→
+   813→      <div className="flex flex-col items-center gap-3 w-full">
+   814→        {gameStatus === 'over' && isNewRecord && (
+   815→          <p className="text-sm font-semibold text-yellow-500 animate-pulse">
+   816→            🎉 新纪录！
+   817→          </p>
+   818→        )}
+   819→
+   820→        <Button
+   821→          onClick={startGame}
+   822→          size="lg"
+   823→          className="w-full max-w-xs text-base font-semibold"
+   824→          disabled={gameStatus === 'playing'}
+   825→        >
+   826→          <RotateCcw className="h-4 w-4 mr-2" />
+   827→          {gameStatus === 'playing' ? '游戏中...' : '开始游戏'}
+   828→        </Button>
+   829→      </div>
+   830→
+   831→      <div className="grid grid-cols-3 gap-2 w-40 mt-2 md:hidden">
+   832→        <div />
+   833→        <Button
+   834→          variant="outline"
+   835→          size="icon"
+   836→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   837→          onTouchStart={(e) => {
+   838→            e.stopPropagation();
+   839→            if (directionRef.current !== Direction.Down) nextDirectionRef.current = Direction.Up;
+   840→          }}
+   841→          disabled={gameStatus !== 'playing' || paused}
+   842→        >
+   843→          ↑
+   844→        </Button>
+   845→        <div />
+   846→        <Button
+   847→          variant="outline"
+   848→          size="icon"
+   849→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   850→          onTouchStart={(e) => {
+   851→            e.stopPropagation();
+   852→            if (directionRef.current !== Direction.Right) nextDirectionRef.current = Direction.Left;
+   853→          }}
+   854→          disabled={gameStatus !== 'playing' || paused}
+   855→        >
+   856→          ←
+   857→        </Button>
+   858→        <Button
+   859→          variant="outline"
+   860→          size="icon"
+   861→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   862→          onTouchStart={(e) => {
+   863→            e.stopPropagation();
+   864→            if (directionRef.current !== Direction.Up) nextDirectionRef.current = Direction.Down;
+   865→          }}
+   866→          disabled={gameStatus !== 'playing' || paused}
+   867→        >
+   868→          ↓
+   869→        </Button>
+   870→        <Button
+   871→          variant="outline"
+   872→          size="icon"
+   873→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   874→          onTouchStart={(e) => {
+   875→            e.stopPropagation();
+   876→            if (directionRef.current !== Direction.Left) nextDirectionRef.current = Direction.Right;
+   877→          }}
+   878→          disabled={gameStatus !== 'playing' || paused}
+   879→        >
+   880→          →
+   881→        </Button>
+   882→      </div>
+   883→    </div>
+   884→  );
+   885→}
+   886→

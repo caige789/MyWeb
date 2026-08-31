@@ -1,0 +1,658 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→     4→import { Button } from '@/components/ui/button';
+     5→     5→import { ArrowLeft, Trophy, RotateCcw } from 'lucide-react';
+     6→     6→import GameControlsHelp, { type GameControlsInfo } from './GameControlsHelp';
+     7→     7→
+     8→     8→const GAME_NAME = 'dungeon';
+     9→     9→const W = 480, H = 480;
+    10→    10→const GRID = 20;
+    11→    11→const CELL = W / GRID; // 24px
+    12→    12→const VISION = 3;
+    13→    13→
+    14→    14→const WALL = 0;
+    15→    15→const FLOOR = 1;
+    16→    16→
+    17→    17→type MonsterType = 'slime' | 'skeleton' | 'ghost' | 'dragon';
+    18→    18→type ItemType = 'health' | 'sword' | 'shield' | 'key';
+    19→    19→type Phase = 'idle' | 'playing' | 'over';
+    20→    20→
+    21→    21→interface Monster {
+    22→    22→  x: number; y: number; type: MonsterType;
+    23→    23→  hp: number; maxHp: number; atk: number; def: number;
+    24→    24→  emoji: string;
+    25→    25→}
+    26→    26→
+    27→    27→interface DItem {
+    28→    28→  x: number; y: number; type: ItemType; emoji: string;
+    29→    29→}
+    30→    30→
+    31→    31→interface FloatText {
+    32→    32→  x: number; y: number; text: string; color: string; life: number; maxLife: number;
+    33→    33→}
+    34→    34→
+    35→    35→const dungeonControlsInfo: GameControlsInfo = {
+    36→    36→  gameName: '地牢探险',
+    37→    37→  desktop: [
+    38→    38→    { action: '方向键', keys: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'], description: '上下左右移动' },
+    39→    39→    { action: 'WASD', keys: ['KeyW', 'KeyA', 'KeyS', 'KeyD'], description: '备选方向控制' },
+    40→    40→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    41→    41→  ],
+    42→    42→  mobile: [
+    43→    43→    { action: '虚拟方向键', keys: [], description: '屏幕下方的方向按钮' },
+    44→    44→  ],
+    45→    45→  rules: [
+    46→    46→    '找到钥匙🔑打开门🚪进入下一层',
+    47→    47→    '走进怪物即可发起攻击，也会受到反击',
+    48→    48→    '收集道具提升属性：药水回血、剑加攻击、盾加防御',
+    49→    49→    '共5层地牢，每层难度递增',
+    50→    50→    '战争迷雾：只能看到已探索的区域',
+    51→    51→  ],
+    52→    52→  tips: [
+    53→    53→    '先探索收集道具再去打强力怪物',
+    54→    54→    '药水要留到关键时刻使用',
+    55→    55→    '龙🐉是Boss，攻击力和血量都很高，小心应对',
+    56→    56→  ],
+    57→    57→};
+    58→    58→
+    59→    59→// Create monster with floor-scaled stats
+    60→    60→function makeMonster(type: MonsterType, x: number, y: number, floor: number): Monster {
+    61→    61→  const f = floor;
+    62→    62→  const s = {
+    63→    63→    slime:    { hp: 6 + f * 2,  atk: 1 + f,  def: 0,                 emoji: '🟢' },
+    64→    64→    skeleton: { hp: 8 + f * 3,  atk: 2 + f,  def: Math.floor(f / 2), emoji: '💀' },
+    65→    65→    ghost:    { hp: 7 + f * 2,  atk: 3 + f,  def: 0,                 emoji: '👻' },
+    66→    66→    dragon:   { hp: 20 + f * 5, atk: 5 + f,  def: 1,                 emoji: '🐉' },
+    67→    67→  }[type];
+    68→    68→  return { x, y, type, ...s, maxHp: s.hp };
+    69→    69→}
+    70→    70→
+    71→    71→// Generate dungeon for a given floor
+    72→    72→function generateDungeon(floor: number) {
+    73→    73→  const grid: number[][] = Array.from({ length: GRID }, () => Array(GRID).fill(WALL));
+    74→    74→  const targetRooms = Math.min(4 + Math.floor((floor + 1) / 2), 7);
+    75→    75→  const rooms: { x: number; y: number; w: number; h: number }[] = [];
+    76→    76→
+    77→    77→  // Place rooms with no overlap (1-tile padding)
+    78→    78→  for (let attempt = 0; attempt < 300 && rooms.length < targetRooms; attempt++) {
+    79→    79→    const w = 3 + Math.floor(Math.random() * 4);
+    80→    80→    const h = 3 + Math.floor(Math.random() * 4);
+    81→    81→    const x = 1 + Math.floor(Math.random() * (GRID - w - 2));
+    82→    82→    const y = 1 + Math.floor(Math.random() * (GRID - h - 2));
+    83→    83→    let ok = true;
+    84→    84→    for (const r of rooms) {
+    85→    85→      if (x - 1 < r.x + r.w && x + w + 1 > r.x && y - 1 < r.y + r.h && y + h + 1 > r.y) {
+    86→    86→        ok = false; break;
+    87→    87→      }
+    88→    88→    }
+    89→    89→    if (ok) rooms.push({ x, y, w, h });
+    90→    90→  }
+    91→    91→
+    92→    92→  if (rooms.length < 2) return generateDungeon(floor);
+    93→    93→
+    94→    94→  // Carve rooms into the grid
+    95→    95→  for (const r of rooms) {
+    96→    96→    for (let ry = r.y; ry < r.y + r.h; ry++)
+    97→    97→      for (let rx = r.x; rx < r.x + r.w; rx++)
+    98→    98→        grid[ry][rx] = FLOOR;
+    99→    99→  }
+   100→   100→
+   101→   101→  // Connect consecutive rooms with L-shaped corridors
+   102→   102→  for (let i = 1; i < rooms.length; i++) {
+   103→   103→    const a = rooms[i - 1], b = rooms[i];
+   104→   104→    const ax = Math.floor(a.x + a.w / 2), ay = Math.floor(a.y + a.h / 2);
+   105→   105→    const bx = Math.floor(b.x + b.w / 2), by = Math.floor(b.y + b.h / 2);
+   106→   106→    if (Math.random() > 0.5) {
+   107→   107→      for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) grid[ay][x] = FLOOR;
+   108→   108→      for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) grid[y][bx] = FLOOR;
+   109→   109→    } else {
+   110→   110→      for (let y = Math.min(ay, by); y <= Math.max(ay, by); y++) grid[y][ax] = FLOOR;
+   111→   111→      for (let x = Math.min(ax, bx); x <= Math.max(ax, bx); x++) grid[by][x] = FLOOR;
+   112→   112→    }
+   113→   113→  }
+   114→   114→
+   115→   115→  // Player start: center of first room
+   116→   116→  const sr = rooms[0];
+   117→   117→  const px = Math.floor(sr.x + sr.w / 2);
+   118→   118→  const py = Math.floor(sr.y + sr.h / 2);
+   119→   119→
+   120→   120→  // Door: center of last room
+   121→   121→  const lr = rooms[rooms.length - 1];
+   122→   122→  const doorX = Math.floor(lr.x + lr.w / 2);
+   123→   123→  const doorY = Math.floor(lr.y + lr.h / 2);
+   124→   124→
+   125→   125→  // Collect available floor tiles (excluding start room, player pos, door pos)
+   126→   126→  const available: { x: number; y: number }[] = [];
+   127→   127→  for (let cy = 0; cy < GRID; cy++) {
+   128→   128→    for (let cx = 0; cx < GRID; cx++) {
+   129→   129→      if (grid[cy][cx] !== FLOOR) continue;
+   130→   130→      if (cx === px && cy === py) continue;
+   131→   131→      if (cx === doorX && cy === doorY) continue;
+   132→   132→      if (cx >= sr.x && cx < sr.x + sr.w && cy >= sr.y && cy < sr.y + sr.h) continue;
+   133→   133→      available.push({ x: cx, y: cy });
+   134→   134→    }
+   135→   135→  }
+   136→   136→
+   137→   137→  // Shuffle available tiles
+   138→   138→  for (let i = available.length - 1; i > 0; i--) {
+   139→   139→    const j = Math.floor(Math.random() * (i + 1));
+   140→   140→    [available[i], available[j]] = [available[j], available[i]];
+   141→   141→  }
+   142→   142→
+   143→   143→  let idx = 0;
+   144→   144→
+   145→   145→  // Place key
+   146→   146→  const keyPos = available[idx++];
+   147→   147→  const items: DItem[] = [
+   148→   148→    { x: keyPos.x, y: keyPos.y, type: 'key', emoji: '🔑' },
+   149→   149→  ];
+   150→   150→
+   151→   151→  // Place other items (health potions, swords, shields)
+   152→   152→  const numItems = 2 + Math.floor(floor / 2);
+   153→   153→  const itemPool: ItemType[] = ['health', 'sword', 'shield'];
+   154→   154→  for (let i = 0; i < numItems && idx < available.length; i++) {
+   155→   155→    const type = itemPool[Math.floor(Math.random() * itemPool.length)];
+   156→   156→    const pos = available[idx++];
+   157→   157→    const emoji = type === 'health' ? '❤️' : type === 'sword' ? '⚔️' : '🛡️';
+   158→   158→    items.push({ x: pos.x, y: pos.y, type, emoji });
+   159→   159→  }
+   160→   160→
+   161→   161→  // Place monsters
+   162→   162→  const monsters: Monster[] = [];
+   163→   163→  const numMonsters = 3 + floor * 2;
+   164→   164→  for (let i = 0; i < numMonsters && idx < available.length; i++) {
+   165→   165→    const pos = available[idx++];
+   166→   166→    const r = Math.random();
+   167→   167→    let type: MonsterType;
+   168→   168→    if (floor >= 3 && r < 0.1) type = 'dragon';
+   169→   169→    else if (floor >= 3 && r < 0.3) type = 'ghost';
+   170→   170→    else if (floor >= 2 && r < 0.55) type = 'skeleton';
+   171→   171→    else type = 'slime';
+   172→   172→    monsters.push(makeMonster(type, pos.x, pos.y, floor));
+   173→   173→  }
+   174→   174→
+   175→   175→  // Guarantee at least 1 dragon on floor 3+
+   176→   176→  if (floor >= 3 && !monsters.some(m => m.type === 'dragon')) {
+   177→   177→    const ri = monsters.findIndex(m => m.type === 'slime' || m.type === 'skeleton');
+   178→   178→    if (ri >= 0) {
+   179→   179→      monsters[ri] = makeMonster('dragon', monsters[ri].x, monsters[ri].y, floor);
+   180→   180→    }
+   181→   181→  }
+   182→   182→
+   183→   183→  return { grid, px, py, doorX, doorY, monsters, items };
+   184→   184→}
+   185→   185→
+   186→   186→export default function DungeonGame({ onBack }: { onBack: () => void }) {
+   187→   187→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   188→   188→  const rafRef = useRef(0);
+   189→   189→  const [phase, setPhase] = useState<Phase>('idle');
+   190→   190→  const [floor, setFloor] = useState(1);
+   191→   191→  const [hp, setHp] = useState(30);
+   192→   192→  const [maxHp, setMaxHp] = useState(30);
+   193→   193→  const [score, setScore] = useState(0);
+   194→   194→  const [bestScore, setBestScore] = useState(0);
+   195→   195→  const [hasKey, setHasKey] = useState(false);
+   196→   196→  const [paused, setPaused] = useState(false);
+   197→   197→  const [victory, setVictory] = useState(false);
+   198→   198→  const [monstersKilled, setMonstersKilled] = useState(0);
+   199→   199→
+   200→   200→  const g = useRef({
+   201→   201→    grid: [] as number[][],
+   202→   202→    floor: 1,
+   203→   203→    px: 1, py: 1,
+   204→   204→    hp: 30, maxHp: 30, atk: 5, def: 1,
+   205→   205→    hasKey: false,
+   206→   206→    monsters: [] as Monster[],
+   207→   207→    items: [] as DItem[],
+   208→   208→    doorX: 1, doorY: 1,
+   209→   209→    seen: new Set<string>(),
+   210→   210→    monstersKilled: 0,
+   211→   211→    score: 0,
+   212→   212→    phase: 'idle' as Phase,
+   213→   213→    paused: false,
+   214→   214→    victory: false,
+   215→   215→    floats: [] as FloatText[],
+   216→   216→  }).current;
+   217→   217→
+   218→   218→  const fetchBest = useCallback(async () => {
+   219→   219→    try {
+   220→   220→      const r = await fetch('/api/games/scores');
+   221→   221→      const d = await r.json();
+   222→   222→      if (d.data) {
+   223→   223→        const e = d.data.find((s: { game: string; score: number }) => s.game === GAME_NAME);
+   224→   224→        setBestScore(e ? e.score : 0);
+   225→   225→      }
+   226→   226→    } catch { /* */ }
+   227→   227→  }, []);
+   228→   228→
+   229→   229→  useEffect(() => { fetchBest(); }, [fetchBest]);
+   230→   230→
+   231→   231→  const submitScore = useCallback(async (s: number) => {
+   232→   232→    try {
+   233→   233→      await fetch('/api/games/scores', {
+   234→   234→        method: 'POST',
+   235→   235→        headers: { 'Content-Type': 'application/json' },
+   236→   236→        body: JSON.stringify({ game: GAME_NAME, score: s }),
+   237→   237→      });
+   238→   238→    } catch { /* */ }
+   239→   239→    fetchBest();
+   240→   240→  }, [fetchBest]);
+   241→   241→
+   242→   242→  const addFloat = useCallback((x: number, y: number, text: string, color: string, life = 40) => {
+   243→   243→    g.floats.push({ x: x * CELL + CELL / 2, y: y * CELL, text, color, life, maxLife: life });
+   244→   244→  }, []);
+   245→   245→
+   246→   246→  const endGame = useCallback((win: boolean) => {
+   247→   247→    g.phase = 'over'; g.victory = win;
+   248→   248→    const s = g.floor * 100 + g.monstersKilled * 10;
+   249→   249→    g.score = s;
+   250→   250→    setPhase('over'); setScore(s); setVictory(win);
+   251→   251→    submitScore(s);
+   252→   252→  }, [submitScore]);
+   253→   253→
+   254→   254→  const initFloor = useCallback((fl: number, keepStats: boolean) => {
+   255→   255→    const d = generateDungeon(fl);
+   256→   256→    g.grid = d.grid; g.px = d.px; g.py = d.py;
+   257→   257→    g.doorX = d.doorX; g.doorY = d.doorY;
+   258→   258→    g.monsters = d.monsters; g.items = d.items;
+   259→   259→    g.seen = new Set<string>();
+   260→   260→
+   261→   261→    if (!keepStats) {
+   262→   262→      g.hp = 30; g.maxHp = 30; g.atk = 5; g.def = 1;
+   263→   263→      g.hasKey = false; g.monstersKilled = 0; g.victory = false;
+   264→   264→    } else {
+   265→   265→      g.hasKey = false;
+   266→   266→      const heal = Math.floor(g.maxHp * 0.3);
+   267→   267→      g.hp = Math.min(g.hp + heal, g.maxHp);
+   268→   268→    }
+   269→   269→
+   270→   270→    g.floor = fl;
+   271→   271→    // Reveal area around player start
+   272→   272→    for (let dy = -VISION; dy <= VISION; dy++)
+   273→   273→      for (let dx = -VISION; dx <= VISION; dx++) {
+   274→   274→        const nx = g.px + dx, ny = g.py + dy;
+   275→   275→        if (nx >= 0 && nx < GRID && ny >= 0 && ny < GRID) g.seen.add(`${nx},${ny}`);
+   276→   276→      }
+   277→   277→    g.floats.push({ x: W / 2, y: H / 2, text: `第 ${fl} 层`, color: '#fbbf24', life: 60, maxLife: 60 });
+   278→   278→
+   279→   279→    setFloor(fl); setHp(g.hp); setMaxHp(g.maxHp); setHasKey(false);
+   280→   280→    setScore(g.floor * 100 + g.monstersKilled * 10);
+   281→   281→  }, []);
+   282→   282→
+   283→   283→  const startGame = useCallback(() => {
+   284→   284→    g.phase = 'playing'; g.paused = false; g.floats = [];
+   285→   285→    setPhase('playing'); setPaused(false); setVictory(false);
+   286→   286→    initFloor(1, false);
+   287→   287→  }, [initFloor]);
+   288→   288→
+   289→   289→  // Main movement and interaction logic
+   290→   290→  const movePlayer = useCallback((dx: number, dy: number) => {
+   291→   291→    if (g.phase !== 'playing' || g.paused) return;
+   292→   292→    const nx = g.px + dx, ny = g.py + dy;
+   293→   293→    if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) return;
+   294→   294→    if (g.grid[ny][nx] === WALL) return;
+   295→   295→
+   296→   296→    // Check for monster at target position
+   297→   297→    const mi = g.monsters.findIndex(m => m.x === nx && m.y === ny);
+   298→   298→    if (mi >= 0) {
+   299→   299→      const m = g.monsters[mi];
+   300→   300→      const dmg = Math.max(1, g.atk - m.def);
+   301→   301→      m.hp -= dmg;
+   302→   302→      addFloat(nx, ny, `-${dmg}`, '#fbbf24');
+   303→   303→
+   304→   304→      if (m.hp <= 0) {
+   305→   305→        g.monsters.splice(mi, 1);
+   306→   306→        g.monstersKilled++;
+   307→   307→        setMonstersKilled(g.monstersKilled);
+   308→   308→        addFloat(nx, ny - 0.5, '击杀!', '#22c55e', 50);
+   309→   309→        setScore(g.floor * 100 + g.monstersKilled * 10);
+   310→   310→      } else {
+   311→   311→        const cd = Math.max(1, m.atk - g.def);
+   312→   312→        g.hp -= cd;
+   313→   313→        addFloat(g.px, g.py, `-${cd}`, '#ef4444');
+   314→   314→        setHp(g.hp);
+   315→   315→        if (g.hp <= 0) { g.hp = 0; setHp(0); endGame(false); return; }
+   316→   316→      }
+   317→   317→      return;
+   318→   318→    }
+   319→   319→
+   320→   320→    // Move player to new position
+   321→   321→    g.px = nx; g.py = ny;
+   322→   322→    for (let ddy = -VISION; ddy <= VISION; ddy++)
+   323→   323→      for (let ddx = -VISION; ddx <= VISION; ddx++) {
+   324→   324→        const rrx = nx + ddx, rry = ny + ddy;
+   325→   325→        if (rrx >= 0 && rrx < GRID && rry >= 0 && rry < GRID) g.seen.add(`${rrx},${rry}`);
+   326→   326→      }
+   327→   327→
+   328→   328→    // Check for items at new position
+   329→   329→    const ii = g.items.findIndex(it => it.x === nx && it.y === ny);
+   330→   330→    if (ii >= 0) {
+   331→   331→      const item = g.items[ii];
+   332→   332→      g.items.splice(ii, 1);
+   333→   333→      if (item.type === 'key') {
+   334→   334→        g.hasKey = true; setHasKey(true);
+   335→   335→        addFloat(nx, ny, '获得钥匙!', '#fbbf24', 50);
+   336→   336→      } else if (item.type === 'health') {
+   337→   337→        const heal = 15;
+   338→   338→        g.hp = Math.min(g.hp + heal, g.maxHp);
+   339→   339→        setHp(g.hp);
+   340→   340→        addFloat(nx, ny, `+${heal} 生命`, '#22c55e');
+   341→   341→      } else if (item.type === 'sword') {
+   342→   342→        g.atk += 2;
+   343→   343→        addFloat(nx, ny, '+2 攻击', '#f97316');
+   344→   344→      } else if (item.type === 'shield') {
+   345→   345→        g.def += 1;
+   346→   346→        addFloat(nx, ny, '+1 防御', '#3b82f6');
+   347→   347→      }
+   348→   348→    }
+   349→   349→
+   350→   350→    // Check for door at new position
+   351→   351→    if (nx === g.doorX && ny === g.doorY) {
+   352→   352→      if (g.hasKey) {
+   353→   353→        if (g.floor >= 5) {
+   354→   354→          endGame(true);
+   355→   355→        } else {
+   356→   356→          initFloor(g.floor + 1, true);
+   357→   357→        }
+   358→   358→      } else {
+   359→   359→        addFloat(nx, ny, '需要钥匙!', '#ef4444', 50);
+   360→   360→      }
+   361→   361→    }
+   362→   362→  }, [addFloat, endGame, initFloor]);
+   363→   363→
+   364→   364→  // Canvas buffer resize for high-DPI and responsive sizing
+   365→   365→  useEffect(() => {
+   366→   366→    if (phase !== 'playing') return;
+   367→   367→    const canvas = canvasRef.current;
+   368→   368→    if (!canvas) return;
+   369→   369→    const resize = () => {
+   370→   370→      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   371→   371→      const rect = canvas.getBoundingClientRect();
+   372→   372→      canvas.width = rect.width * dpr;
+   373→   373→      canvas.height = rect.height * dpr;
+   374→   374→    };
+   375→   375→    resize();
+   376→   376→    window.addEventListener('resize', resize);
+   377→   377→    return () => { window.removeEventListener('resize', resize); };
+   378→   378→  }, [phase]);
+   379→   379→
+   380→   380→  // Canvas render loop
+   381→   381→  useEffect(() => {
+   382→   382→    if (phase !== 'playing') return;
+   383→   383→    const canvas = canvasRef.current;
+   384→   384→    if (!canvas) return;
+   385→   385→    const ctx = canvas.getContext('2d');
+   386→   386→    if (!ctx) return;
+   387→   387→
+   388→   388→    function isVis(x: number, y: number) {
+   389→   389→      return Math.abs(x - g.px) <= VISION && Math.abs(y - g.py) <= VISION;
+   390→   390→    }
+   391→   391→
+   392→   392→    function loop() {
+   393→   393→      if (g.phase !== 'playing') return;
+   394→   394→      if (!ctx || !canvas) return;
+   395→   395→
+   396→   396→      // Scale logical W x H to canvas buffer
+   397→   397→      ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
+   398→   398→
+   399→   399→      ctx.fillStyle = '#0a0a1a';
+   400→   400→      ctx.fillRect(0, 0, W, H);
+   401→   401→
+   402→   402→      // Draw all seen tiles
+   403→   403→      for (let y = 0; y < GRID; y++) {
+   404→   404→        for (let x = 0; x < GRID; x++) {
+   405→   405→          const k = `${x},${y}`;
+   406→   406→          if (!g.seen.has(k)) continue;
+   407→   407→          const sx = x * CELL, sy = y * CELL;
+   408→   408→          const vis = isVis(x, y);
+   409→   409→          const v = ((x * 7 + y * 13) % 5) * 3;
+   410→   410→
+   411→   411→          if (g.grid[y][x] === WALL) {
+   412→   412→            ctx.fillStyle = vis ? `rgb(${58 + v},${58 + v},${72 + v})` : `rgb(${38 + v},${38 + v},${48 + v})`;
+   413→   413→            ctx.fillRect(sx, sy, CELL, CELL);
+   414→   414→            ctx.strokeStyle = vis ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+   415→   415→            ctx.lineWidth = 0.5;
+   416→   416→            ctx.strokeRect(sx + 0.5, sy + 0.5, CELL - 1, CELL - 1);
+   417→   417→          } else {
+   418→   418→            ctx.fillStyle = vis ? `rgb(${120 + v},${108 + v},${88 + v})` : `rgb(${80 + v},${70 + v},${55 + v})`;
+   419→   419→            ctx.fillRect(sx, sy, CELL, CELL);
+   420→   420→            ctx.strokeStyle = vis ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.1)';
+   421→   421→            ctx.lineWidth = 0.5;
+   422→   422→            ctx.strokeRect(sx + 0.5, sy + 0.5, CELL - 1, CELL - 1);
+   423→   423→          }
+   424→   424→        }
+   425→   425→      }
+   426→   426→
+   427→   427→      // Draw door (if seen)
+   428→   428→      if (g.seen.has(`${g.doorX},${g.doorY}`)) {
+   429→   429→        const vis = isVis(g.doorX, g.doorY);
+   430→   430→        ctx.globalAlpha = vis ? 1 : 0.5;
+   431→   431→        ctx.font = `${CELL - 6}px serif`;
+   432→   432→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   433→   433→        ctx.fillText('🚪', g.doorX * CELL + CELL / 2, g.doorY * CELL + CELL / 2);
+   434→   434→        ctx.globalAlpha = 1;
+   435→   435→      }
+   436→   436→
+   437→   437→      // Draw items (if seen)
+   438→   438→      for (const item of g.items) {
+   439→   439→        if (!g.seen.has(`${item.x},${item.y}`)) continue;
+   440→   440→        const vis = isVis(item.x, item.y);
+   441→   441→        ctx.globalAlpha = vis ? 1 : 0.5;
+   442→   442→        ctx.font = `${CELL - 6}px serif`;
+   443→   443→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   444→   444→        ctx.fillText(item.emoji, item.x * CELL + CELL / 2, item.y * CELL + CELL / 2);
+   445→   445→        ctx.globalAlpha = 1;
+   446→   446→      }
+   447→   447→
+   448→   448→      // Draw monsters (visible only)
+   449→   449→      for (const m of g.monsters) {
+   450→   450→        if (!isVis(m.x, m.y)) continue;
+   451→   451→        const mx = m.x * CELL, my = m.y * CELL;
+   452→   452→        ctx.font = `${CELL - 4}px serif`;
+   453→   453→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   454→   454→        ctx.fillText(m.emoji, mx + CELL / 2, my + CELL / 2);
+   455→   455→        if (m.hp < m.maxHp) {
+   456→   456→          const bw = CELL - 4, bh = 3;
+   457→   457→          ctx.fillStyle = '#333';
+   458→   458→          ctx.fillRect(mx + 2, my + 1, bw, bh);
+   459→   459→          ctx.fillStyle = '#ef4444';
+   460→   460→          ctx.fillRect(mx + 2, my + 1, bw * (m.hp / m.maxHp), bh);
+   461→   461→        }
+   462→   462→      }
+   463→   463→
+   464→   464→      // Draw player
+   465→   465→      {
+   466→   466→        const ppx = g.px * CELL, ppy = g.py * CELL;
+   467→   467→        ctx.fillStyle = 'rgba(251,191,36,0.2)';
+   468→   468→        ctx.fillRect(ppx, ppy, CELL, CELL);
+   469→   469→        ctx.font = `${CELL - 2}px serif`;
+   470→   470→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   471→   471→        ctx.fillText('⚔️', ppx + CELL / 2, ppy + CELL / 2 + 1);
+   472→   472→      }
+   473→   473→
+   474→   474→      // Fog overlay: darken seen-but-not-visible tiles
+   475→   475→      for (let y = 0; y < GRID; y++) {
+   476→   476→        for (let x = 0; x < GRID; x++) {
+   477→   477→          if (g.seen.has(`${x},${y}`) && !isVis(x, y)) {
+   478→   478→            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+   479→   479→            ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+   480→   480→          }
+   481→   481→        }
+   482→   482→      }
+   483→   483→
+   484→   484→      // Draw floating texts
+   485→   485→      for (let i = g.floats.length - 1; i >= 0; i--) {
+   486→   486→        const f = g.floats[i];
+   487→   487→        f.y -= 0.8; f.life--;
+   488→   488→        if (f.life <= 0) { g.floats.splice(i, 1); continue; }
+   489→   489→        ctx.globalAlpha = Math.min(1, f.life / (f.maxLife * 0.3));
+   490→   490→        ctx.fillStyle = f.color;
+   491→   491→        ctx.font = 'bold 12px sans-serif';
+   492→   492→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   493→   493→        ctx.fillText(f.text, f.x, f.y);
+   494→   494→        ctx.globalAlpha = 1;
+   495→   495→      }
+   496→   496→
+   497→   497→      // Pause overlay
+   498→   498→      if (g.paused) {
+   499→   499→        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+   500→   500→        ctx.fillRect(0, 0, W, H);
+   501→   501→        ctx.fillStyle = '#fff';
+   502→   502→        ctx.font = 'bold 28px sans-serif';
+   503→   503→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   504→   504→        ctx.fillText('已暂停', W / 2, H / 2);
+   505→   505→      }
+   506→   506→
+   507→   507→      rafRef.current = requestAnimationFrame(loop);
+   508→   508→    }
+   509→   509→
+   510→   510→    rafRef.current = requestAnimationFrame(loop);
+   511→   511→    return () => cancelAnimationFrame(rafRef.current);
+   512→   512→  }, [phase]);
+   513→   513→
+   514→   514→  // Keyboard controls
+   515→   515→  useEffect(() => {
+   516→   516→    const h = (e: KeyboardEvent) => {
+   517→   517→      if (g.phase !== 'playing') return;
+   518→   518→      switch (e.code) {
+   519→   519→        case 'ArrowUp': case 'KeyW': e.preventDefault(); movePlayer(0, -1); break;
+   520→   520→        case 'ArrowDown': case 'KeyS': e.preventDefault(); movePlayer(0, 1); break;
+   521→   521→        case 'ArrowLeft': case 'KeyA': e.preventDefault(); movePlayer(-1, 0); break;
+   522→   522→        case 'ArrowRight': case 'KeyD': e.preventDefault(); movePlayer(1, 0); break;
+   523→   523→        case 'Escape': e.preventDefault(); g.paused = !g.paused; setPaused(g.paused); break;
+   524→   524→      }
+   525→   525→    };
+   526→   526→    window.addEventListener('keydown', h);
+   527→   527→    return () => window.removeEventListener('keydown', h);
+   528→   528→  }, [movePlayer]);
+   529→   529→
+   530→   530→  // --- IDLE SCREEN ---
+   531→   531→  if (phase === 'idle') {
+   532→   532→    return (
+   533→   533→      <div className="flex flex-col items-center gap-4 px-2 py-2 w-full max-w-lg mx-auto">
+   534→   534→        <div className="flex items-center gap-2 self-start w-full">
+   535→   535→          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
+   536→   536→          <h2 className="text-lg sm:text-xl font-bold">⚔️ 地牢探险</h2>
+   537→   537→          <div className="ml-auto"><GameControlsHelp info={dungeonControlsInfo} /></div>
+   538→   538→        </div>
+   539→   539→        <div className="w-full bg-card border rounded-xl p-4 space-y-4">
+   540→   540→          <div className="text-center space-y-2">
+   541→   541→            <p className="text-4xl">🏰</p>
+   542→   542→            <p className="text-sm text-muted-foreground">探索地牢，打败怪物，找到钥匙逃生天</p>
+   543→   543→          </div>
+   544→   544→          <div className="flex items-center justify-center gap-2 text-sm">
+   545→   545→            <Trophy className="h-4 w-4 text-yellow-500" />
+   546→   546→            <span>最高分: {bestScore}</span>
+   547→   547→          </div>
+   548→   548→          <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground">
+   549→   549→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">🟢</span><p className="mt-1">史莱姆</p></div>
+   550→   550→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">💀</span><p className="mt-1">骷髅</p></div>
+   551→   551→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">👻</span><p className="mt-1">幽灵</p></div>
+   552→   552→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">🐉</span><p className="mt-1">巨龙</p></div>
+   553→   553→          </div>
+   554→   554→          <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground">
+   555→   555→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">❤️</span><p className="mt-1">药水</p></div>
+   556→   556→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">⚔️</span><p className="mt-1">攻击</p></div>
+   557→   557→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">🛡️</span><p className="mt-1">防御</p></div>
+   558→   558→            <div className="bg-muted rounded-lg p-2 text-center"><span className="text-lg">🔑</span><p className="mt-1">钥匙</p></div>
+   559→   559→          </div>
+   560→   560→          <Button onClick={startGame} className="w-full" size="lg">开始游戏</Button>
+   561→   561→        </div>
+   562→   562→      </div>
+   563→   563→    );
+   564→   564→  }
+   565→   565→
+   566→   566→  // --- GAME OVER SCREEN ---
+   567→   567→  if (phase === 'over') {
+   568→   568→    return (
+   569→   569→      <div className="flex flex-col items-center gap-4 px-2 py-2 w-full max-w-lg mx-auto">
+   570→   570→        <div className="flex items-center gap-2 self-start w-full">
+   571→   571→          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
+   572→   572→          <h2 className="text-lg sm:text-xl font-bold">{victory ? '通关胜利!' : '游戏结束'}</h2>
+   573→   573→        </div>
+   574→   574→        <div className="w-full bg-card border rounded-xl p-4 flex flex-col items-center gap-3">
+   575→   575→          <p className="text-5xl">{victory ? '🏆' : '💀'}</p>
+   576→   576→          <p className="text-3xl font-bold">{score}</p>
+   577→   577→          <p className="text-sm text-muted-foreground">分数</p>
+   578→   578→          <p className="text-sm">到达第 {floor} 层 | 击杀 {monstersKilled} 只怪物 | 最高: {bestScore}</p>
+   579→   579→          {score > bestScore && score > 0 && <p className="text-yellow-500 font-bold">新纪录!</p>}
+   580→   580→          <div className="flex gap-2 w-full mt-2">
+   581→   581→            <Button variant="outline" className="flex-1" onClick={onBack}>返回</Button>
+   582→   582→            <Button className="flex-1" onClick={startGame}><RotateCcw className="h-4 w-4 mr-1" />重试</Button>
+   583→   583→          </div>
+   584→   584→        </div>
+   585→   585→      </div>
+   586→   586→    );
+   587→   587→  }
+   588→   588→
+   589→   589→  // --- PLAYING SCREEN ---
+   590→   590→  const hpPct = maxHp > 0 ? (hp / maxHp) * 100 : 0;
+   591→   591→  const hpCol = hpPct > 50 ? 'bg-green-500' : hpPct > 25 ? 'bg-yellow-500' : 'bg-red-500';
+   592→   592→
+   593→   593→  return (
+   594→   594→    <div className="flex flex-col items-center gap-2 px-2 py-2 w-full max-w-lg mx-auto">
+   595→   595→      <div className="flex items-center gap-1 w-full min-h-[44px]">
+   596→   596→        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={onBack}>
+   597→   597→          <ArrowLeft className="h-4 w-4" />
+   598→   598→        </Button>
+   599→   599→        <span className="text-xs sm:text-sm font-bold truncate">⚔️ 地牢探险</span>
+   600→   600→        <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">第{floor}层</span>
+   601→   601→        <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+   602→   602→          {hasKey && <span className="text-xs sm:text-sm" title="持有钥匙">🔑</span>}
+   603→   603→          <div className="flex items-center gap-1">
+   604→   604→            <span className="text-[10px] sm:text-xs">❤️</span>
+   605→   605→            <div className="w-12 sm:w-16 h-2.5 sm:h-3 bg-muted rounded-full overflow-hidden">
+   606→   606→              <div className={`h-full ${hpCol} rounded-full transition-all duration-300`} style={{ width: `${hpPct}%` }} />
+   607→   607→            </div>
+   608→   608→            <span className="text-[10px] sm:text-xs tabular-nums w-5 text-right">{hp}</span>
+   609→   609→          </div>
+   610→   610→          <div className="flex items-center gap-0.5">
+   611→   611→            <Trophy className="h-3 w-3 text-yellow-500" />
+   612→   612→            <span className="text-[10px] sm:text-xs tabular-nums">{score}</span>
+   613→   613→          </div>
+   614→   614→          <div className="hidden sm:block">
+   615→   615→            <GameControlsHelp info={dungeonControlsInfo} />
+   616→   616→          </div>
+   617→   617→        </div>
+   618→   618→      </div>
+   619→   619→
+   620→   620→      <canvas
+   621→   621→        ref={canvasRef}
+   622→   622→        style={{ width: '100%', maxWidth: W, aspectRatio: `${W}/${H}`, touchAction: 'none' }}
+   623→   623→        className="rounded-lg border"
+   624→   624→      />
+   625→   625→
+   626→   626→      <div className="md:hidden flex flex-col items-center gap-1">
+   627→   627→        <button
+   628→   628→          className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/30 text-primary font-bold text-xl flex items-center justify-center active:bg-primary/25 select-none"
+   629→   629→          style={{ touchAction: 'none', userSelect: 'none' }}
+   630→   630→          onTouchStart={(e) => { e.preventDefault(); movePlayer(0, -1); }}
+   631→   631→          onMouseDown={() => movePlayer(0, -1)}
+   632→   632→        >↑</button>
+   633→   633→        <div className="flex gap-1">
+   634→   634→          <button
+   635→   635→            className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/30 text-primary font-bold text-xl flex items-center justify-center active:bg-primary/25 select-none"
+   636→   636→            style={{ touchAction: 'none', userSelect: 'none' }}
+   637→   637→            onTouchStart={(e) => { e.preventDefault(); movePlayer(-1, 0); }}
+   638→   638→            onMouseDown={() => movePlayer(-1, 0)}
+   639→   639→          >←</button>
+   640→   640→          <div className="w-14 h-14" />
+   641→   641→          <button
+   642→   642→            className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/30 text-primary font-bold text-xl flex items-center justify-center active:bg-primary/25 select-none"
+   643→   643→            style={{ touchAction: 'none', userSelect: 'none' }}
+   644→   644→            onTouchStart={(e) => { e.preventDefault(); movePlayer(1, 0); }}
+   645→   645→            onMouseDown={() => movePlayer(1, 0)}
+   646→   646→          >→</button>
+   647→   647→        </div>
+   648→   648→        <button
+   649→   649→          className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/30 text-primary font-bold text-xl flex items-center justify-center active:bg-primary/25 select-none"
+   650→   650→          style={{ touchAction: 'none', userSelect: 'none' }}
+   651→   651→          onTouchStart={(e) => { e.preventDefault(); movePlayer(0, 1); }}
+   652→   652→          onMouseDown={() => movePlayer(0, 1)}
+   653→   653→        >↓</button>
+   654→   654→      </div>
+   655→   655→    </div>
+   656→   656→  );
+   657→   657→}
+   658→   658→

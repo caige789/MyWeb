@@ -1,0 +1,1421 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { ArrowLeft, Trophy } from 'lucide-react';
+     6→import GameControlsHelp, { type GameControlsInfo } from './GameControlsHelp';
+     7→
+     8→interface PvzGameProps {
+     9→  onBack: () => void;
+    10→}
+    11→
+    12→const GAME_NAME = 'pvz';
+    13→const ROWS = 5;
+    14→const COLS = 9;
+    15→
+    16→// Full-screen canvas layout constants
+    17→const LOGIC_W = 900;
+    18→const TOP_BAR_H = 52;
+    19→const GRID_H = 250;
+    20→const BOT_BAR_H = 90;
+    21→const LOGIC_H = TOP_BAR_H + GRID_H + BOT_BAR_H; // 392
+    22→const GRID_Y = TOP_BAR_H; // 52
+    23→const CELL_W = LOGIC_W / COLS; // 100
+    24→const CELL_H = GRID_H / ROWS; // 50
+    25→
+    26→// UI button rectangles in LOGIC space
+    27→const BACK_BTN = { x: 5, y: 6, w: 60, h: 40 };
+    28→const COLLECT_BTN = { x: 200, y: 6, w: 80, h: 40 };
+    29→const SHOVEL_BTN_X = 4;
+    30→const SHOVEL_BTN_W = 60;
+    31→const CARD_START_X = 68;
+    32→const CARD_SLOT_W = 92;
+    33→const CARD_DRAW_W = 88;
+    34→const CARD_DRAW_H = 80;
+    35→const BOT_PAD_Y = 5;
+    36→
+    37→const TOTAL_WAVES = 5;
+    38→const WAVE_DURATION = 30;
+    39→const SUN_DROP_INTERVAL = 7000;
+    40→const SUN_VALUE = 25;
+    41→const PEA_SPEED = 4.5;
+    42→const PEA_DAMAGE = 25;
+    43→const SHOOT_INTERVAL = 1400;
+    44→const SUNFLOWER_INTERVAL = 10000;
+    45→const SUN_LIFE = 900;
+    46→const ICE_SLOW_DURATION = 3000;
+    47→const ICE_SLOW_FACTOR = 0.5;
+    48→const CHERRY_FUSE_TIME = 1200;
+    49→const CHERRY_DAMAGE = 1800;
+    50→const CHERRY_RADIUS_CELLS = 1.5;
+    51→const CHOMP_DIGEST_TIME = 25000;
+    52→const CHOMP_MAX_HP = 300;
+    53→const MINE_ARM_TIME = 4000;
+    54→const TORCH_EXTRA_DAMAGE = 15;
+    55→const SUN_ATTRACT_RADIUS = 90;
+    56→const SUN_ATTRACT_SPEED = 10;
+    57→
+    58→type Difficulty = 'easy' | 'normal' | 'hard';
+    59→
+    60→interface DifficultyConfig {
+    61→  label: string;
+    62→  initSun: number;
+    63→  zombieSpeedMul: number;
+    64→  zombieCountMul: number;
+    65→}
+    66→
+    67→const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
+    68→  easy:   { label: '\u7b80\u5355', initSun: 200, zombieSpeedMul: 0.6, zombieCountMul: 0.6 },
+    69→  normal: { label: '\u666e\u901a', initSun: 150, zombieSpeedMul: 1.0, zombieCountMul: 1.0 },
+    70→  hard:   { label: '\u56f0\u96be', initSun: 75,  zombieSpeedMul: 1.3, zombieCountMul: 1.4 },
+    71→};
+    72→
+    73→interface PlantDef {
+    74→  id: string;
+    75→  name: string;
+    76→  emoji: string;
+    77→  cost: number;
+    78→  hp: number;
+    79→  desc: string;
+    80→}
+    81→
+    82→const PLANT_DEFS: PlantDef[] = [
+    83→  { id: 'sunflower',   name: '\u5411\u65e5\u8475',     emoji: '\u{1f33b}', cost: 50,  hp: 80,  desc: '\u4ea7\u751f\u9633\u5149' },
+    84→  { id: 'peashooter',  name: '\u8c4c\u8c46\u5c04\u624b',   emoji: '\u{1f7e2}', cost: 100, hp: 80,  desc: '\u5355\u53d1\u5c04\u51fb' },
+    85→  { id: 'wallnut',     name: '\u575a\u679c\u5899',     emoji: '\u{1f95c}', cost: 50,  hp: 800, desc: '\u9ad8\u8840\u91cf\u6321\u8def' },
+    86→  { id: 'doubleshoot', name: '\u53cc\u53d1\u5c04\u624b',   emoji: '\u{1f535}', cost: 200, hp: 80,  desc: '\u53cc\u53d1\u5c04\u51fb' },
+    87→  { id: 'iceshooter',  name: '\u5bd2\u51b0\u5c04\u624b', emoji: '\u2744\ufe0f', cost: 175, hp: 80,  desc: '\u51b0\u8c4c\u8c46\u51cf\u901f' },
+    88→  { id: 'cherrybomb',  name: '\u6a31\u6843\u70b8\u5f39', emoji: '\u{1f4a5}', cost: 150, hp: 80,  desc: '\u8303\u56f4\u7206\u70b8' },
+    89→  { id: 'chomper',     name: '\u5927\u5634\u82b1',     emoji: '\u{1f335}', cost: 150, hp: 80,  desc: '\u5403\u6389\u50f5\u5c38' },
+    90→  { id: 'potatomine',  name: '\u571f\u8c46\u96f7',     emoji: '\u{1f954}', cost: 25,  hp: 80,  desc: '\u8e29\u7206\u50f5\u5c38' },
+    91→  { id: 'torchwood',   name: '\u706b\u70ac\u6811\u6869',   emoji: '\u{1f525}', cost: 175, hp: 200, desc: '\u8c4c\u8c46\u53d8\u706b\u7403' },
+    92→];
+    93→
+    94→type ZombieType = 'normal' | 'cone' | 'bucket' | 'flag' | 'newspaper' | 'football' | 'gargantuar';
+    95→
+    96→interface ZombieDef {
+    97→  type: ZombieType;
+    98→  name: string;
+    99→  emoji: string;
+   100→  hp: number;
+   101→  speed: number;
+   102→  score: number;
+   103→}
+   104→
+   105→const ZOMBIE_DEFS: Record<ZombieType, ZombieDef> = {
+   106→  normal:    { type: 'normal',    name: '\u666e\u901a\u50f5\u5c38',   emoji: '\u{1f9df}',     hp: 100,  speed: 0.3,  score: 10 },
+   107→  cone:      { type: 'cone',      name: '\u8def\u969c\u50f5\u5c38',   emoji: '\u{1f9df}\u200d\u2642\ufe0f',  hp: 200,  speed: 0.3,  score: 20 },
+   108→  bucket:    { type: 'bucket',    name: '\u94c1\u6876\u50f5\u5c38', emoji: '\u{1f9df}\u200d\u2640\ufe0f', hp: 400,  speed: 0.25, score: 40 },
+   109→  flag:      { type: 'flag',      name: '\u65d7\u5e1c\u50f5\u5c38',   emoji: '\u{1f6a9}',     hp: 150,  speed: 0.5,  score: 30 },
+   110→  newspaper: { type: 'newspaper', name: '\u62a5\u7eb8\u50f5\u5c38', emoji: '\u{1f4f0}',     hp: 280,  speed: 0.3,  score: 35 },
+   111→  football:  { type: 'football',  name: '\u6a44\u6984\u7403\u50f5\u5c38', emoji: '\u{1f3c8}',     hp: 500,  speed: 0.45, score: 50 },
+   112→  gargantuar:{ type: 'gargantuar',name: '\u5de8\u4eba\u50f5\u5c38',   emoji: '\u{1f947}',     hp: 1000, speed: 0.15, score: 80 },
+   113→};
+   114→
+   115→interface Plant {
+   116→  type: string;
+   117→  row: number;
+   118→  col: number;
+   119→  hp: number;
+   120→  maxHp: number;
+   121→  shootTimer: number;
+   122→  sunTimer: number;
+   123→  fuseTimer: number;
+   124→  digestTimer: number;
+   125→  digesting: boolean;
+   126→  dead: boolean;
+   127→  armTimer: number;
+   128→  armed: boolean;
+   129→}
+   130→
+   131→interface Zombie {
+   132→  id: number;
+   133→  type: ZombieType;
+   134→  name: string;
+   135→  emoji: string;
+   136→  row: number;
+   137→  x: number;
+   138→  hp: number;
+   139→  maxHp: number;
+   140→  baseSpeed: number;
+   141→  speed: number;
+   142→  score: number;
+   143→  hitFlash: number;
+   144→  eating: boolean;
+   145→  walkPhase: number;
+   146→  slowTimer: number;
+   147→  paperBroken: boolean;
+   148→  smashed: boolean;
+   149→}
+   150→
+   151→interface Pea {
+   152→  row: number;
+   153→  x: number;
+   154→  y: number;
+   155→  isIce: boolean;
+   156→  isFire: boolean;
+   157→  damage: number;
+   158→}
+   159→
+   160→interface Sun {
+   161→  id: number;
+   162→  x: number;
+   163→  y: number;
+   164→  targetY: number;
+   165→  vy: number;
+   166→  collected: boolean;
+   167→  alpha: number;
+   168→  bouncePhase: number;
+   169→  lifeTimer: number;
+   170→  scale: number;
+   171→}
+   172→
+   173→interface Mower {
+   174→  row: number;
+   175→  x: number;
+   176→  active: boolean;
+   177→  speed: number;
+   178→}
+   179→
+   180→function getWaveZombies(wave: number, countMul: number): { type: ZombieType; delay: number }[] {
+   181→  const zombies: { type: ZombieType; delay: number }[] = [];
+   182→  let delay = 0;
+   183→  const baseCounts: number[][] = [
+   184→    [4, 1, 0, 0, 0, 0, 0],
+   185→    [3, 2, 0, 1, 1, 0, 0],
+   186→    [2, 2, 1, 1, 1, 1, 0],
+   187→    [2, 3, 1, 1, 2, 1, 1],
+   188→    [1, 3, 2, 2, 2, 2, 2],
+   189→  ];
+   190→  const counts = baseCounts[Math.min(wave, baseCounts.length - 1)];
+   191→  const types: ZombieType[] = ['normal', 'cone', 'bucket', 'flag', 'newspaper', 'football', 'gargantuar'];
+   192→  for (let i = 0; i < types.length; i++) {
+   193→    const count = Math.round(counts[i] * countMul);
+   194→    for (let j = 0; j < count; j++) {
+   195→      zombies.push({ type: types[i], delay });
+   196→      delay += 2000 + Math.random() * 3000;
+   197→    }
+   198→  }
+   199→  for (let i = zombies.length - 1; i > 0; i--) {
+   200→    const j = Math.floor(Math.random() * (i + 1));
+   201→    [zombies[i], zombies[j]] = [zombies[j], zombies[i]];
+   202→  }
+   203→  return zombies;
+   204→}
+   205→
+   206→const pvzControlsInfo: GameControlsInfo = {
+   207→  gameName: '\u690d\u7269\u5927\u6218\u50f5\u5c38',
+   208→  desktop: [
+   209→    { action: '\u70b9\u51fb\u690d\u7269\u5361', keys: [], description: '\u9009\u4e2d\u8981\u79cd\u690d\u7684\u690d\u7269' },
+   210→    { action: '\u70b9\u51fb\u8349\u576a', keys: [], description: '\u5728\u7a7a\u683c\u5b50\u4e0a\u79cd\u690d\u9009\u4e2d\u7684\u690d\u7269' },
+   211→    { action: '\u70b9\u51fb\u9633\u5149', keys: [], description: '\u6536\u96c6\u98d8\u843d\u7684\u9633\u5149' },
+   212→  ],
+   213→  mobile: [
+   214→    { action: '\u70b9\u51fb\u690d\u7269\u5361', keys: [], description: '\u9009\u4e2d\u8981\u79cd\u690d\u7684\u690d\u7269' },
+   215→    { action: '\u70b9\u51fb\u8349\u576a', keys: [], description: '\u5728\u7a7a\u683c\u5b50\u4e0a\u79cd\u690d\u9009\u4e2d\u7684\u690d\u7269' },
+   216→    { action: '\u70b9\u51fb\u9633\u5149', keys: [], description: '\u6536\u96c6\u98d8\u843d\u7684\u9633\u5149' },
+   217→    { action: '\u6536\u96c6\u5168\u90e8\u6309\u94ae', keys: [], description: '\u4e00\u952e\u6536\u96c6\u6240\u6709\u573a\u4e0a\u9633\u5149' },
+   218→  ],
+   219→  rules: [
+   220→    '\u9009\u62e9\u690d\u7269\u5361\u7247\uff0c\u70b9\u51fb\u8349\u576a\u7a7a\u683c\u5b50\u79cd\u690d',
+   221→    '\u6536\u96c6\u9633\u5149\u83b7\u53d6\u8d44\u6e90\uff0c\u7528\u4e8e\u8d2d\u4e70\u690d\u7269',
+   222→    '\u50f5\u5c38\u4ece\u53f3\u4fa7\u51fa\u73b0\uff0c\u690d\u7269\u81ea\u52a8\u653b\u51fb',
+   223→    '\u963b\u6b62\u50f5\u5c38\u5230\u8fbe\u5de6\u4fa7\u5373\u53ef\u83b7\u80dc',
+   224→    '\u6bcf\u6392\u6709\u4e00\u4e2a\u5272\u8349\u673a\u4f5c\u4e3a\u6700\u540e\u9632\u7ebf',
+   225→  ],
+   226→  tips: [
+   227→    '\u4f18\u5148\u79cd\u5411\u65e5\u8475\uff0c\u5feb\u901f\u79ef\u7d2f\u9633\u5149',
+   228→    '\u575a\u679c\u5899\u53ef\u4ee5\u6321\u4f4f\u50f5\u5c38\uff0c\u4e89\u53d6\u65f6\u95f4',
+   229→    '\u6a31\u6843\u70b8\u5f39\u4e00\u6b21\u6027\u6d88\u706d\u8303\u56f4\u5185\u6240\u6709\u50f5\u5c38',
+   230→    '\u5730\u96f7\u9700\u89814\u79d2\u51c6\u5907\u65f6\u95f4\uff0c\u79cd\u5728\u524d\u65b9\u6548\u679c\u597d',
+   231→    '\u706b\u70ac\u6811\u6869\u53ef\u4ee5\u628a\u8c4c\u8c46\u53d8\u6210\u706b\u7403\uff0c\u4f24\u5bb3\u7ffb\u500d',
+   232→  ],
+   233→};
+   234→
+   235→export default function PvzGame({ onBack }: PvzGameProps) {
+   236→  const [phase, setPhase] = useState<'settings' | 'playing' | 'won' | 'lost'>('settings');
+   237→  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+   238→  const [highScore, setHighScore] = useState(0);
+   239→
+   240→  const plantsRef = useRef<Plant[]>([]);
+   241→  const zombiesRef = useRef<Zombie[]>([]);
+   242→  const peasRef = useRef<Pea[]>([]);
+   243→  const sunsRef = useRef<Sun[]>([]);
+   244→  const mowersRef = useRef<Mower[]>([]);
+   245→  const sunRef = useRef(100);
+   246→  const scoreRef = useRef(0);
+   247→  const waveRef = useRef(1);
+   248→  const waveElapsedRef = useRef(0);
+   249→  const waveZombiesRef = useRef<{ type: ZombieType; delay: number }[]>([]);
+   250→  const waveSpawnIdxRef = useRef(0);
+   251→  const sunDropTimerRef = useRef(0);
+   252→  const zombieIdRef = useRef(0);
+   253→  const sunIdRef = useRef(0);
+   254→  const diffRef = useRef<Difficulty>('normal');
+   255→  const overRef = useRef(false);
+   256→  const wonRef = useRef(false);
+   257→  const selPlantRef = useRef<string | null>(null);
+   258→  const lastTimeRef = useRef(0);
+   259→  const rafRef = useRef(0);
+   260→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   261→  const scaleXRef = useRef(1);
+   262→  const scaleYRef = useRef(1);
+   263→  const dprRef = useRef(1);
+   264→  const cursorRef = useRef<{ x: number; y: number } | null>(null);
+   265→  const isShovelRef = useRef(false);
+   266→  const loopFnRef = useRef<(timestamp: number) => void>(null!);
+   267→  const submitScoreRef = useRef<(s: number) => void>(() => {});
+   268→  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+   269→  const hasMovedRef = useRef(false);
+   270→  const collectAllFlagRef = useRef(false);
+   271→
+   272→  const [selectedPlant, setSelectedPlant] = useState<string | null>(null);
+   273→  const [isShovel, setIsShovel] = useState(false);
+   274→  const [displaySun, setDisplaySun] = useState(100);
+   275→  const [displayScore, setDisplayScore] = useState(0);
+   276→  const [displayWave, setDisplayWave] = useState(1);
+   277→
+   278→  useEffect(() => {
+   279→    fetch('/api/games/scores')
+   280→      .then(r => r.json())
+   281→      .then(data => {
+   282→        if (data.code === 200) {
+   283→          const pvz = (data.data || []).find((s: { game: string }) => s.game === GAME_NAME);
+   284→          if (pvz) setHighScore(pvz.score);
+   285→        }
+   286→      });
+   287→  }, []);
+   288→
+   289→  const doSubmitScore = useCallback((s: number) => {
+   290→    fetch('/api/games/scores', {
+   291→      method: 'POST',
+   292→      headers: { 'Content-Type': 'application/json' },
+   293→      body: JSON.stringify({ game: GAME_NAME, score: s }),
+   294→    })
+   295→      .then(r => r.json())
+   296→      .then(data => {
+   297→        if (data.code === 200 && data.data) setHighScore(data.data.score);
+   298→      });
+   299→  }, []);
+   300→
+   301→  useEffect(() => { submitScoreRef.current = doSubmitScore; }, [doSubmitScore]);
+   302→
+   303→  const setupCanvas = useCallback(() => {
+   304→    const canvas = canvasRef.current;
+   305→    if (!canvas) return;
+   306→    dprRef.current = Math.min(window.devicePixelRatio || 1, 2);
+   307→    const dpr = dprRef.current;
+   308→    const displayW = canvas.clientWidth;
+   309→    const displayH = canvas.clientHeight;
+   310→    if (displayW <= 0 || displayH <= 0) return;
+   311→    canvas.width = displayW * dpr;
+   312→    canvas.height = displayH * dpr;
+   313→    const scaleX = displayW / LOGIC_W;
+   314→    const scaleY = displayH / LOGIC_H;
+   315→    scaleXRef.current = scaleX;
+   316→    scaleYRef.current = scaleY;
+   317→    const ctx = canvas.getContext('2d');
+   318→    if (ctx) {
+   319→      ctx.setTransform(dpr * scaleX, 0, 0, dpr * scaleY, 0, 0);
+   320→    }
+   321→  }, []);
+   322→
+   323→  const initGame = useCallback((diff: Difficulty) => {
+   324→    const cfg = DIFFICULTY_CONFIG[diff];
+   325→    plantsRef.current = [];
+   326→    zombiesRef.current = [];
+   327→    peasRef.current = [];
+   328→    sunsRef.current = [];
+   329→    const mowers: Mower[] = [];
+   330→    for (let r = 0; r < ROWS; r++) {
+   331→      mowers.push({ row: r, x: 0, active: false, speed: 3 });
+   332→    }
+   333→    mowersRef.current = mowers;
+   334→    sunRef.current = cfg.initSun;
+   335→    scoreRef.current = 0;
+   336→    waveRef.current = 1;
+   337→    waveElapsedRef.current = 0;
+   338→    waveZombiesRef.current = getWaveZombies(0, cfg.zombieCountMul);
+   339→    waveSpawnIdxRef.current = 0;
+   340→    sunDropTimerRef.current = 0;
+   341→    zombieIdRef.current = 0;
+   342→    sunIdRef.current = 0;
+   343→    diffRef.current = diff;
+   344→    overRef.current = false;
+   345→    wonRef.current = false;
+   346→    selPlantRef.current = null;
+   347→    isShovelRef.current = false;
+   348→    cursorRef.current = null;
+   349→    lastTimeRef.current = 0;
+   350→    touchStartRef.current = null;
+   351→    hasMovedRef.current = false;
+   352→    collectAllFlagRef.current = false;
+   353→    setDisplaySun(cfg.initSun);
+   354→    setDisplayScore(0);
+   355→    setDisplayWave(1);
+   356→    setSelectedPlant(null);
+   357→    setIsShovel(false);
+   358→  }, []);
+   359→
+   360→  const startGame = useCallback(() => {
+   361→    initGame(difficulty);
+   362→    setPhase('playing');
+   363→  }, [difficulty, initGame]);
+   364→
+   365→  const screenToLogic = useCallback((clientX: number, clientY: number) => {
+   366→    const canvas = canvasRef.current;
+   367→    if (!canvas) return { x: 0, y: 0 };
+   368→    const rect = canvas.getBoundingClientRect();
+   369→    return {
+   370→      x: (clientX - rect.left) / scaleXRef.current,
+   371→      y: (clientY - rect.top) / scaleYRef.current,
+   372→    };
+   373→  }, []);
+   374→
+   375→  const collectSun = useCallback((pos: { x: number; y: number }): boolean => {
+   376→    const suns = sunsRef.current;
+   377→    const tapRadius = CELL_W * 1.5;
+   378→    for (let i = suns.length - 1; i >= 0; i--) {
+   379→      const s = suns[i];
+   380→      if (s.collected) continue;
+   381→      const dx = pos.x - s.x;
+   382→      const dy = pos.y - s.y;
+   383→      if (dx * dx + dy * dy < tapRadius * tapRadius) {
+   384→        s.collected = true;
+   385→        s.scale = 2.0;
+   386→        sunRef.current += SUN_VALUE;
+   387→        setDisplaySun(sunRef.current);
+   388→        return true;
+   389→      }
+   390→    }
+   391→    return false;
+   392→  }, []);
+   393→
+   394→  const handleSelectPlant = useCallback((plantId: string) => {
+   395→    if (selPlantRef.current === plantId) {
+   396→      selPlantRef.current = null;
+   397→      setSelectedPlant(null);
+   398→    } else {
+   399→      selPlantRef.current = plantId;
+   400→      setSelectedPlant(plantId);
+   401→      isShovelRef.current = false;
+   402→      setIsShovel(false);
+   403→    }
+   404→  }, []);
+   405→
+   406→  const handleShovel = useCallback(() => {
+   407→    if (isShovelRef.current) {
+   408→      isShovelRef.current = false;
+   409→      setIsShovel(false);
+   410→    } else {
+   411→      isShovelRef.current = true;
+   412→      setIsShovel(true);
+   413→      selPlantRef.current = null;
+   414→      setSelectedPlant(null);
+   415→    }
+   416→  }, []);
+   417→
+   418→  const handleTap = useCallback((clientX: number, clientY: number) => {
+   419→    if (overRef.current || wonRef.current) return;
+   420→    const pos = screenToLogic(clientX, clientY);
+   421→
+   422→    // Zone 1: Top bar
+   423→    if (pos.y < TOP_BAR_H) {
+   424→      // Back button
+   425→      if (
+   426→        pos.x >= BACK_BTN.x && pos.x <= BACK_BTN.x + BACK_BTN.w &&
+   427→        pos.y >= BACK_BTN.y && pos.y <= BACK_BTN.y + BACK_BTN.h
+   428→      ) {
+   429→        onBack();
+   430→        return;
+   431→      }
+   432→      // Collect All button
+   433→      if (
+   434→        pos.x >= COLLECT_BTN.x && pos.x <= COLLECT_BTN.x + COLLECT_BTN.w &&
+   435→        pos.y >= COLLECT_BTN.y && pos.y <= COLLECT_BTN.y + COLLECT_BTN.h
+   436→      ) {
+   437→        collectAllFlagRef.current = true;
+   438→        return;
+   439→      }
+   440→      return;
+   441→    }
+   442→
+   443→    // Zone 2: Bottom bar - plant cards and shovel
+   444→    if (pos.y > GRID_Y + GRID_H) {
+   445→      const relY = pos.y - (GRID_Y + GRID_H);
+   446→      // Check shovel button
+   447→      if (
+   448→        pos.x >= SHOVEL_BTN_X && pos.x <= SHOVEL_BTN_X + SHOVEL_BTN_W &&
+   449→        relY >= BOT_PAD_Y && relY <= BOT_PAD_Y + CARD_DRAW_H
+   450→      ) {
+   451→        handleShovel();
+   452→        return;
+   453→      }
+   454→      // Check plant cards
+   455→      const cardIdx = Math.floor((pos.x - CARD_START_X) / CARD_SLOT_W);
+   456→      if (cardIdx >= 0 && cardIdx < PLANT_DEFS.length) {
+   457→        const cardX = CARD_START_X + cardIdx * CARD_SLOT_W;
+   458→        if (
+   459→          pos.x >= cardX && pos.x <= cardX + CARD_DRAW_W &&
+   460→          relY >= BOT_PAD_Y && relY <= BOT_PAD_Y + CARD_DRAW_H
+   461→        ) {
+   462→          handleSelectPlant(PLANT_DEFS[cardIdx].id);
+   463→        }
+   464→      }
+   465→      return;
+   466→    }
+   467→
+   468→    // Zone 3: Grid area - sun collection and plant placement
+   469→    if (collectSun(pos)) return;
+   470→
+   471→    if (isShovelRef.current) {
+   472→      const col = Math.floor(pos.x / CELL_W);
+   473→      const row = Math.floor((pos.y - GRID_Y) / CELL_H);
+   474→      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+   475→        const idx = plantsRef.current.findIndex(p => p.row === row && p.col === col);
+   476→        if (idx >= 0) {
+   477→          plantsRef.current.splice(idx, 1);
+   478→        }
+   479→      }
+   480→      return;
+   481→    }
+   482→
+   483→    const sel = selPlantRef.current;
+   484→    if (sel) {
+   485→      const col = Math.floor(pos.x / CELL_W);
+   486→      const row = Math.floor((pos.y - GRID_Y) / CELL_H);
+   487→      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+   488→        const exists = plantsRef.current.some(p => p.row === row && p.col === col);
+   489→        if (!exists) {
+   490→          const def = PLANT_DEFS.find(d => d.id === sel);
+   491→          if (def && sunRef.current >= def.cost) {
+   492→            sunRef.current -= def.cost;
+   493→            setDisplaySun(sunRef.current);
+   494→            plantsRef.current.push({
+   495→              type: def.id, row, col,
+   496→              hp: def.hp, maxHp: def.hp,
+   497→              shootTimer: 0, sunTimer: 0,
+   498→              fuseTimer: 0, digestTimer: 0,
+   499→              digesting: false, dead: false,
+   500→              armTimer: 0, armed: false,
+   501→            });
+   502→            selPlantRef.current = null;
+   503→            setSelectedPlant(null);
+   504→          }
+   505→        }
+   506→      }
+   507→    }
+   508→  }, [screenToLogic, collectSun, handleShovel, handleSelectPlant, onBack]);
+   509→
+   510→  const handleCanvasMove = useCallback((clientX: number, clientY: number) => {
+   511→    if (overRef.current || wonRef.current) return;
+   512→    const pos = screenToLogic(clientX, clientY);
+   513→    // Only set cursor highlight when in grid area
+   514→    if (pos.y >= GRID_Y && pos.y <= GRID_Y + GRID_H) {
+   515→      cursorRef.current = pos;
+   516→    } else {
+   517→      cursorRef.current = null;
+   518→    }
+   519→  }, [screenToLogic]);
+   520→
+   521→  const handleCanvasLeave = useCallback(() => {
+   522→    cursorRef.current = null;
+   523→  }, []);
+   524→
+   525→  useEffect(() => {
+   526→    if (phase !== 'playing') return;
+   527→    const canvas = canvasRef.current;
+   528→    if (!canvas) return;
+   529→
+   530→    const onClick = (e: MouseEvent) => {
+   531→      e.preventDefault();
+   532→      handleTap(e.clientX, e.clientY);
+   533→    };
+   534→    const onMouseMove = (e: MouseEvent) => {
+   535→      handleCanvasMove(e.clientX, e.clientY);
+   536→    };
+   537→    const onMouseLeave = () => { handleCanvasLeave(); };
+   538→
+   539→    const onTouchStart = (e: TouchEvent) => {
+   540→      e.preventDefault();
+   541→      const t = e.touches[0];
+   542→      if (t) {
+   543→        touchStartRef.current = { x: t.clientX, y: t.clientY };
+   544→        hasMovedRef.current = false;
+   545→        handleCanvasMove(t.clientX, t.clientY);
+   546→      }
+   547→    };
+   548→    const onTouchMove = (e: TouchEvent) => {
+   549→      e.preventDefault();
+   550→      const t = e.touches[0];
+   551→      if (t) {
+   552→        const start = touchStartRef.current;
+   553→        if (start) {
+   554→          const dx = t.clientX - start.x;
+   555→          const dy = t.clientY - start.y;
+   556→          if (dx * dx + dy * dy > 400) hasMovedRef.current = true;
+   557→        }
+   558→        handleCanvasMove(t.clientX, t.clientY);
+   559→      }
+   560→    };
+   561→    const onTouchEnd = (e: TouchEvent) => {
+   562→      e.preventDefault();
+   563→      if (!hasMovedRef.current && touchStartRef.current) {
+   564→        handleTap(touchStartRef.current.x, touchStartRef.current.y);
+   565→      }
+   566→      cursorRef.current = null;
+   567→      touchStartRef.current = null;
+   568→    };
+   569→
+   570→    canvas.addEventListener('click', onClick);
+   571→    canvas.addEventListener('mousemove', onMouseMove);
+   572→    canvas.addEventListener('mouseleave', onMouseLeave);
+   573→    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+   574→    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+   575→    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+   576→    return () => {
+   577→      canvas.removeEventListener('click', onClick);
+   578→      canvas.removeEventListener('mousemove', onMouseMove);
+   579→      canvas.removeEventListener('mouseleave', onMouseLeave);
+   580→      canvas.removeEventListener('touchstart', onTouchStart);
+   581→      canvas.removeEventListener('touchmove', onTouchMove);
+   582→      canvas.removeEventListener('touchend', onTouchEnd);
+   583→    };
+   584→  }, [phase, handleTap, handleCanvasMove, handleCanvasLeave]);
+   585→
+   586→  // Main game loop
+   587→  useEffect(() => {
+   588→    const loop = (timestamp: number) => {
+   589→      const canvas = canvasRef.current;
+   590→      if (!canvas) return;
+   591→      const ctx = canvas.getContext('2d');
+   592→      if (!ctx) return;
+   593→      const dpr = dprRef.current;
+   594→      const sx = scaleXRef.current;
+   595→      const sy = scaleYRef.current;
+   596→      ctx.setTransform(dpr * sx, 0, 0, dpr * sy, 0, 0);
+   597→
+   598→      if (lastTimeRef.current === 0) lastTimeRef.current = timestamp;
+   599→      const deltaMs = Math.min(timestamp - lastTimeRef.current, 50);
+   600→      lastTimeRef.current = timestamp;
+   601→      const dt = deltaMs / 16.667;
+   602→      const cfg = DIFFICULTY_CONFIG[diffRef.current];
+   603→
+   604→      // === GAME LOGIC (unchanged from original) ===
+   605→      if (!overRef.current && !wonRef.current) {
+   606→        waveElapsedRef.current += deltaMs;
+   607→
+   608→        // Sky sun spawning
+   609→        sunDropTimerRef.current += deltaMs;
+   610→        if (sunDropTimerRef.current >= SUN_DROP_INTERVAL) {
+   611→          sunDropTimerRef.current -= SUN_DROP_INTERVAL;
+   612→          sunsRef.current.push({
+   613→            id: sunIdRef.current++,
+   614→            x: 40 + Math.random() * (LOGIC_W - 80),
+   615→            y: GRID_Y - 20,
+   616→            targetY: GRID_Y + 20 + Math.random() * (GRID_H - 40),
+   617→            vy: 0, collected: false, alpha: 1, bouncePhase: 0,
+   618→            lifeTimer: SUN_LIFE, scale: 1,
+   619→          });
+   620→        }
+   621→
+   622→        // Zombie wave spawning
+   623→        const wz = waveZombiesRef.current;
+   624→        const wsi = waveSpawnIdxRef.current;
+   625→        if (wsi < wz.length && waveElapsedRef.current >= wz[wsi].delay) {
+   626→          const zType = wz[wsi].type;
+   627→          const def = ZOMBIE_DEFS[zType];
+   628→          zombiesRef.current.push({
+   629→            id: zombieIdRef.current++,
+   630→            type: zType, name: def.name, emoji: def.emoji,
+   631→            row: Math.floor(Math.random() * ROWS),
+   632→            x: LOGIC_W + 10,
+   633→            hp: def.hp, maxHp: def.hp,
+   634→            baseSpeed: def.speed, speed: def.speed * cfg.zombieSpeedMul,
+   635→            score: def.score, hitFlash: 0, eating: false,
+   636→            walkPhase: Math.random() * Math.PI * 2,
+   637→            slowTimer: 0, paperBroken: false, smashed: false,
+   638→          });
+   639→          waveSpawnIdxRef.current++;
+   640→        }
+   641→
+   642→        // Wave progression
+   643→        if (
+   644→          waveElapsedRef.current >= WAVE_DURATION * 1000 &&
+   645→          waveSpawnIdxRef.current >= wz.length &&
+   646→          zombiesRef.current.length === 0
+   647→        ) {
+   648→          if (waveRef.current >= TOTAL_WAVES) {
+   649→            wonRef.current = true;
+   650→            submitScoreRef.current(scoreRef.current);
+   651→            setDisplayScore(scoreRef.current);
+   652→            setPhase('won');
+   653→          } else {
+   654→            waveRef.current++;
+   655→            waveElapsedRef.current = 0;
+   656→            waveSpawnIdxRef.current = 0;
+   657→            waveZombiesRef.current = getWaveZombies(waveRef.current - 1, cfg.zombieCountMul);
+   658→            setDisplayWave(waveRef.current);
+   659→          }
+   660→        }
+   661→
+   662→        // Plant updates
+   663→        const plants = plantsRef.current;
+   664→        for (let pi = plants.length - 1; pi >= 0; pi--) {
+   665→          const p = plants[pi];
+   666→          if (p.dead || p.hp <= 0) { plants.splice(pi, 1); continue; }
+   667→
+   668→          // Cherry bomb
+   669→          if (p.type === 'cherrybomb') {
+   670→            p.fuseTimer += deltaMs;
+   671→            if (p.fuseTimer >= CHERRY_FUSE_TIME) {
+   672→              const cx = (p.col + 0.5) * CELL_W;
+   673→              const cy = GRID_Y + (p.row + 0.5) * CELL_H;
+   674→              const radius = CHERRY_RADIUS_CELLS * Math.max(CELL_W, CELL_H);
+   675→              for (const z of zombiesRef.current) {
+   676→                const zy = GRID_Y + (z.row + 0.5) * CELL_H;
+   677→                const dx = z.x - cx;
+   678→                const dy = zy - cy;
+   679→                if (dx * dx + dy * dy < radius * radius) {
+   680→                  z.hp -= CHERRY_DAMAGE;
+   681→                  z.hitFlash = 10;
+   682→                }
+   683→              }
+   684→              p.hp = 0;
+   685→            }
+   686→            continue;
+   687→          }
+   688→
+   689→          // Chomper
+   690→          if (p.type === 'chomper') {
+   691→            if (p.digesting) {
+   692→              p.digestTimer += deltaMs;
+   693→              if (p.digestTimer >= CHOMP_DIGEST_TIME) {
+   694→                p.digesting = false;
+   695→                p.digestTimer = 0;
+   696→              }
+   697→              continue;
+   698→            }
+   699→            const chompRange = CELL_W * 1.2;
+   700→            const px = (p.col + 0.5) * CELL_W;
+   701→            const py = GRID_Y + (p.row + 0.5) * CELL_H;
+   702→            for (const z of zombiesRef.current) {
+   703→              if (z.hp <= 0 || z.row !== p.row) continue;
+   704→              const zy = GRID_Y + (z.row + 0.5) * CELL_H;
+   705→              const dx = z.x - px;
+   706→              const dy = zy - py;
+   707→              if (dx > 0 && dx < chompRange && Math.abs(dy) < CELL_H * 0.5) {
+   708→                if (z.hp <= CHOMP_MAX_HP) {
+   709→                  z.hp = 0;
+   710→                  p.digesting = true;
+   711→                  p.digestTimer = 0;
+   712→                }
+   713→                break;
+   714→              }
+   715→            }
+   716→            continue;
+   717→          }
+   718→
+   719→          // Potato mine
+   720→          if (p.type === 'potatomine') {
+   721→            if (!p.armed) {
+   722→              p.armTimer += deltaMs;
+   723→              if (p.armTimer >= MINE_ARM_TIME) {
+   724→                p.armed = true;
+   725→              }
+   726→              continue;
+   727→            }
+   728→            const mx = (p.col + 0.5) * CELL_W;
+   729→            const my = GRID_Y + (p.row + 0.5) * CELL_H;
+   730→            const mineR = CELL_W * 0.6;
+   731→            for (const z of zombiesRef.current) {
+   732→              if (z.hp <= 0 || z.row !== p.row) continue;
+   733→              const zy = GRID_Y + (z.row + 0.5) * CELL_H;
+   734→              const dx = z.x - mx;
+   735→              const dy = zy - my;
+   736→              if (dx * dx + dy * dy < mineR * mineR) {
+   737→                z.hp -= 1800;
+   738→                z.hitFlash = 10;
+   739→                p.hp = 0;
+   740→                break;
+   741→              }
+   742→            }
+   743→            continue;
+   744→          }
+   745→
+   746→          // Sunflower sun production
+   747→          if (p.type === 'sunflower') {
+   748→            p.sunTimer += deltaMs;
+   749→            if (p.sunTimer >= SUNFLOWER_INTERVAL) {
+   750→              p.sunTimer -= SUNFLOWER_INTERVAL;
+   751→              const sx = (p.col + 0.5) * CELL_W;
+   752→              const sy = GRID_Y + p.row * CELL_H + CELL_H * 0.2;
+   753→              sunsRef.current.push({
+   754→                id: sunIdRef.current++,
+   755→                x: sx, y: sy,
+   756→                targetY: sy + 20 + Math.random() * 30,
+   757→                vy: 0, collected: false, alpha: 1,
+   758→                bouncePhase: 0, lifeTimer: SUN_LIFE, scale: 1,
+   759→              });
+   760→            }
+   761→          }
+   762→
+   763→          // Shooters
+   764→          if (p.type === 'peashooter' || p.type === 'doubleshoot' || p.type === 'iceshooter') {
+   765→            const hasZombie = zombiesRef.current.some(
+   766→              z => z.row === p.row && z.x > (p.col + 0.5) * CELL_W && z.hp > 0
+   767→            );
+   768→            if (hasZombie) {
+   769→              p.shootTimer += deltaMs;
+   770→              if (p.shootTimer >= SHOOT_INTERVAL) {
+   771→                p.shootTimer -= SHOOT_INTERVAL;
+   772→                const px = (p.col + 0.8) * CELL_W;
+   773→                const py = GRID_Y + (p.row + 0.5) * CELL_H;
+   774→                const isIce = p.type === 'iceshooter';
+   775→                peasRef.current.push({ row: p.row, x: px, y: py, isIce, isFire: false, damage: PEA_DAMAGE });
+   776→                if (p.type === 'doubleshoot') {
+   777→                  peasRef.current.push({ row: p.row, x: px - 8, y: py - 4, isIce: false, isFire: false, damage: PEA_DAMAGE });
+   778→                }
+   779→              }
+   780→            }
+   781→          }
+   782→        }
+   783→
+   784→        // Torch wood pea conversion
+   785→        for (const plant of plants) {
+   786→          if (plant.type !== 'torchwood' || plant.hp <= 0) continue;
+   787→          const tx = (plant.col + 0.5) * CELL_W;
+   788→          const tr = CELL_W * 0.6;
+   789→          for (const pea of peasRef.current) {
+   790→            if (pea.isFire) continue;
+   791→            if (pea.row === plant.row && Math.abs(pea.x - tx) < tr) {
+   792→              pea.isFire = true;
+   793→              pea.isIce = false;
+   794→              pea.damage = PEA_DAMAGE + TORCH_EXTRA_DAMAGE;
+   795→            }
+   796→          }
+   797→        }
+   798→
+   799→        // Pea movement
+   800→        for (let i = peasRef.current.length - 1; i >= 0; i--) {
+   801→          peasRef.current[i].x += PEA_SPEED * dt;
+   802→        }
+   803→
+   804→        // Pea-zombie collision
+   805→        for (let i = peasRef.current.length - 1; i >= 0; i--) {
+   806→          const pea = peasRef.current[i];
+   807→          let hit = false;
+   808→          const hitR = CELL_W * 0.45;
+   809→          for (const z of zombiesRef.current) {
+   810→            if (z.hp <= 0 || z.row !== pea.row) continue;
+   811→            const zy = GRID_Y + (z.row + 0.5) * CELL_H;
+   812→            const dx = pea.x - z.x;
+   813→            const dy = pea.y - zy;
+   814→            if (dx * dx + dy * dy < hitR * hitR) {
+   815→              z.hp -= pea.damage;
+   816→              z.hitFlash = 6;
+   817→              if (pea.isIce) z.slowTimer = ICE_SLOW_DURATION;
+   818→              hit = true;
+   819→              break;
+   820→            }
+   821→          }
+   822→          if (hit || pea.x > LOGIC_W + 20) {
+   823→            peasRef.current.splice(i, 1);
+   824→          }
+   825→        }
+   826→
+   827→        // Mower updates
+   828→        for (const m of mowersRef.current) {
+   829→          if (!m.active) continue;
+   830→          m.x += m.speed * dt;
+   831→          for (const z of zombiesRef.current) {
+   832→            if (z.hp <= 0 || z.row !== m.row) continue;
+   833→            if (Math.abs(z.x - m.x) < 80) {
+   834→              z.hp = 0;
+   835→              z.smashed = true;
+   836→            }
+   837→          }
+   838→        }
+   839→        mowersRef.current = mowersRef.current.filter(m => !m.active || m.x < LOGIC_W + 50);
+   840→
+   841→        // Zombie updates
+   842→        const zombies = zombiesRef.current;
+   843→        for (let i = zombies.length - 1; i >= 0; i--) {
+   844→          const z = zombies[i];
+   845→          if (z.hp <= 0) {
+   846→            scoreRef.current += z.score;
+   847→            setDisplayScore(scoreRef.current);
+   848→            zombies.splice(i, 1);
+   849→            continue;
+   850→          }
+   851→          if (z.hitFlash > 0) z.hitFlash -= dt;
+   852→          z.walkPhase += 0.05 * dt;
+   853→
+   854→          if (z.slowTimer > 0) {
+   855→            z.slowTimer -= deltaMs;
+   856→            z.speed = z.baseSpeed * cfg.zombieSpeedMul * ICE_SLOW_FACTOR;
+   857→          } else {
+   858→            z.speed = z.baseSpeed * cfg.zombieSpeedMul;
+   859→          }
+   860→
+   861→          if (z.type === 'newspaper' && !z.paperBroken && z.hp <= 100) {
+   862→            z.paperBroken = true;
+   863→            z.baseSpeed = 0.6;
+   864→            z.maxHp = 100;
+   865→          }
+   866→
+   867→          // Mower trigger
+   868→          if (z.x < CELL_W * 0.5) {
+   869→            const mower = mowersRef.current.find(m => m.row === z.row && !m.active);
+   870→            if (mower) {
+   871→              mower.active = true;
+   872→              continue;
+   873→            }
+   874→          }
+   875→
+   876→          z.eating = false;
+   877→          const zCol = Math.floor(z.x / CELL_W);
+   878→          const target = plants.find(p => p.row === z.row && p.col === zCol && !p.dead && p.hp > 0);
+   879→          if (target) {
+   880→            z.eating = true;
+   881→            const dmg = z.type === 'gargantuar' ? 1.5 : 0.5;
+   882→            target.hp -= dmg * dt;
+   883→          } else {
+   884→            z.x -= z.speed * dt;
+   885→          }
+   886→
+   887→          // Game over check
+   888→          if (z.x < CELL_W * 0.2) {
+   889→            overRef.current = true;
+   890→            setDisplayScore(scoreRef.current);
+   891→            submitScoreRef.current(scoreRef.current);
+   892→            setPhase('lost');
+   893→          }
+   894→        }
+   895→
+   896→        // Sun updates
+   897→        for (let i = sunsRef.current.length - 1; i >= 0; i--) {
+   898→          const s = sunsRef.current[i];
+   899→          if (s.collected) {
+   900→            s.scale = Math.max(s.scale - 0.08 * dt, 0);
+   901→            s.alpha -= 0.1 * dt;
+   902→            if (s.alpha <= 0) sunsRef.current.splice(i, 1);
+   903→            continue;
+   904→          }
+   905→          s.lifeTimer -= dt;
+   906→          if (s.lifeTimer <= 0) { sunsRef.current.splice(i, 1); continue; }
+   907→          if (s.y < s.targetY) {
+   908→            s.vy += 0.15 * dt;
+   909→            s.y += s.vy * dt;
+   910→            if (s.y >= s.targetY) {
+   911→              s.y = s.targetY;
+   912→              s.vy = -s.vy * 0.3;
+   913→              s.bouncePhase++;
+   914→              if (s.bouncePhase >= 3) { s.y = s.targetY; s.vy = 0; }
+   915→            }
+   916→          }
+   917→
+   918→          // Cursor-based sun attraction (only when cursor is in grid area)
+   919→          const cursor = cursorRef.current;
+   920→          if (cursor) {
+   921→            const adx = cursor.x - s.x;
+   922→            const ady = cursor.y - s.y;
+   923→            const adist = Math.sqrt(adx * adx + ady * ady);
+   924→            if (adist < SUN_ATTRACT_RADIUS && adist > 0.1) {
+   925→              const speed = SUN_ATTRACT_SPEED * dt;
+   926→              s.x += (adx / adist) * speed;
+   927→              s.y += (ady / adist) * speed;
+   928→              if (adist < 10) {
+   929→                s.collected = true;
+   930→                s.scale = 2.0;
+   931→                sunRef.current += SUN_VALUE;
+   932→                setDisplaySun(sunRef.current);
+   933→              }
+   934→            }
+   935→          }
+   936→        }
+   937→      }
+   938→
+   939→      // Collect all suns
+   940→      if (collectAllFlagRef.current) {
+   941→        collectAllFlagRef.current = false;
+   942→        for (const s of sunsRef.current) {
+   943→          if (!s.collected) {
+   944→            s.collected = true;
+   945→            s.scale = 1.8;
+   946→            sunRef.current += SUN_VALUE;
+   947→          }
+   948→        }
+   949→        setDisplaySun(sunRef.current);
+   950→      }
+   951→
+   952→      // === RENDERING ===
+   953→      ctx.clearRect(0, 0, LOGIC_W, LOGIC_H);
+   954→
+   955→      // Grid grass background
+   956→      for (let r = 0; r < ROWS; r++) {
+   957→        for (let c = 0; c < COLS; c++) {
+   958→          ctx.fillStyle = (r + c) % 2 === 0 ? '#5cb85c' : '#4cae4c';
+   959→          ctx.fillRect(c * CELL_W, GRID_Y + r * CELL_H, CELL_W, CELL_H);
+   960→        }
+   961→      }
+   962→
+   963→      // Grid lines
+   964→      ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+   965→      ctx.lineWidth = 0.5;
+   966→      for (let r = 0; r <= ROWS; r++) {
+   967→        ctx.beginPath(); ctx.moveTo(0, GRID_Y + r * CELL_H); ctx.lineTo(LOGIC_W, GRID_Y + r * CELL_H); ctx.stroke();
+   968→      }
+   969→      for (let c = 0; c <= COLS; c++) {
+   970→        ctx.beginPath(); ctx.moveTo(c * CELL_W, GRID_Y); ctx.lineTo(c * CELL_W, GRID_Y + GRID_H); ctx.stroke();
+   971→      }
+   972→
+   973→      // Mowers
+   974→      for (const m of mowersRef.current) {
+   975→        const my = GRID_Y + (m.row + 0.5) * CELL_H;
+   976→        ctx.fillStyle = '#666';
+   977→        ctx.fillRect(m.x - 12, my - 8, 24, 16);
+   978→        ctx.fillStyle = '#f44336';
+   979→        ctx.fillRect(m.x + 6, my - 5, 8, 10);
+   980→      }
+   981→
+   982→      // Cursor highlight (grid area only)
+   983→      const cursor = cursorRef.current;
+   984→      const sel = selPlantRef.current;
+   985→      if (cursor && (sel || isShovelRef.current)) {
+   986→        const hCol = Math.floor(cursor.x / CELL_W);
+   987→        const hRow = Math.floor((cursor.y - GRID_Y) / CELL_H);
+   988→        if (hRow >= 0 && hRow < ROWS && hCol >= 0 && hCol < COLS) {
+   989→          const exists = plantsRef.current.some(p => p.row === hRow && p.col === hCol);
+   990→          if (isShovelRef.current) {
+   991→            ctx.fillStyle = exists ? 'rgba(244,67,54,0.35)' : 'rgba(255,255,255,0.1)';
+   992→          } else {
+   993→            ctx.fillStyle = exists ? 'rgba(244,67,54,0.35)' : 'rgba(255,255,255,0.25)';
+   994→          }
+   995→          ctx.fillRect(hCol * CELL_W, GRID_Y + hRow * CELL_H, CELL_W, CELL_H);
+   996→          ctx.strokeStyle = exists ? '#f44336' : '#fff';
+   997→          ctx.lineWidth = 2;
+   998→          ctx.strokeRect(hCol * CELL_W + 1, GRID_Y + hRow * CELL_H + 1, CELL_W - 2, CELL_H - 2);
+   999→
+  1000→          if (sel && !exists) {
+  1001→            const pDef = PLANT_DEFS.find(d => d.id === sel);
+  1002→            if (pDef) {
+  1003→              const fs = Math.min(CELL_W, CELL_H) * 0.65;
+  1004→              ctx.globalAlpha = 0.7;
+  1005→              ctx.font = `${fs}px serif`;
+  1006→              ctx.textAlign = 'center';
+  1007→              ctx.textBaseline = 'middle';
+  1008→              ctx.fillText(pDef.emoji, cursor.x, cursor.y);
+  1009→              ctx.globalAlpha = 1;
+  1010→            }
+  1011→          }
+  1012→        }
+  1013→      }
+  1014→
+  1015→      // Plants
+  1016→      for (const p of plantsRef.current) {
+  1017→        const def = PLANT_DEFS.find(d => d.id === p.type);
+  1018→        if (!def) continue;
+  1019→        const cx = (p.col + 0.5) * CELL_W;
+  1020→        const cy = GRID_Y + (p.row + 0.5) * CELL_H;
+  1021→        const fs = Math.min(CELL_W, CELL_H) * 0.7;
+  1022→        ctx.font = `${fs}px serif`;
+  1023→        ctx.textAlign = 'center';
+  1024→        ctx.textBaseline = 'middle';
+  1025→
+  1026→        if (p.type === 'cherrybomb' && p.fuseTimer > 0) {
+  1027→          const flash = Math.sin(p.fuseTimer * 0.02) > 0;
+  1028→          if (flash) {
+  1029→            ctx.fillStyle = 'rgba(255,100,0,0.3)';
+  1030→            ctx.beginPath();
+  1031→            ctx.arc(cx, cy, CELL_W * 0.6, 0, Math.PI * 2);
+  1032→            ctx.fill();
+  1033→          }
+  1034→        }
+  1035→
+  1036→        if (p.type === 'chomper' && p.digesting) ctx.globalAlpha = 0.5;
+  1037→        if (p.type === 'potatomine' && !p.armed) ctx.globalAlpha = 0.4;
+  1038→
+  1039→        ctx.fillText(def.emoji, cx, cy);
+  1040→        ctx.globalAlpha = 1;
+  1041→
+  1042→        // Chomper digest bar
+  1043→        if (p.type === 'chomper' && p.digesting) {
+  1044→          const bw = CELL_W * 0.7;
+  1045→          const bx = cx - bw / 2;
+  1046→          const by = GRID_Y + p.row * CELL_H + CELL_H * 0.15;
+  1047→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  1048→          ctx.fillRect(bx, by, bw, 3);
+  1049→          ctx.fillStyle = '#9c27b0';
+  1050→          ctx.fillRect(bx, by, bw * Math.min(1, p.digestTimer / CHOMP_DIGEST_TIME), 3);
+  1051→        }
+  1052→
+  1053→        // Potato mine arm bar
+  1054→        if (p.type === 'potatomine' && !p.armed) {
+  1055→          const bw = CELL_W * 0.7;
+  1056→          const bx = cx - bw / 2;
+  1057→          const by = GRID_Y + p.row * CELL_H + CELL_H * 0.15;
+  1058→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  1059→          ctx.fillRect(bx, by, bw, 3);
+  1060→          ctx.fillStyle = '#ff9800';
+  1061→          ctx.fillRect(bx, by, bw * Math.min(1, p.armTimer / MINE_ARM_TIME), 3);
+  1062→        }
+  1063→
+  1064→        // Plant HP bar
+  1065→        if (p.type !== 'cherrybomb' && p.type !== 'potatomine' && p.hp < p.maxHp) {
+  1066→          const bw = CELL_W * 0.7;
+  1067→          const bx = cx - bw / 2;
+  1068→          const by = GRID_Y + p.row * CELL_H + CELL_H * 0.92;
+  1069→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  1070→          ctx.fillRect(bx, by, bw, 4);
+  1071→          const ratio = Math.max(0, p.hp / p.maxHp);
+  1072→          ctx.fillStyle = ratio > 0.5 ? '#4caf50' : ratio > 0.25 ? '#ff9800' : '#f44336';
+  1073→          ctx.fillRect(bx, by, bw * ratio, 4);
+  1074→        }
+  1075→      }
+  1076→
+  1077→      // Peas
+  1078→      for (const pea of peasRef.current) {
+  1079→        if (pea.isFire) {
+  1080→          ctx.fillStyle = '#ff5722';
+  1081→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 6, 0, Math.PI * 2); ctx.fill();
+  1082→          ctx.fillStyle = '#ffeb3b';
+  1083→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 3, 0, Math.PI * 2); ctx.fill();
+  1084→        } else if (pea.isIce) {
+  1085→          ctx.fillStyle = '#42a5f5';
+  1086→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 5, 0, Math.PI * 2); ctx.fill();
+  1087→          ctx.fillStyle = '#bbdefb';
+  1088→          ctx.beginPath(); ctx.arc(pea.x - 1, pea.y - 1, 2, 0, Math.PI * 2); ctx.fill();
+  1089→        } else {
+  1090→          ctx.fillStyle = '#66bb6a';
+  1091→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 4, 0, Math.PI * 2); ctx.fill();
+  1092→        }
+  1093→      }
+  1094→
+  1095→      // Suns
+  1096→      for (const s of sunsRef.current) {
+  1097→        ctx.save();
+  1098→        const baseAlpha = s.collected ? Math.max(0, s.alpha) : (s.lifeTimer < 180 ? (Math.sin(s.lifeTimer * 0.15) > 0 ? 1 : 0.4) : 1);
+  1099→        ctx.globalAlpha = baseAlpha;
+  1100→        const sc = s.scale || 1;
+  1101→        const pulse = s.collected ? 0 : Math.sin(Date.now() * 0.004 + s.id) * 0.15;
+  1102→        const r = (18 + pulse * 5) * sc;
+  1103→
+  1104→        ctx.fillStyle = 'rgba(255,235,59,0.25)';
+  1105→        ctx.beginPath(); ctx.arc(s.x, s.y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+  1106→        ctx.fillStyle = 'rgba(255,235,59,0.45)';
+  1107→        ctx.beginPath(); ctx.arc(s.x, s.y, r * 1.2, 0, Math.PI * 2); ctx.fill();
+  1108→        ctx.fillStyle = '#ffeb3b';
+  1109→        ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.fill();
+  1110→        ctx.fillStyle = '#fff9c4';
+  1111→        ctx.beginPath(); ctx.arc(s.x - 3 * sc, s.y - 3 * sc, r * 0.35, 0, Math.PI * 2); ctx.fill();
+  1112→        ctx.fillStyle = '#f57f17';
+  1113→        ctx.font = `bold ${Math.round(11 * sc)}px sans-serif`;
+  1114→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1115→        ctx.fillText('25', s.x, s.y + 1);
+  1116→        ctx.restore();
+  1117→      }
+  1118→
+  1119→      // Zombies
+  1120→      for (const z of zombiesRef.current) {
+  1121→        if (z.hp <= 0) continue;
+  1122→        const cy = GRID_Y + (z.row + 0.5) * CELL_H;
+  1123→        const wobble = Math.sin(z.walkPhase) * 3;
+  1124→        const fs = Math.min(CELL_W, CELL_H) * 0.7;
+  1125→        ctx.save();
+  1126→        if (z.hitFlash > 0) {
+  1127→          ctx.globalAlpha = 0.5 + Math.sin(z.hitFlash * 2) * 0.5;
+  1128→        }
+  1129→        if (z.slowTimer > 0) {
+  1130→          ctx.fillStyle = 'rgba(66,165,245,0.3)';
+  1131→          ctx.beginPath(); ctx.arc(z.x + wobble, cy, fs * 0.6, 0, Math.PI * 2); ctx.fill();
+  1132→        }
+  1133→        ctx.font = `${fs}px serif`;
+  1134→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1135→        ctx.fillText(z.emoji, z.x + wobble, cy);
+  1136→        ctx.restore();
+  1137→
+  1138→        if (z.hp < z.maxHp) {
+  1139→          const bw = CELL_W * 0.7;
+  1140→          const bx = z.x - bw / 2;
+  1141→          const by = GRID_Y + z.row * CELL_H + CELL_H * 0.92;
+  1142→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  1143→          ctx.fillRect(bx, by, bw, 4);
+  1144→          const ratio = Math.max(0, z.hp / z.maxHp);
+  1145→          ctx.fillStyle = ratio > 0.5 ? '#e53935' : '#b71c1c';
+  1146→          ctx.fillRect(bx, by, bw * ratio, 4);
+  1147→        }
+  1148→      }
+  1149→
+  1150→      // === TOP BAR ===
+  1151→      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  1152→      ctx.fillRect(0, 0, LOGIC_W, TOP_BAR_H);
+  1153→
+  1154→      // Back button
+  1155→      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  1156→      ctx.lineWidth = 1.5;
+  1157→      ctx.strokeRect(BACK_BTN.x, BACK_BTN.y, BACK_BTN.w, BACK_BTN.h);
+  1158→      ctx.fillStyle = '#fff';
+  1159→      ctx.font = 'bold 20px sans-serif';
+  1160→      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1161→      ctx.fillText('\u2190', BACK_BTN.x + BACK_BTN.w / 2, BACK_BTN.y + BACK_BTN.h / 2);
+  1162→
+  1163→      // Sun counter
+  1164→      ctx.font = '18px serif';
+  1165→      ctx.textAlign = 'left';
+  1166→      ctx.fillText('\u2600\ufe0f', 74, TOP_BAR_H / 2 + 2);
+  1167→      ctx.fillStyle = '#ffeb3b';
+  1168→      ctx.font = 'bold 18px sans-serif';
+  1169→      ctx.fillText(`${sunRef.current}`, 98, TOP_BAR_H / 2 + 2);
+  1170→
+  1171→      // Collect All button
+  1172→      ctx.strokeStyle = 'rgba(255,235,59,0.7)';
+  1173→      ctx.lineWidth = 1.5;
+  1174→      ctx.strokeRect(COLLECT_BTN.x, COLLECT_BTN.y, COLLECT_BTN.w, COLLECT_BTN.h);
+  1175→      ctx.fillStyle = '#ffeb3b';
+  1176→      ctx.font = 'bold 11px sans-serif';
+  1177→      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1178→      ctx.fillText('\u6536\u96c6\u5168\u90e8', COLLECT_BTN.x + COLLECT_BTN.w / 2, COLLECT_BTN.y + COLLECT_BTN.h / 2);
+  1179→
+  1180→      // Wave info (centered)
+  1181→      ctx.fillStyle = '#fff';
+  1182→      ctx.font = 'bold 15px sans-serif';
+  1183→      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1184→      ctx.fillText(`\u7b2c${waveRef.current}/${TOTAL_WAVES}\u6ce2`, LOGIC_W / 2, TOP_BAR_H / 2 + 2);
+  1185→
+  1186→      // Score (right side)
+  1187→      ctx.textAlign = 'right';
+  1188→      ctx.font = 'bold 14px sans-serif';
+  1189→      ctx.fillStyle = '#ccc';
+  1190→      ctx.fillText(`\u5f97\u5206: ${scoreRef.current}`, LOGIC_W - 10, TOP_BAR_H / 2 + 2);
+  1191→
+  1192→      // === BOTTOM BAR ===
+  1193→      const botY = GRID_Y + GRID_H;
+  1194→      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  1195→      ctx.fillRect(0, botY, LOGIC_W, BOT_BAR_H);
+  1196→
+  1197→      // Shovel button
+  1198→      const shovBtnY = botY + BOT_PAD_Y;
+  1199→      if (isShovelRef.current) {
+  1200→        ctx.fillStyle = 'rgba(244,67,54,0.3)';
+  1201→        ctx.fillRect(SHOVEL_BTN_X, shovBtnY, SHOVEL_BTN_W, CARD_DRAW_H);
+  1202→        ctx.strokeStyle = '#f44336';
+  1203→        ctx.lineWidth = 2.5;
+  1204→      } else {
+  1205→        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  1206→        ctx.lineWidth = 1.5;
+  1207→      }
+  1208→      ctx.strokeRect(SHOVEL_BTN_X, shovBtnY, SHOVEL_BTN_W, CARD_DRAW_H);
+  1209→      ctx.fillStyle = '#fff';
+  1210→      ctx.font = '22px serif';
+  1211→      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1212→      ctx.fillText('\ud83d\udd27', SHOVEL_BTN_X + SHOVEL_BTN_W / 2, shovBtnY + CARD_DRAW_H / 2 - 10);
+  1213→      ctx.font = '9px sans-serif';
+  1214→      ctx.fillText('\u94f2\u5b50', SHOVEL_BTN_X + SHOVEL_BTN_W / 2, shovBtnY + CARD_DRAW_H - 12);
+  1215→
+  1216→      // Plant cards
+  1217→      for (let i = 0; i < PLANT_DEFS.length; i++) {
+  1218→        const p = PLANT_DEFS[i];
+  1219→        const cx = CARD_START_X + i * CARD_SLOT_W;
+  1220→        const cy = shovBtnY;
+  1221→        const canAfford = sunRef.current >= p.cost;
+  1222→        const isSel = selPlantRef.current === p.id;
+  1223→
+  1224→        if (!canAfford) ctx.globalAlpha = 0.4;
+  1225→
+  1226→        if (isSel) {
+  1227→          ctx.fillStyle = 'rgba(74,222,128,0.2)';
+  1228→          ctx.fillRect(cx, cy, CARD_DRAW_W, CARD_DRAW_H);
+  1229→          ctx.strokeStyle = '#4ade80';
+  1230→          ctx.lineWidth = 2.5;
+  1231→        } else {
+  1232→          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  1233→          ctx.lineWidth = 1;
+  1234→        }
+  1235→        ctx.strokeRect(cx, cy, CARD_DRAW_W, CARD_DRAW_H);
+  1236→
+  1237→        ctx.fillStyle = '#fff';
+  1238→        ctx.font = '24px serif';
+  1239→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1240→        ctx.fillText(p.emoji, cx + CARD_DRAW_W / 2, cy + 24);
+  1241→
+  1242→        ctx.font = '9px sans-serif';
+  1243→        ctx.fillStyle = canAfford ? '#fff' : '#999';
+  1244→        ctx.fillText(p.name, cx + CARD_DRAW_W / 2, cy + 48);
+  1245→
+  1246→        ctx.font = '10px sans-serif';
+  1247→        ctx.fillStyle = canAfford ? '#ffeb3b' : '#888';
+  1248→        ctx.fillText(`${p.cost}\u2600\ufe0f`, cx + CARD_DRAW_W / 2, cy + 64);
+  1249→
+  1250→        ctx.globalAlpha = 1;
+  1251→      }
+  1252→
+  1253→      // === GAME OVER OVERLAY ===
+  1254→      if (overRef.current || wonRef.current) {
+  1255→        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  1256→        ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1257→        ctx.fillStyle = '#fff';
+  1258→        ctx.font = 'bold 28px sans-serif';
+  1259→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1260→        if (wonRef.current) {
+  1261→          ctx.fillText('\u80dc\u5229!', LOGIC_W / 2, LOGIC_H / 2 - 20);
+  1262→        } else {
+  1263→          ctx.fillText('\u6e38\u620f\u7ed3\u675f', LOGIC_W / 2, LOGIC_H / 2 - 20);
+  1264→        }
+  1265→        ctx.font = '18px sans-serif';
+  1266→        ctx.fillText(`\u5f97\u5206: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 20);
+  1267→      }
+  1268→
+  1269→      rafRef.current = requestAnimationFrame(loop);
+  1270→    };
+  1271→    loopFnRef.current = loop;
+  1272→  }, []);
+  1273→
+  1274→  // Start/stop game loop
+  1275→  useEffect(() => {
+  1276→    if (phase === 'playing' || phase === 'won' || phase === 'lost') {
+  1277→      lastTimeRef.current = 0;
+  1278→      requestAnimationFrame(() => {
+  1279→        setupCanvas();
+  1280→        rafRef.current = requestAnimationFrame(loopFnRef.current);
+  1281→      });
+  1282→    }
+  1283→    return () => {
+  1284→      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  1285→    };
+  1286→  }, [phase, setupCanvas]);
+  1287→
+  1288→  // Window resize handler for fullscreen canvas
+  1289→  useEffect(() => {
+  1290→    if (phase !== 'playing' && phase !== 'won' && phase !== 'lost') return;
+  1291→    const onResize = () => setupCanvas();
+  1292→    window.addEventListener('resize', onResize);
+  1293→    setupCanvas();
+  1294→    return () => window.removeEventListener('resize', onResize);
+  1295→  }, [phase, setupCanvas]);
+  1296→
+  1297→  // Visibility change
+  1298→  useEffect(() => {
+  1299→    if (phase !== 'playing') return;
+  1300→    const onVisibilityChange = () => {
+  1301→      if (document.hidden) {
+  1302→        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  1303→      } else {
+  1304→        lastTimeRef.current = 0;
+  1305→        rafRef.current = requestAnimationFrame(loopFnRef.current);
+  1306→      }
+  1307→    };
+  1308→    document.addEventListener('visibilitychange', onVisibilityChange);
+  1309→    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  1310→  }, [phase]);
+  1311→
+  1312→  // === SETTINGS PHASE ===
+  1313→  if (phase === 'settings') {
+  1314→    return (
+  1315→      <div className="flex flex-col items-center w-full px-2">
+  1316→        <div className="w-full flex items-center gap-2 mb-4">
+  1317→          <Button variant="ghost" size="icon" onClick={onBack}>
+  1318→            <ArrowLeft className="h-5 w-5" />
+  1319→          </Button>
+  1320→          <h1 className="text-lg font-bold truncate">\ud83c\udf31 \u690d\u7269\u5927\u6218\u50f5\u5c38</h1>
+  1321→        </div>
+  1322→        <div className="w-full bg-card border rounded-lg p-3 space-y-4 overflow-x-hidden">
+  1323→          <div>
+  1324→            <h2 className="text-lg font-semibold mb-3">\u96be\u5ea6\u9009\u62e9</h2>
+  1325→            <div className="flex gap-3">
+  1326→              {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => (
+  1327→                <button
+  1328→                  key={d}
+  1329→                  onClick={() => setDifficulty(d)}
+  1330→                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+  1331→                    difficulty === d
+  1332→                      ? 'border-primary bg-primary/10 text-primary'
+  1333→                      : 'border-muted bg-background hover:border-primary/50'
+  1334→                  }`}
+  1335→                >
+  1336→                  {DIFFICULTY_CONFIG[d].label}
+  1337→                  <span className="block text-xs text-muted-foreground mt-1">
+  1338→                    \u521d\u59cb\u9633\u5149 {DIFFICULTY_CONFIG[d].initSun}
+  1339→                  </span>
+  1340→                </button>
+  1341→              ))}
+  1342→            </div>
+  1343→          </div>
+  1344→          <div>
+  1345→            <h2 className="text-lg font-semibold mb-3">\u64cd\u4f5c\u8bf4\u660e</h2>
+  1346→            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+  1347→              <li>\u5148\u70b9\u51fb\u5e95\u90e8\u690d\u7269\u5361\u7247\u9009\u62e9\u690d\u7269</li>
+  1348→              <li>\u79fb\u52a8\u624b\u6307/\u9f20\u6807\u5230\u8349\u576a\u4e0a\u5b9a\u4f4d</li>
+  1349→              <li>\u70b9\u51fb\u8349\u576a\u653e\u7f6e\u690d\u7269</li>
+  1350→              <li>\u70b9\u51fb\u6389\u843d\u7684\u9633\u5149\u6536\u96c6</li>
+  1351→              <li>\u70b9\u201c\u6536\u96c6\u5168\u90e8\u201d\u6309\u94ae\u4e00\u6b21\u6027\u6536\u96c6\u6240\u6709\u9633\u5149</li>
+  1352→              <li>\u7528\u94f2\u5b50\u53ef\u4ee5\u79fb\u9664\u690d\u7269</li>
+  1353→              <li>\u6491\u8fc7\u5168\u90e85\u6ce2\u50f5\u5c38\u5373\u53ef\u83b7\u80dc!</li>
+  1354→            </ol>
+  1355→          </div>
+  1356→          <div>
+  1357→            <h2 className="text-lg font-semibold mb-3">\u690d\u7269\u4ecb\u7ecd ({PLANT_DEFS.length})</h2>
+  1358→            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+  1359→              {PLANT_DEFS.map(p => (
+  1360→                <div key={p.id} className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-2">
+  1361→                  <span className="text-2xl">{p.emoji}</span>
+  1362→                  <div className="min-w-0">
+  1363→                    <div className="font-medium text-xs truncate">{p.name}</div>
+  1364→                    <div className="text-xs text-muted-foreground">{p.cost}\u9633\u5149</div>
+  1365→                  </div>
+  1366→                </div>
+  1367→              ))}
+  1368→            </div>
+  1369→          </div>
+  1370→          <div>
+  1371→            <h2 className="text-lg font-semibold mb-3">\u50f5\u5c38\u4ecb\u7ecd ({Object.keys(ZOMBIE_DEFS).length})</h2>
+  1372→            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+  1373→              {(Object.values(ZOMBIE_DEFS) as ZombieDef[]).map(z => (
+  1374→                <div key={z.type} className="flex flex-col items-center gap-1 text-sm bg-muted/50 rounded-lg p-2">
+  1375→                  <span className="text-2xl">{z.emoji}</span>
+  1376→                  <div className="font-medium text-xs">{z.name}</div>
+  1377→                  <div className="text-xs text-muted-foreground">\u8840\u91cf {z.hp}</div>
+  1378→                </div>
+  1379→              ))}
+  1380→            </div>
+  1381→          </div>
+  1382→          {highScore > 0 && (
+  1383→            <div className="flex items-center justify-center gap-2 text-amber-600">
+  1384→              <Trophy className="h-4 w-4" />
+  1385→              <span className="text-sm font-medium">\u6700\u9ad8\u5206: {highScore}</span>
+  1386→            </div>
+  1387→          )}
+  1388→          <Button className="w-full" size="lg" onClick={startGame}>
+  1389→            \u5f00\u59cb\u6e38\u620f
+  1390→          </Button>
+  1391→        </div>
+  1392→      </div>
+  1393→    );
+  1394→  }
+  1395→
+  1396→  // === PLAYING / GAME OVER PHASE ===
+  1397→  return (
+  1398→    <>
+  1399→      <canvas
+  1400→        ref={canvasRef}
+  1401→        className="fixed inset-0 block"
+  1402→        style={{ touchAction: 'none', width: '100vw', height: '100dvh' }}
+  1403→      />
+  1404→      {(phase === 'won' || phase === 'lost') && (
+  1405→        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+  1406→          <div className="bg-card border rounded-2xl p-6 mx-4 flex flex-col items-center gap-4">
+  1407→            <p className="text-4xl">{phase === 'won' ? '\ud83c\udf89' : '\ud83d\udc80'}</p>
+  1408→            <p className="text-2xl font-bold">{phase === 'won' ? '\u80dc\u5229\uff01' : '\u6e38\u620f\u7ed3\u675f'}</p>
+  1409→            <p className="text-sm text-muted-foreground">\u6ce2\u6b21: {displayWave}/{TOTAL_WAVES}</p>
+  1410→            <p className="text-sm text-muted-foreground">\u5f97\u5206: {displayScore}</p>
+  1411→            <div className="flex gap-3 w-full">
+  1412→              <Button className="flex-1" variant="outline" onClick={onBack}>\u8fd4\u56de\u5927\u5385</Button>
+  1413→              <Button className="flex-1" onClick={() => { setPhase('settings'); }}>\u518d\u6765\u4e00\u5c40</Button>
+  1414→            </div>
+  1415→          </div>
+  1416→        </div>
+  1417→      )}
+  1418→    </>
+  1419→  );
+  1420→}
+  1421→

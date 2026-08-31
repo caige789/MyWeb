@@ -1,0 +1,55 @@
+name: deploy-digital-garden
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # OpenNext 内部用 bun 执行 next build，必须安装
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # 表结构半自动同步：只有 prisma/schema.prisma 变更时才 db push（幂等，已同步则跳过）
+      - name: Sync DB schema (if changed)
+        run: |
+          git diff --quiet HEAD^ HEAD -- prisma/schema.prisma \
+            && echo "schema unchanged, skip" \
+            || npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      # Prisma 6.19.x 发布包缺失 wasm.mjs（Next 16 Turbopack 需要），构建前补齐
+      - name: Patch Prisma wasm.mjs
+        run: node scripts/patch-prisma-wasm.mjs
+
+      # Windows 符号链接补丁（Linux CI 无副作用，保留）
+      - name: Patch OpenNext symlink (no-op on linux)
+        run: node scripts/patch-opennext-symlink.mjs
+
+      - name: Build (OpenNext)
+        run: npx opennextjs-cloudflare build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy --config wrangler.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

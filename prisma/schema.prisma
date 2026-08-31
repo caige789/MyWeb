@@ -1,0 +1,124 @@
+// Default: SQLite (local dev & VPS deploy)
+// Switch to PostgreSQL: copy schema.postgres.prisma over this file
+
+generator client {
+  provider = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Article {
+  id        Int      @id @default(autoincrement())
+  title     String
+  summary   String   @default("")
+  content   String
+  category  String   @default("")
+  status    String   @default("draft")
+  viewCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GameScore {
+  id        Int      @id @default(autoincrement())
+  game      String
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+  @@unique([game])
+}
+
+model Todo {
+  id        Int      @id @default(autoincrement())
+  content   String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  nickname  String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model SiteConfig {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+model SiteStat {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value Int    @default(0)
+}
+
+model Diary {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  date      String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id         Int         @id @default(autoincrement())
+  username   String      @unique
+  password   String
+  nickname   String
+  avatar     String      @default("")
+  role       String      @default("user")
+  token      String      @unique
+  createdAt  DateTime    @default(now())
+  scores     UserScore[]
+  achievements UserAchievement[]
+}
+
+model LeaderboardEntry {
+  id        Int      @id @default(autoincrement())
+  game      String
+  score     Int      @default(0)
+  nickname  String   @default("")
+  userId    Int?
+  createdAt DateTime @default(now())
+
+  @@index([game, score])
+}
+
+model UserScore {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  game      String
+  score     Int      @default(0)
+  difficulty String   @default("")
+  createdAt DateTime @default(now())
+  @@unique([userId, game, difficulty])
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Achievement {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String
+  icon        String   @default("")
+  users       UserAchievement[]
+  @@index([code])
+}
+
+model UserAchievement {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  achievementId Int
+  unlockedAt    DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+}

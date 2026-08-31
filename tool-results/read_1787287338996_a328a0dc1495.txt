@@ -1,0 +1,951 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Card, CardContent } from '@/components/ui/card';
+     6→import { ArrowLeft, Trophy, RotateCcw } from 'lucide-react';
+     7→import { useIsMobile } from '@/hooks/use-mobile';
+     8→
+     9→/* ==================== 类型定义 ==================== */
+    10→
+    11→interface TetrisGameProps {
+    12→  onBack: () => void;
+    13→}
+    14→
+    15→/** 棋盘列数 */
+    16→const COLS = 10;
+    17→/** 棋盘行数 */
+    18→const ROWS = 20;
+    19→/** 单元格像素大小 */
+    20→const CELL = 30;
+    21→/** 下一个预览区域单元格大小 */
+    22→const PREVIEW_CELL = 22;
+    23→/** 游戏名称（用于API） */
+    24→const GAME_NAME = 'tetris';
+    25→
+    26→/** 速度档位配置 */
+    27→const SPEED_CONFIG = {
+    28→  slow: { label: '慢速', base: 800 },
+    29→  normal: { label: '正常', base: 500 },
+    30→  fast: { label: '快速', base: 300 },
+    31→} as const;
+    32→
+    33→/** 速度档位类型 */
+    34→type SpeedKey = keyof typeof SPEED_CONFIG;
+    35→
+    36→/** 7种标准方块形状定义 */
+    37→const SHAPES: Record<string, number[][]> = {
+    38→  I: [
+    39→    [0, 0, 0, 0],
+    40→    [1, 1, 1, 1],
+    41→    [0, 0, 0, 0],
+    42→    [0, 0, 0, 0],
+    43→  ],
+    44→  O: [
+    45→    [1, 1],
+    46→    [1, 1],
+    47→  ],
+    48→  T: [
+    49→    [0, 1, 0],
+    50→    [1, 1, 1],
+    51→    [0, 0, 0],
+    52→  ],
+    53→  S: [
+    54→    [0, 1, 1],
+    55→    [1, 1, 0],
+    56→    [0, 0, 0],
+    57→  ],
+    58→  Z: [
+    59→    [1, 1, 0],
+    60→    [0, 1, 1],
+    61→    [0, 0, 0],
+    62→  ],
+    63→  J: [
+    64→    [1, 0, 0],
+    65→    [1, 1, 1],
+    66→    [0, 0, 0],
+    67→  ],
+    68→  L: [
+    69→    [0, 0, 1],
+    70→    [1, 1, 1],
+    71→    [0, 0, 0],
+    72→  ],
+    73→};
+    74→
+    75→/** 方块颜色映射 */
+    76→const COLORS: Record<string, string> = {
+    77→  I: '#00e5ff',
+    78→  O: '#ffea00',
+    79→  T: '#d500f9',
+    80→  S: '#00e676',
+    81→  Z: '#ff1744',
+    82→  J: '#2979ff',
+    83→  L: '#ff9100',
+    84→};
+    85→
+    86→/** 方块描边颜色（更深） */
+    87→const STROKE_COLORS: Record<string, string> = {
+    88→  I: '#00b8d4',
+    89→  O: '#f9a825',
+    90→  T: '#aa00ff',
+    91→  S: '#00c853',
+    92→  Z: '#d50000',
+    93→  J: '#2962ff',
+    94→  L: '#e65100',
+    95→};
+    96→
+    97→/** 方块高光颜色（更亮） */
+    98→const HIGHLIGHT_COLORS: Record<string, string> = {
+    99→  I: '#80f0ff',
+   100→  O: '#fff59d',
+   101→  T: '#ea80fc',
+   102→  S: '#69f0ae',
+   103→  Z: '#ff8a80',
+   104→  J: '#82b1ff',
+   105→  L: '#ffcc80',
+   106→};
+   107→
+   108→/** 方块类型列表 */
+   109→const PIECE_TYPES = Object.keys(SHAPES);
+   110→
+   111→/** 消行得分规则 */
+   112→const LINE_SCORES: Record<number, number> = {
+   113→  1: 100,
+   114→  2: 300,
+   115→  3: 500,
+   116→  4: 800,
+   117→};
+   118→
+   119→/** 当前方块信息 */
+   120→interface Piece {
+   121→  type: string;
+   122→  shape: number[][];
+   123→  x: number;
+   124→  y: number;
+   125→}
+   126→
+   127→/** 游戏状态类型 */
+   128→type GameStatus = 'idle' | 'playing' | 'over';
+   129→
+   130→/* ==================== 工具函数 ==================== */
+   131→
+   132→/** 随机生成一个方块类型 */
+   133→function randomType(): string {
+   134→  return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+   135→}
+   136→
+   137→/** 深拷贝二维数组 */
+   138→function cloneShape(shape: number[][]): number[][] {
+   139→  return shape.map(row => [...row]);
+   140→}
+   141→
+   142→/** 顺时针旋转矩阵90度 */
+   143→function rotateShape(shape: number[][]): number[][] {
+   144→  const n = shape.length;
+   145→  const rotated: number[][] = [];
+   146→  for (let i = 0; i < n; i++) {
+   147→    rotated[i] = [];
+   148→    for (let j = 0; j < n; j++) {
+   149→      rotated[i][j] = shape[n - 1 - j][i];
+   150→    }
+   151→  }
+   152→  return rotated;
+   153→}
+   154→
+   155→/** 创建新方块 */
+   156→function createPiece(type: string): Piece {
+   157→  return {
+   158→    type,
+   159→    shape: cloneShape(SHAPES[type]),
+   160→    x: Math.floor((COLS - SHAPES[type][0].length) / 2),
+   161→    y: 0,
+   162→  };
+   163→}
+   164→
+   165→/** 碰撞检测：检查方块在指定位置是否合法 */
+   166→function isValid(
+   167→  shape: number[][],
+   168→  board: (string | null)[][],
+   169→  px: number,
+   170→  py: number
+   171→): boolean {
+   172→  for (let r = 0; r < shape.length; r++) {
+   173→    for (let c = 0; c < shape[r].length; c++) {
+   174→      if (shape[r][c]) {
+   175→        const nx = px + c;
+   176→        const ny = py + r;
+   177→        if (nx < 0 || nx >= COLS || ny >= ROWS) return false;
+   178→        if (ny >= 0 && board[ny][nx] !== null) return false;
+   179→      }
+   180→    }
+   181→  }
+   182→  return true;
+   183→}
+   184→
+   185→/* ==================== 主组件 ==================== */
+   186→
+   187→export default function TetrisGame({ onBack }: TetrisGameProps) {
+   188→  const isMobile = useIsMobile();
+   189→
+   190→  /* --- Refs --- */
+   191→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   192→  const rafRef = useRef<number | null>(null);
+   193→  const boardRef = useRef<(string | null)[][]>(
+   194→    Array.from({ length: ROWS }, () => Array(COLS).fill(null))
+   195→  );
+   196→  const currentRef = useRef<Piece | null>(null);
+   197→  const nextRef = useRef<string>(randomType());
+   198→  const scoreRef = useRef<number>(0);
+   199→  const levelRef = useRef<number>(1);
+   200→  const linesRef = useRef<number>(0);
+   201→  const statusRef = useRef<GameStatus>('idle');
+   202→  const lastDropRef = useRef<number>(0);
+   203→  const speedRef = useRef<SpeedKey>('normal');
+   204→  const flashRowsRef = useRef<number[]>([]);
+   205→  const flashStartRef = useRef<number>(0);
+   206→  const gameOverCheckedRef = useRef<boolean>(false);
+   207→  const scaleRef = useRef<number>(1);
+   208→  const displayWidthRef = useRef<number>(COLS * CELL);
+   209→
+   210→  /* --- React状态（用于UI渲染） --- */
+   211→  const [score, setScore] = useState(0);
+   212→  const [level, setLevel] = useState(1);
+   213→  const [highScore, setHighScore] = useState(0);
+   214→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   215→  const [speed, setSpeed] = useState<SpeedKey>('normal');
+   216→  const [isNewRecord, setIsNewRecord] = useState(false);
+   217→  const [loadingHighScore, setLoadingHighScore] = useState(true);
+   218→
+   219→  /* ==================== 计算Canvas缩放比例 ==================== */
+   220→  const computeScale = useCallback(() => {
+   221→    const maxW = isMobile ? 360 : COLS * CELL;
+   222→    const boardW = COLS * CELL;
+   223→    const s = Math.min(maxW / boardW, 1);
+   224→    scaleRef.current = s;
+   225→    displayWidthRef.current = boardW * s;
+   226→    return s;
+   227→  }, [isMobile]);
+   228→
+   229→  /* ==================== 获取当前下落间隔 ==================== */
+   230→  const getDropInterval = useCallback((): number => {
+   231→    const base = SPEED_CONFIG[speedRef.current].base;
+   232→    const lv = levelRef.current;
+   233→    // 每升一级减少10%，最低不低于80ms
+   234→    return Math.max(80, base * Math.pow(0.9, lv - 1));
+   235→  }, []);
+   236→
+   237→  /* ==================== 初始化空棋盘 ==================== */
+   238→  const resetBoard = useCallback(() => {
+   239→    boardRef.current = Array.from({ length: ROWS }, () =>
+   240→      Array(COLS).fill(null)
+   241→    );
+   242→  }, []);
+   243→
+   244→  /* ==================== 生成新方块 ==================== */
+   245→  const spawnPiece = useCallback(() => {
+   246→    const type = nextRef.current;
+   247→    nextRef.current = randomType();
+   248→    const piece = createPiece(type);
+   249→    currentRef.current = piece;
+   250→    // 检查是否能放置新方块，若不能则游戏结束
+   251→    if (!isValid(piece.shape, boardRef.current, piece.x, piece.y)) {
+   252→      statusRef.current = 'over';
+   253→      setGameStatus('over');
+   254→      gameOverCheckedRef.current = false;
+   255→    }
+   256→  }, []);
+   257→
+   258→  /* ==================== 固定方块到棋盘 ==================== */
+   259→  const lockPiece = useCallback(() => {
+   260→    const piece = currentRef.current;
+   261→    if (!piece) return;
+   262→    const board = boardRef.current;
+   263→    for (let r = 0; r < piece.shape.length; r++) {
+   264→      for (let c = 0; c < piece.shape[r].length; c++) {
+   265→        if (piece.shape[r][c]) {
+   266→          const ny = piece.y + r;
+   267→          const nx = piece.x + c;
+   268→          if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
+   269→            board[ny][nx] = piece.type;
+   270→          }
+   271→        }
+   272→      }
+   273→    }
+   274→  }, []);
+   275→
+   276→  /* ==================== 消行检测与处理 ==================== */
+   277→  const clearLines = useCallback((): number => {
+   278→    const board = boardRef.current;
+   279→    const fullRows: number[] = [];
+   280→    for (let r = 0; r < ROWS; r++) {
+   281→      if (board[r].every(cell => cell !== null)) {
+   282→        fullRows.push(r);
+   283→      }
+   284→    }
+   285→    if (fullRows.length === 0) return 0;
+   286→    // 触发闪白动画
+   287→    flashRowsRef.current = fullRows;
+   288→    flashStartRef.current = performance.now();
+   289→    // 实际消除行（动画结束后由主循环处理）
+   290→    return fullRows.length;
+   291→  }, []);
+   292→
+   293→  /** 实际移除已满行并添加空行到顶部 */
+   294→  const removeLines = useCallback(() => {
+   295→    const board = boardRef.current;
+   296→    const fullRows = flashRowsRef.current;
+   297→    // 从下往上移除满行
+   298→    const newBoard = board.filter((_, idx) => !fullRows.includes(idx));
+   299→    // 顶部补空行
+   300→    while (newBoard.length < ROWS) {
+   301→      newBoard.unshift(Array(COLS).fill(null));
+   302→    }
+   303→    boardRef.current = newBoard;
+   304→    flashRowsRef.current = [];
+   305→  }, []);
+   306→
+   307→  /* ==================== 方块下移 ==================== */
+   308→  const moveDown = useCallback(() => {
+   309→    const piece = currentRef.current;
+   310→    if (!piece || statusRef.current !== 'playing') return;
+   311→    const board = boardRef.current;
+   312→    if (isValid(piece.shape, board, piece.x, piece.y + 1)) {
+   313→      piece.y += 1;
+   314→    } else {
+   315→      // 方块触底，固定并处理消行
+   316→      lockPiece();
+   317→      const cleared = clearLines();
+   318→      if (cleared > 0) {
+   319→        const pts = LINE_SCORES[cleared] || cleared * 100;
+   320→        scoreRef.current += pts;
+   321→        linesRef.current += cleared;
+   322→        // 每10行升一级
+   323→        const newLv = Math.floor(linesRef.current / 10) + 1;
+   324→        levelRef.current = newLv;
+   325→        setScore(scoreRef.current);
+   326→        setLevel(newLv);
+   327→      }
+   328→      // 如果没有消行动画，直接生成新方块
+   329→      if (cleared === 0) {
+   330→        spawnPiece();
+   331→      }
+   332→      // 消行动画中会在主循环的渲染阶段处理
+   333→    }
+   334→  }, [lockPiece, clearLines, spawnPiece]);
+   335→
+   336→  /* ==================== 左移 ==================== */
+   337→  const moveLeft = useCallback(() => {
+   338→    const piece = currentRef.current;
+   339→    if (!piece || statusRef.current !== 'playing') return;
+   340→    if (isValid(piece.shape, boardRef.current, piece.x - 1, piece.y)) {
+   341→      piece.x -= 1;
+   342→    }
+   343→  }, []);
+   344→
+   345→  /* ==================== 右移 ==================== */
+   346→  const moveRight = useCallback(() => {
+   347→    const piece = currentRef.current;
+   348→    if (!piece || statusRef.current !== 'playing') return;
+   349→    if (isValid(piece.shape, boardRef.current, piece.x + 1, piece.y)) {
+   350→      piece.x += 1;
+   351→    }
+   352→  }, []);
+   353→
+   354→  /* ==================== 旋转 ==================== */
+   355→  const rotate = useCallback(() => {
+   356→    const piece = currentRef.current;
+   357→    if (!piece || statusRef.current !== 'playing') return;
+   358→    if (piece.type === 'O') return; // O方块不需要旋转
+   359→    const rotated = rotateShape(piece.shape);
+   360→    // 尝试基本旋转
+   361→    if (isValid(rotated, boardRef.current, piece.x, piece.y)) {
+   362→      piece.shape = rotated;
+   363→      return;
+   364→    }
+   365→    // 墙踢：尝试左右偏移
+   366→    const kicks = [1, -1, 2, -2];
+   367→    for (const kick of kicks) {
+   368→      if (isValid(rotated, boardRef.current, piece.x + kick, piece.y)) {
+   369→        piece.shape = rotated;
+   370→        piece.x += kick;
+   371→        return;
+   372→      }
+   373→    }
+   374→  }, []);
+   375→
+   376→  /* ==================== 硬降 ==================== */
+   377→  const hardDrop = useCallback(() => {
+   378→    const piece = currentRef.current;
+   379→    if (!piece || statusRef.current !== 'playing') return;
+   380→    const board = boardRef.current;
+   381→    const originalY = piece.y;
+   382→    let dropY = piece.y;
+   383→    while (isValid(piece.shape, board, piece.x, dropY + 1)) {
+   384→      dropY += 1;
+   385→    }
+   386→    piece.y = dropY;
+   387→    // 加上硬降距离的额外分数
+   388→    scoreRef.current += (dropY - originalY) * 2;
+   389→    setScore(scoreRef.current);
+   390→    // 直接触底固定
+   391→    lockPiece();
+   392→    const cleared = clearLines();
+   393→    if (cleared > 0) {
+   394→      const pts = LINE_SCORES[cleared] || cleared * 100;
+   395→      scoreRef.current += pts;
+   396→      linesRef.current += cleared;
+   397→      const newLv = Math.floor(linesRef.current / 10) + 1;
+   398→      levelRef.current = newLv;
+   399→      setScore(scoreRef.current);
+   400→      setLevel(newLv);
+   401→    }
+   402→    if (cleared === 0) {
+   403→      spawnPiece();
+   404→    }
+   405→  }, [lockPiece, clearLines, spawnPiece]);
+   406→
+   407→  /* ==================== 计算Ghost位置 ==================== */
+   408→  const getGhostY = useCallback((): number => {
+   409→    const piece = currentRef.current;
+   410→    if (!piece) return 0;
+   411→    const board = boardRef.current;
+   412→    let ghostY = piece.y;
+   413→    while (isValid(piece.shape, board, piece.x, ghostY + 1)) {
+   414→      ghostY += 1;
+   415→    }
+   416→    return ghostY;
+   417→  }, []);
+   418→
+   419→  /* ==================== Canvas绘制 ==================== */
+   420→  const draw = useCallback(
+   421→    (ctx: CanvasRenderingContext2D, now: number) => {
+   422→      const s = scaleRef.current;
+   423→      const cw = COLS * CELL;
+   424→      const ch = ROWS * CELL;
+   425→      const board = boardRef.current;
+   426→      const piece = currentRef.current;
+   427→
+   428→      // 清空画布
+   429→      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+   430→      ctx.save();
+   431→      ctx.scale(s, s);
+   432→
+   433→      // 深色背景
+   434→      ctx.fillStyle = '#1a1a2e';
+   435→      ctx.fillRect(0, 0, cw, ch);
+   436→
+   437→      // 网格线
+   438→      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+   439→      ctx.lineWidth = 0.5;
+   440→      for (let r = 0; r <= ROWS; r++) {
+   441→        ctx.beginPath();
+   442→        ctx.moveTo(0, r * CELL);
+   443→        ctx.lineTo(cw, r * CELL);
+   444→        ctx.stroke();
+   445→      }
+   446→      for (let c = 0; c <= COLS; c++) {
+   447→        ctx.beginPath();
+   448→        ctx.moveTo(c * CELL, 0);
+   449→        ctx.lineTo(c * CELL, ch);
+   450→        ctx.stroke();
+   451→      }
+   452→
+   453→      // 绘制已固定的方块
+   454→      for (let r = 0; r < ROWS; r++) {
+   455→        for (let c = 0; c < COLS; c++) {
+   456→          if (board[r][c] !== null) {
+   457→            drawCell(ctx, c, r, board[r][c]!, 1);
+   458→          }
+   459→        }
+   460→      }
+   461→
+   462→      // 消行闪白动画
+   463→      if (flashRowsRef.current.length > 0) {
+   464→        const elapsed = now - flashStartRef.current;
+   465→        const flashDuration = 300; // 300ms闪白
+   466→        if (elapsed < flashDuration) {
+   467→          const alpha = 0.5 + 0.5 * Math.sin((elapsed / flashDuration) * Math.PI * 4);
+   468→          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+   469→          for (const row of flashRowsRef.current) {
+   470→            ctx.fillRect(0, row * CELL, cw, CELL);
+   471→          }
+   472→        } else {
+   473→          // 动画结束，执行实际消行
+   474→          removeLines();
+   475→          spawnPiece();
+   476→        }
+   477→      }
+   478→
+   479→      // 绘制Ghost方块
+   480→      if (piece && statusRef.current === 'playing' && flashRowsRef.current.length === 0) {
+   481→        const ghostY = getGhostY();
+   482→        if (ghostY !== piece.y) {
+   483→          for (let r = 0; r < piece.shape.length; r++) {
+   484→            for (let c = 0; c < piece.shape[r].length; c++) {
+   485→              if (piece.shape[r][c]) {
+   486→                const px = (piece.x + c) * CELL;
+   487→                const py = (ghostY + r) * CELL;
+   488→                ctx.strokeStyle = COLORS[piece.type];
+   489→                ctx.globalAlpha = 0.3;
+   490→                ctx.lineWidth = 2;
+   491→                ctx.strokeRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   492→                ctx.globalAlpha = 0.08;
+   493→                ctx.fillStyle = COLORS[piece.type];
+   494→                ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   495→                ctx.globalAlpha = 1;
+   496→              }
+   497→            }
+   498→          }
+   499→        }
+   500→      }
+   501→
+   502→      // 绘制当前方块
+   503→      if (piece && statusRef.current === 'playing') {
+   504→        for (let r = 0; r < piece.shape.length; r++) {
+   505→          for (let c = 0; c < piece.shape[r].length; c++) {
+   506→            if (piece.shape[r][c]) {
+   507→              drawCell(ctx, piece.x + c, piece.y + r, piece.type, 1);
+   508→            }
+   509→          }
+   510→        }
+   511→      }
+   512→
+   513→      ctx.restore();
+   514→
+   515→      /* --- 绘制下一个方块预览（在主Canvas右侧） --- */
+   516→      const previewX = cw + 16;
+   517→      const previewY = 8;
+   518→      const nType = nextRef.current;
+   519→      const nShape = SHAPES[nType];
+   520→      const pw = 4 * PREVIEW_CELL;
+   521→      const ph = 4 * PREVIEW_CELL;
+   522→
+   523→      // 预览区背景
+   524→      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+   525→      ctx.beginPath();
+   526→      ctx.roundRect(previewX - 8, previewY - 4, pw + 16, ph + 24, 8);
+   527→      ctx.fill();
+   528→
+   529→      // "NEXT" 标签
+   530→      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+   531→      ctx.font = `${11 * s}px sans-serif`;
+   532→      ctx.fillText('NEXT', previewX, previewY + 10);
+   533→
+   534→      // 计算居中偏移
+   535→      const ox = previewX + (pw - nShape[0].length * PREVIEW_CELL) / 2;
+   536→      const oy = previewY + 20 + (ph - nShape.length * PREVIEW_CELL) / 2;
+   537→      for (let r = 0; r < nShape.length; r++) {
+   538→        for (let c = 0; c < nShape[r].length; c++) {
+   539→          if (nShape[r][c]) {
+   540→            const px = ox + c * PREVIEW_CELL;
+   541→            const py = oy + r * PREVIEW_CELL;
+   542→            ctx.fillStyle = COLORS[nType];
+   543→            ctx.fillRect(px + 1, py + 1, PREVIEW_CELL - 2, PREVIEW_CELL - 2);
+   544→            ctx.strokeStyle = STROKE_COLORS[nType];
+   545→            ctx.lineWidth = 1.5;
+   546→            ctx.strokeRect(px + 1, py + 1, PREVIEW_CELL - 2, PREVIEW_CELL - 2);
+   547→            // 高光效果
+   548→            ctx.fillStyle = HIGHLIGHT_COLORS[nType];
+   549→            ctx.globalAlpha = 0.4;
+   550→            ctx.fillRect(px + 2, py + 2, PREVIEW_CELL - 6, 4);
+   551→            ctx.globalAlpha = 1;
+   552→          }
+   553→        }
+   554→      }
+   555→
+   556→      /* --- 游戏结束遮罩 --- */
+   557→      if (statusRef.current === 'over') {
+   558→        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+   559→        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+   560→        ctx.fillStyle = '#ff4757';
+   561→        ctx.font = `bold ${28 * s}px sans-serif`;
+   562→        ctx.textAlign = 'center';
+   563→        ctx.fillText('GAME OVER', ctx.canvas.width / 2, ctx.canvas.height / 2 - 20 * s);
+   564→        ctx.fillStyle = '#ffffff';
+   565→        ctx.font = `${16 * s}px sans-serif`;
+   566→        ctx.fillText(`得分: ${scoreRef.current}`, ctx.canvas.width / 2, ctx.canvas.height / 2 + 16 * s);
+   567→        if (isNewRecord) {
+   568→          ctx.fillStyle = '#ffd700';
+   569→          ctx.font = `bold ${14 * s}px sans-serif`;
+   570→          ctx.fillText('🎉 新纪录！', ctx.canvas.width / 2, ctx.canvas.height / 2 + 44 * s);
+   571→        }
+   572→        ctx.textAlign = 'start';
+   573→      }
+   574→    },
+   575→    [getGhostY, removeLines, spawnPiece, isNewRecord]
+   576→  );
+   577→
+   578→  /** 绘制单个方块单元格（带高光和描边效果） */
+   579→  function drawCell(
+   580→    ctx: CanvasRenderingContext2D,
+   581→    x: number,
+   582→    y: number,
+   583→    type: string,
+   584→    alpha: number
+   585→  ) {
+   586→    const px = x * CELL;
+   587→    const py = y * CELL;
+   588→    ctx.globalAlpha = alpha;
+   589→    // 主体填充
+   590→    ctx.fillStyle = COLORS[type];
+   591→    ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   592→    // 描边
+   593→    ctx.strokeStyle = STROKE_COLORS[type];
+   594→    ctx.lineWidth = 1.5;
+   595→    ctx.strokeRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   596→    // 顶部高光条
+   597→    ctx.fillStyle = HIGHLIGHT_COLORS[type];
+   598→    ctx.globalAlpha = alpha * 0.45;
+   599→    ctx.fillRect(px + 3, py + 3, CELL - 6, 5);
+   600→    // 左侧高光条
+   601→    ctx.fillRect(px + 3, py + 3, 3, CELL - 6);
+   602→    ctx.globalAlpha = 1;
+   603→  }
+   604→
+   605→  /* ==================== 主游戏循环 ==================== */
+   606→  const gameLoop = useCallback(
+   607→    (now: number) => {
+   608→      if (statusRef.current === 'playing') {
+   609→        // 处理自动下落（消行动画期间暂停下落）
+   610→        if (flashRowsRef.current.length === 0) {
+   611→          if (now - lastDropRef.current >= getDropInterval()) {
+   612→            moveDown();
+   613→            lastDropRef.current = now;
+   614→          }
+   615→        }
+   616→      }
+   617→
+   618→      // 游戏结束时提交分数
+   619→      if (
+   620→        statusRef.current === 'over' &&
+   621→        !gameOverCheckedRef.current
+   622→      ) {
+   623→        gameOverCheckedRef.current = true;
+   624→        submitScore(scoreRef.current);
+   625→      }
+   626→
+   627→      // 绘制
+   628→      const canvas = canvasRef.current;
+   629→      if (canvas) {
+   630→        const ctx = canvas.getContext('2d');
+   631→        if (ctx) draw(ctx, now);
+   632→      }
+   633→
+   634→      rafRef.current = requestAnimationFrame(gameLoop);
+   635→    },
+   636→    [draw, getDropInterval, moveDown]
+   637→  );
+   638→
+   639→  /* ==================== 提交分数到API ==================== */
+   640→  const submitScore = useCallback(async (finalScore: number) => {
+   641→    try {
+   642→      const res = await fetch('/api/games/scores', {
+   643→        method: 'POST',
+   644→        headers: { 'Content-Type': 'application/json' },
+   645→        body: JSON.stringify({ game: GAME_NAME, score: finalScore }),
+   646→      });
+   647→      const data = await res.json();
+   648→      if (data.data) {
+   649→        const newHigh = data.data.score;
+   650→        setHighScore(newHigh);
+   651→        if (newHigh === finalScore && finalScore > 0) {
+   652→          setIsNewRecord(true);
+   653→        }
+   654→      }
+   655→    } catch {
+   656→      // 静默处理
+   657→    }
+   658→  }, []);
+   659→
+   660→  /* ==================== 加载最高分 ==================== */
+   661→  useEffect(() => {
+   662→    async function load() {
+   663→      try {
+   664→        const res = await fetch('/api/games/scores');
+   665→        const data = await res.json();
+   666→        if (data.data && Array.isArray(data.data)) {
+   667→          const entry = data.data.find(
+   668→            (e: { game: string; score: number }) => e.game === GAME_NAME
+   669→          );
+   670→          if (entry) setHighScore(entry.score);
+   671→        }
+   672→      } catch {
+   673→        // 静默处理
+   674→      } finally {
+   675→        setLoadingHighScore(false);
+   676→      }
+   677→    }
+   678→    load();
+   679→  }, []);
+   680→
+   681→  /* ==================== Canvas尺寸设置（高DPI） ==================== */
+   682→  useEffect(() => {
+   683→    const canvas = canvasRef.current;
+   684→    if (!canvas) return;
+   685→    const s = computeScale();
+   686→    const dpr = window.devicePixelRatio || 1;
+   687→    // 主区域宽度 + 预览区宽度
+   688→    const logicW = COLS * CELL + 4 * PREVIEW_CELL + 40;
+   689→    const logicH = ROWS * CELL;
+   690→    canvas.width = logicW * s * dpr;
+   691→    canvas.height = logicH * s * dpr;
+   692→    canvas.style.width = `${logicW * s}px`;
+   693→    canvas.style.height = `${logicH * s}px`;
+   694→    const ctx = canvas.getContext('2d');
+   695→    if (ctx) ctx.scale(dpr, dpr);
+   696→  }, [computeScale, isMobile, gameStatus]);
+   697→
+   698→  /* ==================== 游戏循环启停 ==================== */
+   699→  useEffect(() => {
+   700→    if (gameStatus === 'playing') {
+   701→      lastDropRef.current = performance.now();
+   702→      rafRef.current = requestAnimationFrame(gameLoop);
+   703→    }
+   704→    return () => {
+   705→      if (rafRef.current) {
+   706→        cancelAnimationFrame(rafRef.current);
+   707→        rafRef.current = null;
+   708→      }
+   709→    };
+   710→  }, [gameStatus, gameLoop]);
+   711→
+   712→  /* ==================== 键盘事件 ==================== */
+   713→  useEffect(() => {
+   714→    if (gameStatus !== 'playing') return;
+   715→    const handleKeyDown = (e: KeyboardEvent) => {
+   716→      switch (e.key) {
+   717→        case 'ArrowLeft':
+   718→          e.preventDefault();
+   719→          moveLeft();
+   720→          break;
+   721→        case 'ArrowRight':
+   722→          e.preventDefault();
+   723→          moveRight();
+   724→          break;
+   725→        case 'ArrowDown':
+   726→          e.preventDefault();
+   727→          moveDown();
+   728→          lastDropRef.current = performance.now();
+   729→          break;
+   730→        case 'ArrowUp':
+   731→          e.preventDefault();
+   732→          rotate();
+   733→          break;
+   734→        case ' ':
+   735→          e.preventDefault();
+   736→          hardDrop();
+   737→          break;
+   738→      }
+   739→    };
+   740→    window.addEventListener('keydown', handleKeyDown);
+   741→    return () => window.removeEventListener('keydown', handleKeyDown);
+   742→  }, [gameStatus, moveLeft, moveRight, moveDown, rotate, hardDrop]);
+   743→
+   744→  /* ==================== 开始游戏 ==================== */
+   745→  const startGame = useCallback(() => {
+   746→    resetBoard();
+   747→    scoreRef.current = 0;
+   748→    levelRef.current = 1;
+   749→    linesRef.current = 0;
+   750→    speedRef.current = speed;
+   751→    flashRowsRef.current = [];
+   752→    gameOverCheckedRef.current = false;
+   753→    setIsNewRecord(false);
+   754→    setScore(0);
+   755→    setLevel(1);
+   756→    nextRef.current = randomType();
+   757→    spawnPiece();
+   758→    statusRef.current = 'playing';
+   759→    setGameStatus('playing');
+   760→  }, [speed, resetBoard, spawnPiece]);
+   761→
+   762→  /* ==================== 重新开始 ==================== */
+   763→  const restartGame = useCallback(() => {
+   764→    startGame();
+   765→  }, [startGame]);
+   766→
+   767→  /* ==================== 设置面板 ==================== */
+   768→  if (gameStatus === 'idle') {
+   769→    return (
+   770→      <div className="flex flex-col items-center w-full min-h-[70vh] gap-4 p-4">
+   771→        <div className="w-full max-w-md">
+   772→          <Button variant="ghost" onClick={onBack} className="mb-2">
+   773→            <ArrowLeft className="h-5 w-5 mr-2" />
+   774→            返回
+   775→          </Button>
+   776→          <Card className="bg-card border-border">
+   777→            <CardContent className="p-6 space-y-5">
+   778→              <div className="text-center">
+   779→                <h2 className="text-2xl font-bold flex items-center justify-center gap-2">
+   780→                  <span className="text-2xl">🟦</span> 俄罗斯方块
+   781→                </h2>
+   782→                {!loadingHighScore && highScore > 0 && (
+   783→                  <p className="text-sm text-muted-foreground mt-1 flex items-center justify-center gap-1">
+   784→                    <Trophy className="h-4 w-4 text-yellow-500" />
+   785→                    最高分: {highScore}
+   786→                  </p>
+   787→                )}
+   788→              </div>
+   789→
+   790→              <div className="space-y-2">
+   791→                <p className="text-sm font-medium">速度设置</p>
+   792→                <div className="grid grid-cols-3 gap-2">
+   793→                  {(Object.entries(SPEED_CONFIG) as [SpeedKey, { label: string; base: number }][]).map(
+   794→                    ([key, cfg]) => (
+   795→                      <Button
+   796→                        key={key}
+   797→                        variant={speed === key ? 'default' : 'outline'}
+   798→                        size="sm"
+   799→                        className="w-full"
+   800→                        onClick={() => setSpeed(key)}
+   801→                      >
+   802→                        {cfg.label}
+   803→                      </Button>
+   804→                    )
+   805→                  )}
+   806→                </div>
+   807→              </div>
+   808→
+   809→              <div className="space-y-2">
+   810→                <p className="text-sm font-medium">操作说明</p>
+   811→                <div className="rounded-lg bg-muted/50 p-3 space-y-1.5 text-sm text-muted-foreground">
+   812→                  <p className="font-medium text-foreground">桌面端</p>
+   813→                  <p>← → 移动方块</p>
+   814→                  <p>↑ 旋转方块</p>
+   815→                  <p>↓ 加速下落</p>
+   816→                  <p>空格 硬降（直接落底）</p>
+   817→                  {isMobile && (
+   818→                    <>
+   819→                      <p className="font-medium text-foreground pt-1">手机端</p>
+   820→                      <p>使用屏幕底部虚拟按钮操作</p>
+   821→                    </>
+   822→                  )}
+   823→                </div>
+   824→              </div>
+   825→
+   826→              <Button onClick={startGame} className="w-full" size="lg">
+   827→                开始游戏
+   828→              </Button>
+   829→            </CardContent>
+   830→          </Card>
+   831→        </div>
+   832→      </div>
+   833→    );
+   834→  }
+   835→
+   836→  /* ==================== 游戏进行中/结束界面 ==================== */
+   837→  return (
+   838→    <div className="flex flex-col items-center w-full min-h-[70vh] gap-3 p-2">
+   839→      {/* 顶部状态栏 */}
+   840→      <div className="w-full max-w-md flex items-center justify-between px-2">
+   841→        <Button variant="ghost" size="sm" onClick={onBack}>
+   842→          <ArrowLeft className="h-4 w-4 mr-1" />
+   843→          返回
+   844→        </Button>
+   845→        <h2 className="text-lg font-bold flex items-center gap-1.5">
+   846→          <span>🟦</span> 俄罗斯方块
+   847→        </h2>
+   848→        <div className="flex items-center gap-3 text-sm">
+   849→          <span className="flex items-center gap-1">
+   850→            <Trophy className="h-4 w-4 text-yellow-500" />
+   851→            {score}
+   852→          </span>
+   853→          <span className="text-muted-foreground">Lv.{level}</span>
+   854→        </div>
+   855→      </div>
+   856→
+   857→      {/* Canvas游戏区域 */}
+   858→      <canvas
+   859→        ref={canvasRef}
+   860→        className="rounded-lg border border-border/50"
+   861→        style={{
+   862→          maxWidth: '100%',
+   863→        }}
+   864→      />
+   865→
+   866→      {/* 手机端虚拟按钮 */}
+   867→      {isMobile && (
+   868→        <div className="w-full max-w-md px-2">
+   869→          <div className="flex items-center justify-center gap-2 mt-1">
+   870→            <Button
+   871→              variant="outline"
+   872→              size="lg"
+   873→              className="min-h-12 min-w-14 text-xl font-bold"
+   874→              onTouchStart={(e) => {
+   875→                e.preventDefault();
+   876→                moveLeft();
+   877→              }}
+   878→              disabled={gameStatus === 'over'}
+   879→            >
+   880→              ←
+   881→            </Button>
+   882→            <Button
+   883→              variant="outline"
+   884→              size="lg"
+   885→              className="min-h-12 min-w-14 text-xl font-bold"
+   886→              onTouchStart={(e) => {
+   887→                e.preventDefault();
+   888→                moveDown();
+   889→                lastDropRef.current = performance.now();
+   890→              }}
+   891→              disabled={gameStatus === 'over'}
+   892→            >
+   893→              ↓
+   894→            </Button>
+   895→            <Button
+   896→              variant="outline"
+   897→              size="lg"
+   898→              className="min-h-12 min-w-14 text-xl font-bold"
+   899→              onTouchStart={(e) => {
+   900→                e.preventDefault();
+   901→                moveRight();
+   902→              }}
+   903→              disabled={gameStatus === 'over'}
+   904→            >
+   905→              →
+   906→            </Button>
+   907→            <Button
+   908→              variant="outline"
+   909→              size="lg"
+   910→              className="min-h-12 min-w-14 text-base font-bold"
+   911→              onTouchStart={(e) => {
+   912→                e.preventDefault();
+   913→                rotate();
+   914→              }}
+   915→              disabled={gameStatus === 'over'}
+   916→            >
+   917→              旋转
+   918→            </Button>
+   919→            <Button
+   920→              variant="outline"
+   921→              size="lg"
+   922→              className="min-h-12 min-w-14 text-base font-bold"
+   923→              onTouchStart={(e) => {
+   924→                e.preventDefault();
+   925→                hardDrop();
+   926→              }}
+   927→              disabled={gameStatus === 'over'}
+   928→            >
+   929→              硬降
+   930→            </Button>
+   931→          </div>
+   932→        </div>
+   933→      )}
+   934→
+   935→      {/* 游戏结束时的重新开始按钮 */}
+   936→      {gameStatus === 'over' && (
+   937→        <div className="flex gap-3 mt-2">
+   938→          <Button
+   939→            variant="outline"
+   940→            onClick={restartGame}
+   941→            className="gap-1"
+   942→          >
+   943→            <RotateCcw className="h-4 w-4" />
+   944→            再来一局
+   945→          </Button>
+   946→        </div>
+   947→      )}
+   948→    </div>
+   949→  );
+   950→}
+   951→

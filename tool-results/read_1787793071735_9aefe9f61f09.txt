@@ -1,0 +1,760 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+     6→import { ArrowLeft, Trophy, RotateCcw, Play } from 'lucide-react';
+     7→import GameControlsHelp, { type GameControlsInfo } from './GameControlsHelp';
+     8→
+     9→interface FlappyBirdGameProps {
+    10→  onBack: () => void;
+    11→}
+    12→
+    13→type Phase = 'settings' | 'playing' | 'gameover';
+    14→type Difficulty = 'easy' | 'normal' | 'hard';
+    15→type PowerUpType = 'magnet' | 'shield' | 'feather';
+    16→type PipeType = 'normal' | 'moving' | 'narrow';
+    17→
+    18→const GAME_NAME = 'flappy';
+    19→const CANVAS_W = 360;
+    20→const CANVAS_H = 520;
+    21→const GROUND_H = 60;
+    22→const BIRD_X = 80;
+    23→const BIRD_R = 16;
+    24→const PIPE_W = 52;
+    25→const PIPE_GAP_EASY = 180;
+    26→const PIPE_GAP_NORMAL = 140;
+    27→const PIPE_GAP_HARD = 100;
+    28→const PIPE_SPEED_EASY = 2;
+    29→const PIPE_SPEED_NORMAL = 2.8;
+    30→const PIPE_SPEED_HARD = 3.8;
+    31→const BASE_GRAVITY = 0.42;
+    32→const FLAP_VEL = -7;
+    33→const PIPE_INTERVAL_EASY = 180;
+    34→const PIPE_INTERVAL_NORMAL = 130;
+    35→const PIPE_INTERVAL_HARD = 95;
+    36→const MIN_GAP = 90;
+    37→const COIN_R = 10;
+    38→const POWERUP_R = 14;
+    39→const MAGNET_DURATION = 300; // frames (~5s at 60fps)
+    40→const FEATHER_DURATION = 300;
+    41→const MAGNET_RANGE = 100;
+    42→const LEVEL_UP_INTERVAL = 10; // pipes per level
+    43→
+    44→const POWERUP_EMOJI: Record<PowerUpType, string> = {
+    45→  magnet: '\u2B50',
+    46→  shield: '\uD83D\uDEE1\uFE0F',
+    47→  feather: '\uD83E\uDDAB',
+    48→};
+    49→
+    50→const POWERUP_LABEL: Record<PowerUpType, string> = {
+    51→  magnet: 'Magnet',
+    52→  shield: 'Shield',
+    53→  feather: 'Feather',
+    54→};
+    55→
+    56→interface Pipe {
+    57→  x: number;
+    58→  gapY: number;
+    59→  passed: boolean;
+    60→  pipeType: PipeType;
+    61→  moveDir: number;
+    62→  moveSpeed: number;
+    63→  moveMin: number;
+    64→  moveMax: number;
+    65→}
+    66→
+    67→interface Coin {
+    68→  x: number;
+    69→  y: number;
+    70→  collected: boolean;
+    71→}
+    72→
+    73→interface PowerUp {
+    74→  x: number;
+    75→  y: number;
+    76→  type: PowerUpType;
+    77→  collected: boolean;
+    78→}
+    79→
+    80→const DIFF_CONFIG: Record<Difficulty, { gap: number; speed: number; interval: number; label: string }> = {
+    81→  easy: { gap: PIPE_GAP_EASY, speed: PIPE_SPEED_EASY, interval: PIPE_INTERVAL_EASY, label: '\u7B80\u5355' },
+    82→  normal: { gap: PIPE_GAP_NORMAL, speed: PIPE_SPEED_NORMAL, interval: PIPE_INTERVAL_NORMAL, label: '\u666E\u901A' },
+    83→  hard: { gap: PIPE_GAP_HARD, speed: PIPE_SPEED_HARD, interval: PIPE_INTERVAL_HARD, label: '\u56F0\u96BE' },
+    84→};
+    85→
+    86→function getSkyGradient(ctx: CanvasRenderingContext2D, h: number) {
+    87→  const g = ctx.createLinearGradient(0, 0, 0, h);
+    88→  g.addColorStop(0, '#87CEEB');
+    89→  g.addColorStop(0.7, '#B0E0F6');
+    90→  g.addColorStop(1, '#E0F4FF');
+    91→  return g;
+    92→}
+    93→
+    94→const flappyControlsInfo: GameControlsInfo = {
+    95→  gameName: 'Flappy Bird',
+    96→  desktop: [
+    97→    { action: 'Space', keys: ['Space'], description: 'Flap up' },
+    98→    { action: 'Mouse Click', keys: [], description: 'Click to flap' },
+    99→    { action: 'Pause', keys: ['Escape'], description: 'Pause / Resume' },
+   100→  ],
+   101→  mobile: [
+   102→    { action: 'Touch', keys: [], description: 'Tap anywhere to flap' },
+   103→  ],
+   104→  rules: [
+   105→    'Navigate the bird through pipe gaps to score',
+   106→    'Each pipe pair passed = 1 point',
+   107→    'Collect coins for +5 points each',
+   108→    'Grab power-ups: Magnet (attract coins), Shield (survive 1 hit), Feather (low gravity)',
+   109→    'Every 10 pipes the level increases: gaps shrink and speed rises',
+   110→    'Moving pipes (orange) slide up and down, narrow pipes (red) give 3 points',
+   111→    'Hitting pipes, ground, or ceiling ends the game',
+   112→  ],
+   113→  tips: [
+   114→    'Tap gently, avoid holding',
+   115→    'Stay at a stable height',
+   116→    'Shield is great for tough sections',
+   117→    'Feather makes tight gaps easier',
+   118→  ],
+   119→};
+   120→
+   121→export default function FlappyBirdGame({ onBack }: FlappyBirdGameProps) {
+   122→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   123→  const rafRef = useRef<number>(0);
+   124→  const [phase, setPhase] = useState<Phase>('settings');
+   125→  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+   126→  const [score, setScore] = useState(0);
+   127→  const [bestScore, setBestScore] = useState(0);
+   128→  const [loadingBest, setLoadingBest] = useState(true);
+   129→
+   130→  // game refs
+   131→  const birdYRef = useRef(CANVAS_H / 2);
+   132→  const velRef = useRef(0);
+   133→  const pipesRef = useRef<Pipe[]>([]);
+   134→  const coinsRef = useRef<Coin[]>([]);
+   135→  const powerupsRef = useRef<PowerUp[]>([]);
+   136→  const scoreRef = useRef(0);
+   137→  const frameRef = useRef(0);
+   138→  const diffRef = useRef<Difficulty>('normal');
+   139→  const phaseRef = useRef<Phase>('settings');
+   140→  const passedCountRef = useRef(0); // total pipes passed
+   141→  const levelRef = useRef(1);
+   142→  const currentGapRef = useRef(0);
+   143→  const currentSpeedRef = useRef(0);
+   144→  // power-up state
+   145→  const magnetTimerRef = useRef(0);
+   146→  const shieldActiveRef = useRef(false);
+   147→  const featherTimerRef = useRef(0);
+   148→  // floating text effects
+   149→  const floatTextsRef = useRef<Array<{ x: number; y: number; text: string; life: number; color: string }>>([]);
+   150→
+   151→  const cloudsRef = useRef<Array<{ x: number; y: number; r: number }>>([
+   152→    { x: 50, y: 60, r: 30 }, { x: 180, y: 40, r: 25 }, { x: 300, y: 80, r: 35 },
+   153→  ]);
+   154→
+   155→  const fetchBestScore = useCallback(async () => {
+   156→    try {
+   157→      const res = await fetch('/api/games/scores');
+   158→      const json = await res.json();
+   159→      if (json.data) {
+   160→        const entry = json.data.find((s: { game: string; score: number }) => s.game === GAME_NAME);
+   161→        setBestScore(entry ? entry.score : 0);
+   162→      }
+   163→    } catch { /* ignore */ }
+   164→    setLoadingBest(false);
+   165→  }, []);
+   166→
+   167→  useEffect(() => { fetchBestScore(); }, [fetchBestScore]);
+   168→
+   169→  const submitScore = useCallback(async (s: number) => {
+   170→    try {
+   171→      await fetch('/api/games/scores', {
+   172→        method: 'POST',
+   173→        headers: { 'Content-Type': 'application/json' },
+   174→        body: JSON.stringify({ game: GAME_NAME, score: s }),
+   175→      });
+   176→    } catch { /* ignore */ }
+   177→  }, []);
+   178→
+   179→  const flap = useCallback(() => {
+   180→    if (phaseRef.current !== 'playing') return;
+   181→    velRef.current = FLAP_VEL;
+   182→  }, []);
+   183→
+   184→  const addFloatText = useCallback((x: number, y: number, text: string, color: string) => {
+   185→    floatTextsRef.current.push({ x, y, text, life: 40, color });
+   186→  }, []);
+   187→
+   188→  const initGame = useCallback((diff: Difficulty) => {
+   189→    diffRef.current = diff;
+   190→    const cfg = DIFF_CONFIG[diff];
+   191→    birdYRef.current = CANVAS_H / 2;
+   192→    velRef.current = 0;
+   193→    pipesRef.current = [];
+   194→    coinsRef.current = [];
+   195→    powerupsRef.current = [];
+   196→    scoreRef.current = 0;
+   197→    frameRef.current = 0;
+   198→    passedCountRef.current = 0;
+   199→    levelRef.current = 1;
+   200→    currentGapRef.current = cfg.gap;
+   201→    currentSpeedRef.current = cfg.speed;
+   202→    magnetTimerRef.current = 0;
+   203→    shieldActiveRef.current = false;
+   204→    featherTimerRef.current = 0;
+   205→    floatTextsRef.current = [];
+   206→    setScore(0);
+   207→    phaseRef.current = 'playing';
+   208→    setPhase('playing');
+   209→  }, []);
+   210→
+   211→  // game loop
+   212→  useEffect(() => {
+   213→    if (phase !== 'playing') return;
+   214→    const canvas = canvasRef.current;
+   215→    if (!canvas) return;
+   216→    const ctx = canvas.getContext('2d');
+   217→    if (!ctx) return;
+   218→    const dpr = window.devicePixelRatio || 1;
+   219→    canvas.width = CANVAS_W * dpr;
+   220→    canvas.height = CANVAS_H * dpr;
+   221→    ctx.scale(dpr, dpr);
+   222→
+   223→    const playH = CANVAS_H - GROUND_H;
+   224→
+   225→    function loop() {
+   226→      if (!ctx) return;
+   227→      if (phaseRef.current !== 'playing') return;
+   228→      frameRef.current++;
+   229→
+   230→      const curGap = currentGapRef.current;
+   231→      const curSpeed = currentSpeedRef.current;
+   232→      const gravity = featherTimerRef.current > 0 ? BASE_GRAVITY * 0.5 : BASE_GRAVITY;
+   233→
+   234→      // decrement power-up timers
+   235→      if (magnetTimerRef.current > 0) magnetTimerRef.current--;
+   236→      if (featherTimerRef.current > 0) featherTimerRef.current--;
+   237→
+   238→      // physics
+   239→      velRef.current += gravity;
+   240→      birdYRef.current += velRef.current;
+   241→
+   242→      // spawn pipe
+   243→      const cfg = DIFF_CONFIG[diffRef.current];
+   244→      if (frameRef.current % cfg.interval === 0) {
+   245→        // determine pipe type: 20% special
+   246→        const roll = Math.random();
+   247→        let pipeType: PipeType = 'normal';
+   248→        if (roll < 0.12) {
+   249→          pipeType = 'moving';
+   250→        } else if (roll < 0.20) {
+   251→          pipeType = 'narrow';
+   252→        }
+   253→
+   254→        let gap = curGap;
+   255→        if (pipeType === 'narrow') {
+   256→          gap = Math.max(MIN_GAP, curGap - 20);
+   257→        }
+   258→
+   259→        const minGapY = gap / 2 + 30;
+   260→        const maxGapY = playH - gap / 2 - 30;
+   261→        const gapY = minGapY + Math.random() * (maxGapY - minGapY);
+   262→
+   263→        pipesRef.current.push({
+   264→          x: CANVAS_W + PIPE_W,
+   265→          gapY,
+   266→          passed: false,
+   267→          pipeType,
+   268→          moveDir: 1,
+   269→          moveSpeed: 0.5 + Math.random() * 0.5,
+   270→          moveMin: gap / 2 + 30,
+   271→          moveMax: playH - gap / 2 - 30,
+   272→        });
+   273→
+   274→        // spawn coins in the gap area (1-3 coins)
+   275→        const coinCount = 1 + Math.floor(Math.random() * 3);
+   276→        for (let i = 0; i < coinCount; i++) {
+   277→          const coinX = CANVAS_W + PIPE_W / 2 + (Math.random() - 0.5) * 10;
+   278→          const coinYRange = gap - 20;
+   279→          const coinY = gapY - coinYRange / 2 + (coinCount === 1
+   280→            ? coinYRange / 2
+   281→            : (i / (coinCount - 1)) * coinYRange);
+   282→          coinsRef.current.push({ x: coinX, y: coinY, collected: false });
+   283→        }
+   284→
+   285→        // spawn power-up (12% chance)
+   286→        if (Math.random() < 0.12) {
+   287→          const types: PowerUpType[] = ['magnet', 'shield', 'feather'];
+   288→          const puType = types[Math.floor(Math.random() * types.length)];
+   289→          const puY = gapY + (Math.random() - 0.5) * (gap * 0.4);
+   290→          powerupsRef.current.push({
+   291→            x: CANVAS_W + PIPE_W / 2 + 30 + Math.random() * 20,
+   292→            y: puY,
+   293→            type: puType,
+   294→            collected: false,
+   295→          });
+   296→        }
+   297→      }
+   298→
+   299→      // move pipes and handle moving pipe animation
+   300→      for (const p of pipesRef.current) {
+   301→        p.x -= curSpeed;
+   302→
+   303→        // moving pipes oscillate
+   304→        if (p.pipeType === 'moving') {
+   305→          p.gapY += p.moveDir * p.moveSpeed;
+   306→          if (p.gapY >= p.moveMax) { p.moveDir = -1; p.gapY = p.moveMax; }
+   307→          if (p.gapY <= p.moveMin) { p.moveDir = 1; p.gapY = p.moveMin; }
+   308→        }
+   309→
+   310→        // scoring
+   311→        if (!p.passed && p.x + PIPE_W < BIRD_X) {
+   312→          p.passed = true;
+   313→          let pts = 1;
+   314→          if (p.pipeType === 'narrow') pts = 3;
+   315→          scoreRef.current += pts;
+   316→          passedCountRef.current++;
+   317→          setScore(scoreRef.current);
+   318→
+   319→          if (pts > 1) {
+   320→            addFloatText(BIRD_X, birdYRef.current - 20, `+${pts}`, '#FF6B6B');
+   321→          }
+   322→
+   323→          // level up check
+   324→          if (passedCountRef.current % LEVEL_UP_INTERVAL === 0) {
+   325→            levelRef.current++;
+   326→            const newGap = Math.max(MIN_GAP, DIFF_CONFIG[diffRef.current].gap - (levelRef.current - 1) * 5);
+   327→            const newSpeed = DIFF_CONFIG[diffRef.current].speed + (levelRef.current - 1) * 0.3;
+   328→            currentGapRef.current = newGap;
+   329→            currentSpeedRef.current = newSpeed;
+   330→            addFloatText(CANVAS_W / 2, CANVAS_H / 2 - 30, `Level ${levelRef.current}!`, '#FFD700');
+   331→          }
+   332→        }
+   333→      }
+   334→      pipesRef.current = pipesRef.current.filter(p => p.x + PIPE_W > -10);
+   335→
+   336→      // move coins
+   337→      for (const c of coinsRef.current) {
+   338→        c.x -= curSpeed;
+   339→
+   340→        // magnet attraction
+   341→        if (!c.collected && magnetTimerRef.current > 0) {
+   342→          const dx = BIRD_X - c.x;
+   343→          const dy = birdYRef.current - c.y;
+   344→          const dist = Math.sqrt(dx * dx + dy * dy);
+   345→          if (dist < MAGNET_RANGE && dist > 1) {
+   346→            c.x += (dx / dist) * 4;
+   347→            c.y += (dy / dist) * 4;
+   348→          }
+   349→        }
+   350→
+   351→        // coin collection
+   352→        if (!c.collected) {
+   353→          const dx = BIRD_X - c.x;
+   354→          const dy = birdYRef.current - c.y;
+   355→          if (dx * dx + dy * dy < (BIRD_R + COIN_R) * (BIRD_R + COIN_R)) {
+   356→            c.collected = true;
+   357→            scoreRef.current += 5;
+   358→            setScore(scoreRef.current);
+   359→            addFloatText(c.x, c.y - 10, '+5', '#FFD700');
+   360→          }
+   361→        }
+   362→      }
+   363→      coinsRef.current = coinsRef.current.filter(c => c.x > -20);
+   364→
+   365→      // move and collect power-ups
+   366→      for (const pu of powerupsRef.current) {
+   367→        pu.x -= curSpeed;
+   368→
+   369→        if (!pu.collected) {
+   370→          const dx = BIRD_X - pu.x;
+   371→          const dy = birdYRef.current - pu.y;
+   372→          if (dx * dx + dy * dy < (BIRD_R + POWERUP_R) * (BIRD_R + POWERUP_R)) {
+   373→            pu.collected = true;
+   374→            switch (pu.type) {
+   375→              case 'magnet':
+   376→                magnetTimerRef.current = MAGNET_DURATION;
+   377→                addFloatText(pu.x, pu.y - 15, POWERUP_LABEL.magnet, '#FFD700');
+   378→                break;
+   379→              case 'shield':
+   380→                shieldActiveRef.current = true;
+   381→                addFloatText(pu.x, pu.y - 15, POWERUP_LABEL.shield, '#00E5FF');
+   382→                break;
+   383→              case 'feather':
+   384→                featherTimerRef.current = FEATHER_DURATION;
+   385→                addFloatText(pu.x, pu.y - 15, POWERUP_LABEL.feather, '#E040FB');
+   386→                break;
+   387→            }
+   388→          }
+   389→        }
+   390→      }
+   391→      powerupsRef.current = powerupsRef.current.filter(pu => pu.x > -20);
+   392→
+   393→      // update floating texts
+   394→      for (const ft of floatTextsRef.current) {
+   395→        ft.y -= 1;
+   396→        ft.life--;
+   397→      }
+   398→      floatTextsRef.current = floatTextsRef.current.filter(ft => ft.life > 0);
+   399→
+   400→      // collision: ground / ceiling
+   401→      if (birdYRef.current + BIRD_R > playH || birdYRef.current - BIRD_R < 0) {
+   402→        endGame(); return;
+   403→      }
+   404→      // collision: pipes
+   405→      for (const p of pipesRef.current) {
+   406→        const pipeGap = p.pipeType === 'narrow'
+   407→          ? Math.max(MIN_GAP, currentGapRef.current - 20)
+   408→          : currentGapRef.current;
+   409→        if (BIRD_X + BIRD_R > p.x && BIRD_X - BIRD_R < p.x + PIPE_W) {
+   410→          const topPipeBottom = p.gapY - pipeGap / 2;
+   411→          const botPipeTop = p.gapY + pipeGap / 2;
+   412→          if (birdYRef.current - BIRD_R < topPipeBottom || birdYRef.current + BIRD_R > botPipeTop) {
+   413→            if (shieldActiveRef.current) {
+   414→              shieldActiveRef.current = false;
+   415→              addFloatText(BIRD_X, birdYRef.current - 25, 'Shield!', '#00E5FF');
+   416→              // push bird back to safe position
+   417→              const midY = (topPipeBottom + botPipeTop) / 2;
+   418→              birdYRef.current = midY;
+   419→              velRef.current = 0;
+   420→            } else {
+   421→              endGame(); return;
+   422→            }
+   423→          }
+   424→        }
+   425→      }
+   426→
+   427→      // ===== DRAWING =====
+   428→      // sky
+   429→      ctx.fillStyle = getSkyGradient(ctx, CANVAS_H);
+   430→      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+   431→
+   432→      // clouds
+   433→      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+   434→      for (const c of cloudsRef.current) {
+   435→        c.x -= 0.3;
+   436→        if (c.x + c.r * 2 < 0) c.x = CANVAS_W + c.r;
+   437→        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill();
+   438→        ctx.beginPath(); ctx.arc(c.x - c.r * 0.6, c.y + 5, c.r * 0.7, 0, Math.PI * 2); ctx.fill();
+   439→        ctx.beginPath(); ctx.arc(c.x + c.r * 0.7, c.y + 3, c.r * 0.65, 0, Math.PI * 2); ctx.fill();
+   440→      }
+   441→
+   442→      // pipes
+   443→      for (const p of pipesRef.current) {
+   444→        const pipeGap = p.pipeType === 'narrow'
+   445→          ? Math.max(MIN_GAP, currentGapRef.current - 20)
+   446→          : currentGapRef.current;
+   447→        const topBottom = p.gapY - pipeGap / 2;
+   448→        const botTop = p.gapY + pipeGap / 2;
+   449→
+   450→        let pipeColor = '#2E8B57';
+   451→        let capColor = '#3CB371';
+   452→        if (p.pipeType === 'moving') {
+   453→          pipeColor = '#E67E22';
+   454→          capColor = '#F39C12';
+   455→        } else if (p.pipeType === 'narrow') {
+   456→          pipeColor = '#C0392B';
+   457→          capColor = '#E74C3C';
+   458→        }
+   459→
+   460→        // top pipe
+   461→        ctx.fillStyle = pipeColor;
+   462→        ctx.fillRect(p.x, 0, PIPE_W, topBottom);
+   463→        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+   464→        ctx.lineWidth = 2;
+   465→        ctx.strokeRect(p.x, 0, PIPE_W, topBottom);
+   466→        // bottom pipe
+   467→        ctx.fillStyle = pipeColor;
+   468→        ctx.fillRect(p.x, botTop, PIPE_W, playH - botTop);
+   469→        ctx.strokeRect(p.x, botTop, PIPE_W, playH - botTop);
+   470→        // pipe caps
+   471→        ctx.fillStyle = capColor;
+   472→        ctx.fillRect(p.x - 4, topBottom - 20, PIPE_W + 8, 20);
+   473→        ctx.strokeRect(p.x - 4, topBottom - 20, PIPE_W + 8, 20);
+   474→        ctx.fillStyle = capColor;
+   475→        ctx.fillRect(p.x - 4, botTop, PIPE_W + 8, 20);
+   476→        ctx.strokeRect(p.x - 4, botTop, PIPE_W + 8, 20);
+   477→
+   478→        // moving pipe indicator arrows
+   479→        if (p.pipeType === 'moving') {
+   480→          ctx.fillStyle = 'rgba(255,255,255,0.6)';
+   481→          ctx.font = '14px sans-serif';
+   482→          ctx.textAlign = 'center';
+   483→          ctx.textBaseline = 'middle';
+   484→          ctx.fillText('\u2195', p.x + PIPE_W / 2, topBottom - 35);
+   485→          ctx.fillText('\u2195', p.x + PIPE_W / 2, botTop + 35);
+   486→        }
+   487→
+   488→        // narrow pipe bonus indicator
+   489→        if (p.pipeType === 'narrow') {
+   490→          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+   491→          ctx.font = 'bold 12px sans-serif';
+   492→          ctx.textAlign = 'center';
+   493→          ctx.textBaseline = 'middle';
+   494→          ctx.fillText('x3', p.x + PIPE_W / 2, topBottom - 35);
+   495→        }
+   496→      }
+   497→
+   498→      // coins
+   499→      for (const c of coinsRef.current) {
+   500→        if (c.collected) continue;
+   501→        ctx.beginPath();
+   502→        ctx.arc(c.x, c.y, COIN_R, 0, Math.PI * 2);
+   503→        ctx.fillStyle = '#FFD700';
+   504→        ctx.fill();
+   505→        ctx.strokeStyle = '#DAA520';
+   506→        ctx.lineWidth = 1.5;
+   507→        ctx.stroke();
+   508→        // inner shine
+   509→        ctx.beginPath();
+   510→        ctx.arc(c.x - 2, c.y - 2, COIN_R * 0.4, 0, Math.PI * 2);
+   511→        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+   512→        ctx.fill();
+   513→      }
+   514→
+   515→      // power-ups
+   516→      for (const pu of powerupsRef.current) {
+   517→        if (pu.collected) continue;
+   518→        // glow
+   519→        ctx.beginPath();
+   520→        ctx.arc(pu.x, pu.y, POWERUP_R + 4, 0, Math.PI * 2);
+   521→        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+   522→        ctx.fill();
+   523→        // bg circle
+   524→        ctx.beginPath();
+   525→        ctx.arc(pu.x, pu.y, POWERUP_R, 0, Math.PI * 2);
+   526→        ctx.fillStyle = pu.type === 'magnet' ? '#FFD700' : pu.type === 'shield' ? '#00BCD4' : '#CE93D8';
+   527→        ctx.fill();
+   528→        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+   529→        ctx.lineWidth = 1.5;
+   530→        ctx.stroke();
+   531→        // emoji
+   532→        ctx.font = `${POWERUP_R}px serif`;
+   533→        ctx.textAlign = 'center';
+   534→        ctx.textBaseline = 'middle';
+   535→        ctx.fillText(POWERUP_EMOJI[pu.type], pu.x, pu.y);
+   536→      }
+   537→
+   538→      // ground
+   539→      ctx.fillStyle = '#8B6914';
+   540→      ctx.fillRect(0, playH, CANVAS_W, GROUND_H);
+   541→      ctx.fillStyle = '#4CAF50';
+   542→      ctx.fillRect(0, playH, CANVAS_W, 12);
+   543→
+   544→      // magnet range indicator
+   545→      if (magnetTimerRef.current > 0) {
+   546→        ctx.beginPath();
+   547→        ctx.arc(BIRD_X, birdYRef.current, MAGNET_RANGE, 0, Math.PI * 2);
+   548→        ctx.strokeStyle = 'rgba(255,215,0,0.25)';
+   549→        ctx.lineWidth = 2;
+   550→        ctx.setLineDash([4, 4]);
+   551→        ctx.stroke();
+   552→        ctx.setLineDash([]);
+   553→      }
+   554→
+   555→      // bird
+   556→      ctx.font = `${BIRD_R * 2}px serif`;
+   557→      ctx.textAlign = 'center';
+   558→      ctx.textBaseline = 'middle';
+   559→      ctx.fillText('\uD83D\uDC26', BIRD_X, birdYRef.current);
+   560→
+   561→      // shield aura
+   562→      if (shieldActiveRef.current) {
+   563→        ctx.beginPath();
+   564→        ctx.arc(BIRD_X, birdYRef.current, BIRD_R + 6, 0, Math.PI * 2);
+   565→        ctx.strokeStyle = 'rgba(0,229,255,0.7)';
+   566→        ctx.lineWidth = 3;
+   567→        ctx.stroke();
+   568→        ctx.beginPath();
+   569→        ctx.arc(BIRD_X, birdYRef.current, BIRD_R + 6, 0, Math.PI * 2);
+   570→        ctx.fillStyle = 'rgba(0,229,255,0.15)';
+   571→        ctx.fill();
+   572→      }
+   573→
+   574→      // feather indicator (small wings effect)
+   575→      if (featherTimerRef.current > 0) {
+   576→        ctx.font = '14px serif';
+   577→        ctx.textAlign = 'center';
+   578→        ctx.textBaseline = 'middle';
+   579→        ctx.fillText('\u2728', BIRD_X - 18, birdYRef.current - 8);
+   580→        ctx.fillText('\u2728', BIRD_X + 18, birdYRef.current - 8);
+   581→      }
+   582→
+   583→      // floating texts
+   584→      for (const ft of floatTextsRef.current) {
+   585→        const alpha = Math.min(1, ft.life / 20);
+   586→        ctx.globalAlpha = alpha;
+   587→        ctx.fillStyle = ft.color;
+   588→        ctx.font = 'bold 16px sans-serif';
+   589→        ctx.textAlign = 'center';
+   590→        ctx.textBaseline = 'middle';
+   591→        ctx.fillText(ft.text, ft.x, ft.y);
+   592→        ctx.globalAlpha = 1;
+   593→      }
+   594→
+   595→      // HUD
+   596→      // score
+   597→      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+   598→      ctx.font = 'bold 36px sans-serif';
+   599→      ctx.textAlign = 'center';
+   600→      ctx.fillText(String(scoreRef.current), CANVAS_W / 2, 50);
+   601→
+   602→      // level
+   603→      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+   604→      ctx.font = 'bold 14px sans-serif';
+   605→      ctx.textAlign = 'left';
+   606→      ctx.fillText(`Lv.${levelRef.current}`, 10, 24);
+   607→
+   608→      // active power-up timers (top-right)
+   609→      let hudY = 16;
+   610→      if (magnetTimerRef.current > 0) {
+   611→        const pct = magnetTimerRef.current / MAGNET_DURATION;
+   612→        ctx.fillStyle = 'rgba(255,215,0,0.8)';
+   613→        ctx.font = '12px sans-serif';
+   614→        ctx.textAlign = 'right';
+   615→        ctx.fillText(`\u2B50 ${Math.ceil(magnetTimerRef.current / 60)}s`, CANVAS_W - 10, hudY);
+   616→        // timer bar
+   617→        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   618→        ctx.fillRect(CANVAS_W - 70, hudY + 4, 60, 4);
+   619→        ctx.fillStyle = '#FFD700';
+   620→        ctx.fillRect(CANVAS_W - 70, hudY + 4, 60 * pct, 4);
+   621→        hudY += 22;
+   622→      }
+   623→      if (shieldActiveRef.current) {
+   624→        ctx.fillStyle = 'rgba(0,229,255,0.8)';
+   625→        ctx.font = '12px sans-serif';
+   626→        ctx.textAlign = 'right';
+   627→        ctx.fillText('\uD83D\uDEE1\uFE0F Active', CANVAS_W - 10, hudY);
+   628→        hudY += 22;
+   629→      }
+   630→      if (featherTimerRef.current > 0) {
+   631→        const pct = featherTimerRef.current / FEATHER_DURATION;
+   632→        ctx.fillStyle = 'rgba(206,147,216,0.8)';
+   633→        ctx.font = '12px sans-serif';
+   634→        ctx.textAlign = 'right';
+   635→        ctx.fillText(`\uD83E\uDDAB ${Math.ceil(featherTimerRef.current / 60)}s`, CANVAS_W - 10, hudY);
+   636→        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   637→        ctx.fillRect(CANVAS_W - 70, hudY + 4, 60, 4);
+   638→        ctx.fillStyle = '#CE93D8';
+   639→        ctx.fillRect(CANVAS_W - 70, hudY + 4, 60 * pct, 4);
+   640→        hudY += 22;
+   641→      }
+   642→
+   643→      rafRef.current = requestAnimationFrame(loop);
+   644→    }
+   645→
+   646→    function endGame() {
+   647→      phaseRef.current = 'gameover';
+   648→      setPhase('gameover');
+   649→      submitScore(scoreRef.current);
+   650→      fetchBestScore();
+   651→    }
+   652→
+   653→    rafRef.current = requestAnimationFrame(loop);
+   654→    return () => cancelAnimationFrame(rafRef.current);
+   655→  }, [phase, submitScore, fetchBestScore, addFloatText]);
+   656→
+   657→  // keyboard
+   658→  useEffect(() => {
+   659→    const handler = (e: KeyboardEvent) => {
+   660→      if (e.code === 'Space') { e.preventDefault(); flap(); }
+   661→    };
+   662→    window.addEventListener('keydown', handler);
+   663→    return () => window.removeEventListener('keydown', handler);
+   664→  }, [flap]);
+   665→
+   666→  // touch
+   667→  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+   668→    e.preventDefault();
+   669→    flap();
+   670→  }, [flap]);
+   671→
+   672→  const handleClick = useCallback(() => { flap(); }, [flap]);
+   673→
+   674→  if (phase === 'settings') {
+   675→    return (
+   676→      <div className="flex flex-col items-center gap-4 px-2 py-2 max-w-md mx-auto w-full">
+   677→        <div className="flex items-center gap-2 self-start">
+   678→          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
+   679→          <GameControlsHelp info={flappyControlsInfo} />
+   680→          <h2 className="text-xl font-bold">\uD83D\uDC26 Flappy Bird</h2>
+   681→        </div>
+   682→        <Card className="w-full">
+   683→          <CardHeader className="pb-3"><CardTitle className="text-center">Settings</CardTitle></CardHeader>
+   684→          <CardContent className="flex flex-col gap-4">
+   685→            <div className="flex flex-col gap-2">
+   686→              <span className="text-sm font-medium">Difficulty</span>
+   687→              <div className="flex gap-2">
+   688→                {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => (
+   689→                  <Button
+   690→                    key={d}
+   691→                    variant={difficulty === d ? 'default' : 'outline'}
+   692→                    className="flex-1 min-h-[44px]"
+   693→                    onClick={() => setDifficulty(d)}
+   694→                  >{DIFF_CONFIG[d].label}</Button>
+   695→                ))}
+   696→              </div>
+   697→            </div>
+   698→            <div className="flex items-center gap-2 justify-center text-sm">
+   699→              <Trophy className="h-4 w-4 text-yellow-500" />
+   700→              <span>Best: {loadingBest ? '...' : bestScore}</span>
+   701→            </div>
+   702→            <Button className="w-full min-h-[44px]" size="lg" onClick={() => initGame(difficulty)}>
+   703→              <Play className="h-4 w-4 mr-2" /> Start Game
+   704→            </Button>
+   705→          </CardContent>
+   706→        </Card>
+   707→      </div>
+   708→    );
+   709→  }
+   710→
+   711→  if (phase === 'gameover') {
+   712→    const isNew = score > bestScore;
+   713→    return (
+   714→      <div className="flex flex-col items-center gap-4 px-2 py-2 max-w-md mx-auto w-full">
+   715→        <div className="flex items-center gap-2 self-start">
+   716→          <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
+   717→          <h2 className="text-xl font-bold">\uD83D\uDC26 Game Over</h2>
+   718→        </div>
+   719→        <Card className="w-full">
+   720→          <CardContent className="flex flex-col items-center gap-4 pt-6">
+   721→            <div className="text-5xl">{isNew ? '\uD83C\uDF89' : '\uD83D\uDE22'}</div>
+   722→            <div className="text-center">
+   723→              <p className="text-3xl font-bold">{score}</p>
+   724→              <p className="text-sm text-muted-foreground">Score</p>
+   725→            </div>
+   726→            {isNew && <p className="text-yellow-500 font-semibold">New Record!</p>}
+   727→            <div className="flex items-center gap-2 text-sm">
+   728→              <Trophy className="h-4 w-4 text-yellow-500" />
+   729→              <span>Best: {bestScore}</span>
+   730→            </div>
+   731→            <div className="flex gap-2 w-full">
+   732→              <Button className="flex-1 min-h-[44px]" variant="outline" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+   733→              <Button className="flex-1 min-h-[44px]" onClick={() => initGame(difficulty)}><RotateCcw className="h-4 w-4 mr-1" /> Retry</Button>
+   734→            </div>
+   735→          </CardContent>
+   736→        </Card>
+   737→      </div>
+   738→    );
+   739→  }
+   740→
+   741→  // playing
+   742→  return (
+   743→    <div className="flex flex-col items-center gap-2 px-2 py-2 w-full max-w-md mx-auto">
+   744→      <div className="flex items-center gap-2 self-start">
+   745→        <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
+   746→        <h2 className="text-xl font-bold">\uD83D\uDC26 Flappy Bird</h2>
+   747→      </div>
+   748→      <canvas
+   749→        ref={canvasRef}
+   750→        width={CANVAS_W}
+   751→        height={CANVAS_H}
+   752→        style={{ width: '100%', maxWidth: CANVAS_W, aspectRatio: `${CANVAS_W}/${CANVAS_H}`, touchAction: 'none' }}
+   753→        className="rounded-lg border border-border"
+   754→        onClick={handleClick}
+   755→        onTouchStart={handleTouchStart}
+   756→      />
+   757→    </div>
+   758→  );
+   759→}
+   760→

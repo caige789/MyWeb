@@ -1,0 +1,826 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Card, CardContent } from '@/components/ui/card';
+     6→import {
+     7→  ArrowLeft,
+     8→  Trophy,
+     9→  Clock,
+    10→  Footprints,
+    11→  Eye,
+    12→  EyeOff,
+    13→  Play,
+    14→  RotateCcw,
+    15→  ChevronUp,
+    16→  ChevronDown,
+    17→  ChevronLeft,
+    18→  ChevronRight,
+    19→  Flag,
+    20→  Info,
+    21→} from 'lucide-react';
+    22→import GameControlsHelp from '@/components/games/GameControlsHelp';
+    23→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+    24→
+    25→const mazeControlsInfo: GameControlsInfo = {
+    26→  gameName: '迷宫探险',
+    27→  desktop: [
+    28→    { action: '方向键', keys: ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'], description: '上下左右移动' },
+    29→    { action: 'WASD', keys: ['KeyW','KeyA','KeyS','KeyD'], description: '备选方向控制' },
+    30→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    31→  ],
+    32→  mobile: [
+    33→    { action: '滑动', keys: [], description: '在迷宫上滑动手指移动' },
+    34→    { action: '虚拟方向键', keys: [], description: '屏幕下方的方向按钮(手机端显示)' },
+    35→  ],
+    36→  rules: ['从左上角出发，到达右下角旗帜即获胜','迷雾模式下只能看到周围有限范围','用时越短分数越高','简单/普通/困难三种难度影响迷宫大小和迷雾范围'],
+    37→  tips: ['沿墙壁一侧走(右手法则)可保证不迷路','困难模式下优先探索分支少的路径'],
+    38→};
+    39→
+    40→interface MazeGameProps {
+    41→  onBack: () => void;
+    42→}
+    43→
+    44→// Game name for API
+    45→const GAME_NAME = 'maze';
+    46→
+    47→// Difficulty settings: maze size and max time for scoring
+    48→const DIFFICULTY_CONFIG = {
+    49→  easy:   { rows: 11, cols: 11, label: '简单',   maxTime: 60,  maxScore: 1000, fogRadius: 4 },
+    50→  normal: { rows: 15, cols: 15, label: '普通', maxTime: 120, maxScore: 2000, fogRadius: 3 },
+    51→  hard:   { rows: 21, cols: 21, label: '困难',   maxTime: 240, maxScore: 3000, fogRadius: 2 },
+    52→} as const;
+    53→
+    54→const LOGIC_SIZE = 500;
+    55→
+    56→type Difficulty = keyof typeof DIFFICULTY_CONFIG;
+    57→type GamePhase = 'settings' | 'playing' | 'won';
+    58→
+    59→// Wall = 0, Path = 1
+    60→const WALL = 0;
+    61→const PATH = 1;
+    62→
+    63→// Generate maze using recursive backtracking (iterative stack to avoid stack overflow)
+    64→function generateMaze(rows: number, cols: number): number[][] {
+    65→  // Initialize grid with all walls
+    66→  const grid: number[][] = Array.from({ length: rows }, () =>
+    67→    Array.from({ length: cols }, () => WALL)
+    68→  );
+    69→
+    70→  // Mark starting cell as path
+    71→  const startR = 1;
+    72→  const startC = 1;
+    73→  grid[startR][startC] = PATH;
+    74→
+    75→  // Stack-based DFS
+    76→  const stack: [number, number][] = [[startR, startC]];
+    77→  const directions = [
+    78→    [-2, 0], // up
+    79→    [2, 0],  // down
+    80→    [0, -2], // left
+    81→    [0, 2],  // right
+    82→  ];
+    83→
+    84→  while (stack.length > 0) {
+    85→    const [cr, cc] = stack[stack.length - 1];
+    86→
+    87→    // Shuffle directions
+    88→    const shuffled = [...directions].sort(() => Math.random() - 0.5);
+    89→
+    90→    let found = false;
+    91→    for (const [dr, dc] of shuffled) {
+    92→      const nr = cr + dr;
+    93→      const nc = cc + dc;
+    94→
+    95→      if (nr > 0 && nr < rows - 1 && nc > 0 && nc < cols - 1 && grid[nr][nc] === WALL) {
+    96→        // Carve the wall between current and neighbor
+    97→        grid[cr + dr / 2][cc + dc / 2] = PATH;
+    98→        // Mark neighbor as path
+    99→        grid[nr][nc] = PATH;
+   100→        stack.push([nr, nc]);
+   101→        found = true;
+   102→        break;
+   103→      }
+   104→    }
+   105→
+   106→    if (!found) {
+   107→      stack.pop();
+   108→    }
+   109→  }
+   110→
+   111→  // Ensure start and end are open
+   112→  grid[1][1] = PATH;
+   113→  grid[rows - 2][cols - 2] = PATH;
+   114→
+   115→  return grid;
+   116→}
+   117→
+   118→export default function MazeGame({ onBack }: MazeGameProps) {
+   119→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   120→  const containerRef = useRef<HTMLDivElement>(null);
+   121→  const animFrameRef = useRef<number>(0);
+   122→
+   123→  // Game data refs (mutable to avoid re-renders during gameplay)
+   124→  const mazeRef = useRef<number[][]>([]);
+   125→  const playerRef = useRef({ r: 1, c: 1 });
+   126→  const visitedRef = useRef<Set<string>>(new Set());
+   127→  const trailRef = useRef<[number, number][]>([]);
+   128→  const startTimeRef = useRef<number>(0);
+   129→  const elapsedRef = useRef<number>(0);
+   130→  const stepsRef = useRef<number>(0);
+   131→  const gamePhaseRef = useRef<GamePhase>('settings');
+   132→  const difficultyRef = useRef<Difficulty>('normal');
+   133→  const fogEnabledRef = useRef(false);
+   134→  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+   135→  const dprRef = useRef(1);
+   136→  const scaleRef = useRef(1);
+   137→
+   138→  // UI state
+   139→  const [phase, setPhase] = useState<GamePhase>('settings');
+   140→  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+   141→  const [fogEnabled, setFogEnabled] = useState(false);
+   142→  const [elapsed, setElapsed] = useState(0);
+   143→  const [steps, setSteps] = useState(0);
+   144→  const [highScore, setHighScore] = useState(0);
+   145→  const [finalScore, setFinalScore] = useState(0);
+   146→  const [showInstructions, setShowInstructions] = useState(false);
+   147→  const [paused, setPaused] = useState(false);
+   148→  const pausedRef = useRef(false);
+   149→
+   150→  // Fetch high score
+   151→  useEffect(() => {
+   152→    (async () => {
+   153→      try {
+   154→        const res = await fetch('/api/games/scores');
+   155→        if (res.ok) {
+   156→          const data = await res.json();
+   157→          if (Array.isArray(data.data)) {
+   158→            const mazeScore = data.data.find(
+   159→              (item: { game: string; score: number }) => item.game === GAME_NAME
+   160→            );
+   161→            if (mazeScore) setHighScore(mazeScore.score);
+   162→          }
+   163→        }
+   164→      } catch { /* silent */ }
+   165→    })();
+   166→  }, []);
+   167→
+   168→  // --- Drawing ---
+   169→  const draw = useCallback(() => {
+   170→    const canvas = canvasRef.current;
+   171→    if (!canvas) return;
+   172→    const ctx = canvas.getContext('2d');
+   173→    if (!ctx) return;
+   174→
+   175→    const maze = mazeRef.current;
+   176→    if (maze.length === 0) return;
+   177→
+   178→    const rows = maze.length;
+   179→    const cols = maze[0].length;
+   180→    ctx.setTransform(dprRef.current * scaleRef.current, 0, 0, dprRef.current * scaleRef.current, 0, 0);
+   181→    const size = LOGIC_SIZE;
+   182→    const cellSize = LOGIC_SIZE / cols;
+   183→    const player = playerRef.current;
+   184→  
+   185→    const config = DIFFICULTY_CONFIG[difficultyRef.current];
+   186→  
+   187→    const exitR = rows - 2;
+   188→    const exitC = cols - 2;
+   189→
+   190→    // Clear
+   191→    ctx.fillStyle = '#0f172a';
+   192→    ctx.fillRect(0, 0, size, size);
+   193→
+   194→    // Draw cells
+   195→    for (let r = 0; r < rows; r++) {
+   196→      for (let c = 0; c < cols; c++) {
+   197→        const x = c * cellSize;
+   198→        const y = r * cellSize;
+   199→
+   200→        // Fog of war check
+   201→        if (fogEnabledRef.current) {
+   202→          const dist = Math.abs(r - player.r) + Math.abs(c - player.c);
+   203→          if (dist > config.fogRadius) {
+   204→            ctx.fillStyle = '#0f172a';
+   205→            ctx.fillRect(x, y, cellSize, cellSize);
+   206→            continue;
+   207→          }
+   208→          // Partial fog at the edge
+   209→          if (dist === config.fogRadius) {
+   210→            ctx.globalAlpha = 0.4;
+   211→          }
+   212→        }
+   213→
+   214→        const isVisited = visitedRef.current.has(`${r},${c}`);
+   215→
+   216→        if (maze[r][c] === WALL) {
+   217→          ctx.fillStyle = '#1e293b';
+   218→          ctx.fillRect(x, y, cellSize, cellSize);
+   219→          // Wall highlight
+   220→          ctx.fillStyle = '#334155';
+   221→          ctx.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+   222→        } else {
+   223→          // Path cell
+   224→          if (isVisited) {
+   225→            ctx.fillStyle = '#1a3a2a';
+   226→          } else {
+   227→            ctx.fillStyle = '#162032';
+   228→          }
+   229→          ctx.fillRect(x, y, cellSize, cellSize);
+   230→        }
+   231→
+   232→        ctx.globalAlpha = 1;
+   233→      }
+   234→    }
+   235→
+   236→    // Draw trail (visited path with gradient)
+   237→    const trail = trailRef.current;
+   238→    if (trail.length > 1) {
+   239→      for (let i = 1; i < trail.length; i++) {
+   240→        const [pr, pc] = trail[i];
+   241→        const x = pc * cellSize + cellSize / 2;
+   242→        const y = pr * cellSize + cellSize / 2;
+   243→        const prevR = trail[i - 1][0];
+   244→        const prevC = trail[i - 1][1];
+   245→        const px = prevC * cellSize + cellSize / 2;
+   246→        const py = prevR * cellSize + cellSize / 2;
+   247→
+   248→        // Fog check for trail
+   249→        if (fogEnabledRef.current) {
+   250→          const dist = Math.abs(pr - player.r) + Math.abs(pc - player.c);
+   251→          if (dist > config.fogRadius) continue;
+   252→          if (dist === config.fogRadius) ctx.globalAlpha = 0.4;
+   253→        }
+   254→
+   255→        // Trail line with gradient from dim to bright
+   256→        const alpha = 0.2 + 0.6 * (i / trail.length);
+   257→        ctx.strokeStyle = `rgba(74, 222, 128, ${alpha})`;
+   258→        ctx.lineWidth = Math.max(cellSize * 0.3, 2);
+   259→        ctx.lineCap = 'round';
+   260→        ctx.beginPath();
+   261→        ctx.moveTo(px, py);
+   262→        ctx.lineTo(x, y);
+   263→        ctx.stroke();
+   264→
+   265→        ctx.globalAlpha = 1;
+   266→      }
+   267→    }
+   268→
+   269→    // Draw exit flag
+   270→    if (!fogEnabledRef.current || Math.abs(exitR - player.r) + Math.abs(exitC - player.c) <= config.fogRadius) {
+   271→      const fx = exitC * cellSize;
+   272→      const fy = exitR * cellSize;
+   273→      const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 300);
+   274→      ctx.fillStyle = `rgba(250, 204, 21, ${pulse * 0.3})`;
+   275→      ctx.fillRect(fx, fy, cellSize, cellSize);
+   276→
+   277→      // Flag icon (triangle)
+   278→      const flagX = fx + cellSize * 0.3;
+   279→      const flagY = fy + cellSize * 0.2;
+   280→      const flagW = cellSize * 0.45;
+   281→      const flagH = cellSize * 0.35;
+   282→      ctx.fillStyle = '#facc15';
+   283→      ctx.beginPath();
+   284→      ctx.moveTo(flagX, flagY);
+   285→      ctx.lineTo(flagX + flagW, flagY + flagH / 2);
+   286→      ctx.lineTo(flagX, flagY + flagH);
+   287→      ctx.closePath();
+   288→      ctx.fill();
+   289→
+   290→      // Flag pole
+   291→      ctx.strokeStyle = '#facc15';
+   292→      ctx.lineWidth = Math.max(1, cellSize * 0.08);
+   293→      ctx.beginPath();
+   294→      ctx.moveTo(flagX, flagY);
+   295→      ctx.lineTo(flagX, fy + cellSize * 0.85);
+   296→      ctx.stroke();
+   297→    }
+   298→
+   299→    // Draw player
+   300→    const px = player.c * cellSize + cellSize / 2;
+   301→    const py = player.r * cellSize + cellSize / 2;
+   302→    const radius = Math.max(cellSize * 0.35, 3);
+   303→
+   304→    // Player glow
+   305→    ctx.shadowColor = '#4ade80';
+   306→    ctx.shadowBlur = 10;
+   307→    ctx.fillStyle = '#4ade80';
+   308→    ctx.beginPath();
+   309→    ctx.arc(px, py, radius, 0, Math.PI * 2);
+   310→    ctx.fill();
+   311→    ctx.shadowBlur = 0;
+   312→
+   313→    // Player inner circle
+   314→    ctx.fillStyle = '#86efac';
+   315→    ctx.beginPath();
+   316→    ctx.arc(px, py, radius * 0.55, 0, Math.PI * 2);
+   317→    ctx.fill();
+   318→  }, []);
+   319→
+   320→  // Combined game loop ref to avoid self-referencing callback
+   321→  const gameLoopFnRef = useRef<() => void>(() => {});
+   322→
+   323→  useEffect(() => {
+   324→    gameLoopFnRef.current = () => {
+   325→      if (gamePhaseRef.current !== 'playing') return;
+   326→      if (pausedRef.current) {
+   327→        draw();
+   328→        animFrameRef.current = requestAnimationFrame(gameLoopFnRef.current);
+   329→        return;
+   330→      }
+   331→      elapsedRef.current = (Date.now() - startTimeRef.current) / 1000;
+   332→      setElapsed(Math.floor(elapsedRef.current * 10) / 10);
+   333→      draw();
+   334→      animFrameRef.current = requestAnimationFrame(gameLoopFnRef.current);
+   335→    };
+   336→  }, [draw]);
+   337→
+   338→  // Start game
+   339→  const startGame = useCallback((diff: Difficulty) => {
+   340→    const config = DIFFICULTY_CONFIG[diff];
+   341→    const maze = generateMaze(config.rows, config.cols);
+   342→
+   343→    mazeRef.current = maze;
+   344→    playerRef.current = { r: 1, c: 1 };
+   345→    visitedRef.current = new Set(['1,1']);
+   346→    trailRef.current = [[1, 1]];
+   347→    stepsRef.current = 0;
+   348→    startTimeRef.current = Date.now();
+   349→    elapsedRef.current = 0;
+   350→    gamePhaseRef.current = 'playing';
+   351→    pausedRef.current = false;
+   352→    setPaused(false);
+   353→    difficultyRef.current = diff;
+   354→
+   355→    setDifficulty(diff);
+   356→    setSteps(0);
+   357→    setElapsed(0);
+   358→    setPhase('playing');
+   359→
+   360→    // Cancel any previous animation frame
+   361→    cancelAnimationFrame(animFrameRef.current);
+   362→
+   363→    // Start game loop
+   364→    gameLoopFnRef.current();
+   365→  }, []);
+   366→
+   367→  // Move player
+   368→  const movePlayer = useCallback((dr: number, dc: number) => {
+   369→    if (gamePhaseRef.current !== 'playing') return;
+   370→    if (pausedRef.current) return;
+   371→
+   372→    const maze = mazeRef.current;
+   373→    const player = playerRef.current;
+   374→    const nr = player.r + dr;
+   375→    const nc = player.c + dc;
+   376→
+   377→    // Bounds check
+   378→    if (nr < 0 || nr >= maze.length || nc < 0 || nc >= maze[0].length) return;
+   379→    // Wall check
+   380→    if (maze[nr][nc] === WALL) return;
+   381→
+   382→    player.r = nr;
+   383→    player.c = nc;
+   384→    stepsRef.current += 1;
+   385→    setSteps(stepsRef.current);
+   386→
+   387→    const key = `${nr},${nc}`;
+   388→    visitedRef.current.add(key);
+   389→    trailRef.current.push([nr, nc]);
+   390→
+   391→    // Check win condition
+   392→    const rows = maze.length;
+   393→    const cols = maze[0].length;
+   394→    if (nr === rows - 2 && nc === cols - 2) {
+   395→      // Win!
+   396→      gamePhaseRef.current = 'won';
+   397→      cancelAnimationFrame(animFrameRef.current);
+   398→
+   399→      const finalTime = (Date.now() - startTimeRef.current) / 1000;
+   400→      elapsedRef.current = finalTime;
+   401→      setElapsed(Math.floor(finalTime * 10) / 10);
+   402→
+   403→      // Calculate score
+   404→      const config = DIFFICULTY_CONFIG[difficultyRef.current];
+   405→      const timeRatio = Math.min(finalTime / config.maxTime, 1);
+   406→      const score = Math.round(config.maxScore * (1 - timeRatio));
+   407→      setFinalScore(Math.max(score, 10));
+   408→
+   409→      setPhase('won');
+   410→
+   411→      // Submit score
+   412→      const submitScore = Math.max(score, 10);
+   413→      fetch('/api/games/scores', {
+   414→        method: 'POST',
+   415→        headers: { 'Content-Type': 'application/json' },
+   416→        body: JSON.stringify({ game: GAME_NAME, score: submitScore }),
+   417→      }).then((res) => {
+   418→        if (res.ok) return res.json();
+   419→      }).then((data) => {
+   420→        if (data?.data?.score !== undefined) {
+   421→          setHighScore(data.data.score);
+   422→        }
+   423→      }).catch(() => { /* silent */ });
+   424→
+   425→      // Draw final frame
+   426→      draw();
+   427→    }
+   428→  }, [draw]);
+   429→
+   430→  // Keyboard controls
+   431→  useEffect(() => {
+   432→    const handleKeyDown = (e: KeyboardEvent) => {
+   433→      if (gamePhaseRef.current !== 'playing') return;
+   434→
+   435→      if (e.key === 'Escape') {
+   436→        e.preventDefault();
+   437→        pausedRef.current = !pausedRef.current;
+   438→        setPaused(pausedRef.current);
+   439→        draw();
+   440→        return;
+   441→      }
+   442→      if (pausedRef.current) return;
+   443→
+   444→      let dr = 0;
+   445→      let dc = 0;
+   446→      switch (e.key) {
+   447→        case 'ArrowUp': case 'w': case 'W': dr = -1; break;
+   448→        case 'ArrowDown': case 's': case 'S': dr = 1; break;
+   449→        case 'ArrowLeft': case 'a': case 'A': dc = -1; break;
+   450→        case 'ArrowRight': case 'd': case 'D': dc = 1; break;
+   451→        default: return;
+   452→      }
+   453→      e.preventDefault();
+   454→      movePlayer(dr, dc);
+   455→    };
+   456→
+   457→    window.addEventListener('keydown', handleKeyDown);
+   458→    return () => window.removeEventListener('keydown', handleKeyDown);
+   459→  }, [movePlayer, draw]);
+   460→
+   461→  // Swipe controls on canvas
+   462→  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+   463→    const touch = e.touches[0];
+   464→    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+   465→  }, []);
+   466→
+   467→  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+   468→    if (gamePhaseRef.current !== 'playing') return;
+   469→    const start = touchStartRef.current;
+   470→    if (!start) return;
+   471→
+   472→    const touch = e.changedTouches[0];
+   473→    const dx = touch.clientX - start.x;
+   474→    const dy = touch.clientY - start.y;
+   475→    const minDist = 15;
+   476→
+   477→    if (Math.abs(dx) < minDist && Math.abs(dy) < minDist) return;
+   478→
+   479→    if (Math.abs(dx) > Math.abs(dy)) {
+   480→      movePlayer(0, dx > 0 ? 1 : -1);
+   481→    } else {
+   482→      movePlayer(dy > 0 ? 1 : -1, 0);
+   483→    }
+   484→    touchStartRef.current = null;
+   485→  }, [movePlayer]);
+   486→
+   487→  // Canvas size setup (high DPI)
+   488→  useEffect(() => {
+   489→    const container = containerRef.current;
+   490→    const canvas = canvasRef.current;
+   491→    if (!container || !canvas) return;
+   492→
+   493→    const update = () => {
+   494→      const dw = canvas.clientWidth;
+   495→      if (dw <= 0) return;
+   496→      const displaySize = Math.min(dw, LOGIC_SIZE);
+   497→      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   498→      const scale = displaySize / LOGIC_SIZE;
+   499→
+   500→      canvas.width = displaySize * dpr;
+   501→      canvas.height = displaySize * dpr;
+   502→
+   503→      dprRef.current = dpr;
+   504→      scaleRef.current = scale;
+   505→      draw();
+   506→    };
+   507→
+   508→    const ro = new ResizeObserver(update);
+   509→    ro.observe(container);
+   510→    const onVis = () => { if (document.visibilityState === 'visible') update(); };
+   511→    document.addEventListener('visibilitychange', onVis);
+   512→
+   513→    update();
+   514→    return () => { ro.disconnect(); document.removeEventListener('visibilitychange', onVis); };
+   515→  }, [draw]);
+   516→
+   517→  // Cleanup
+   518→  useEffect(() => {
+   519→    return () => cancelAnimationFrame(animFrameRef.current);
+   520→  }, []);
+   521→
+   522→  // Toggle fog
+   523→  const toggleFog = useCallback(() => {
+   524→    fogEnabledRef.current = !fogEnabledRef.current;
+   525→    setFogEnabled(fogEnabledRef.current);
+   526→    if (gamePhaseRef.current === 'playing') draw();
+   527→  }, [draw]);
+   528→
+   529→  // --- Format time display ---
+   530→  const formatTime = (t: number) => {
+   531→    const mins = Math.floor(t / 60);
+   532→    const secs = Math.floor(t % 60);
+   533→    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+   534→  };
+   535→
+   536→  // ==================== SETTINGS PHASE ====================
+   537→  if (phase === 'settings') {
+   538→    return (
+   539→      <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+   540→        <div className="flex items-center justify-between w-full px-2 pt-2 pb-1">
+   541→          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
+   542→            <ArrowLeft className="h-4 w-4 mr-1" />
+   543→            返回
+   544→          </Button>
+   545→          <h2 className="text-lg font-bold tracking-wide">迷宫探险</h2>
+   546→          <div className="w-16" />
+   547→        </div>
+   548→
+   549→        <div className="w-full px-2 py-3 flex flex-col gap-6">
+   550→          <Card className="border-border/50 bg-card/80">
+   551→            <CardContent className="p-4 flex flex-col gap-4">
+   552→              <h3 className="text-base font-semibold text-center">选择难度</h3>
+   553→              <div className="flex flex-col gap-3">
+   554→                {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => {
+   555→                  const cfg = DIFFICULTY_CONFIG[d];
+   556→                  const isSelected = difficulty === d;
+   557→                  return (
+   558→                    <button
+   559→                      key={d}
+   560→                      onClick={() => setDifficulty(d)}
+   561→                      className={
+   562→                        `w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all duration-200 text-left ${
+   563→                          isSelected
+   564→                            ? 'border-primary bg-primary/10 shadow-sm'
+   565→                            : 'border-border/60 bg-background hover:border-primary/50 hover:bg-primary/5'
+   566→                        }`
+   567→                      }
+   568→                    >
+   569→                      <div className="flex flex-col gap-1">
+   570→                        <span className={`font-semibold ${isSelected ? 'text-primary' : 'text-foreground'}`}>{
+   571→                          { easy: '简单  11x11', normal: '普通  15x15', hard: '困难  21x21' }[d]
+   572→                        }</span>
+   573→                        <span className="text-xs text-muted-foreground">
+   574→                          最高分: {cfg.maxScore} | 时间限制: {cfg.maxTime}s
+   575→                        </span>
+   576→                      </div>
+   577→                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+   578→                        isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+   579→                      }`}
+   580→                      >
+   581→                        {isSelected && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
+   582→                      </div>
+   583→                    </button>
+   584→                  );
+   585→                })}
+   586→              </div>
+   587→            </CardContent>
+   588→          </Card>
+   589→
+   590→          {/* Fog of war toggle */}
+   591→          <Card className="border-border/50 bg-card/80">
+   592→            <CardContent className="p-4 flex items-center justify-between">
+   593→              <div className="flex items-center gap-3">
+   594→                {fogEnabled ? <Eye className="h-5 w-5 text-primary" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}
+   595→                <div className="flex flex-col">
+   596→                  <span className="text-sm font-medium">战争迷雾</span>
+   597→                  <span className="text-xs text-muted-foreground">只显示附近格子</span>
+   598→                </div>
+   599→              </div>
+   600→              <button
+   601→                onClick={toggleFog}
+   602→                className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
+   603→                  fogEnabled ? 'bg-primary' : 'bg-muted'
+   604→                }`}
+   605→                aria-label="Toggle fog of war"
+   606→              >
+   607→                <div
+   608→                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${
+   609→                    fogEnabled ? 'translate-x-6' : 'translate-x-0.5'
+   610→                  }`}
+   611→                />
+   612→              </button>
+   613→            </CardContent>
+   614→          </Card>
+   615→
+   616→          {/* Instructions button */}
+   617→          <Card className="border-border/50 bg-card/80">
+   618→            <CardContent className="p-4 flex items-center justify-between cursor-pointer" onClick={() => setShowInstructions(!showInstructions)}>
+   619→              <div className="flex items-center gap-3">
+   620→                <Info className="h-5 w-5 text-muted-foreground" />
+   621→                <span className="text-sm font-medium">操作说明</span>
+   622→              </div>
+   623→              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showInstructions ? 'rotate-180' : ''}`} />
+   624→            </CardContent>
+   625→            {showInstructions && (
+   626→              <div className="px-4 pb-4 pt-0 text-sm text-muted-foreground space-y-2">
+   627→                <p><strong className="text-foreground">电脑:</strong> 方向键或WASD移动</p>
+   628→                <p><strong className="text-foreground">手机:</strong> 在迷宫上滑动或使用下方虚拟方向键</p>
+   629→                <p>到达右下角的<Flag className="inline h-3 w-3 text-yellow-500" />旗帜即可获胜!</p>
+   630→                <p>用的时间越短，分数越高，加油!</p>
+   631→              </div>
+   632→            )}
+   633→          </Card>
+   634→
+   635→          {/* High score display */}
+   636→          {highScore > 0 && (
+   637→            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   638→              <Trophy className="h-4 w-4 text-yellow-500" />
+   639→              <span>最高分: <strong className="text-foreground">{highScore}</strong></span>
+   640→            </div>
+   641→          )}
+   642→
+   643→          {/* Start button */}
+   644→          <Button
+   645→            onClick={() => startGame(difficulty)}
+   646→            size="lg"
+   647→            className="w-full text-base font-semibold"
+   648→          >
+   649→            <Play className="h-5 w-5 mr-2" />
+   650→            开始游戏
+   651→          </Button>
+   652→        </div>
+   653→      </div>
+   654→    );
+   655→  }
+   656→
+   657→  // ==================== WON PHASE ====================
+   658→  if (phase === 'won') {
+   659→    const config = DIFFICULTY_CONFIG[difficulty];
+   660→    return (
+   661→      <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+   662→        <div className="flex items-center justify-between w-full px-2 pt-2 pb-1">
+   663→          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
+   664→            <ArrowLeft className="h-4 w-4 mr-1" />
+   665→            返回
+   666→          </Button>
+   667→          <h2 className="text-lg font-bold tracking-wide">迷宫探险</h2>
+   668→          <div className="w-16" />
+   669→        </div>
+   670→
+   671→        <div className="w-full px-2 py-3 flex flex-col items-center gap-6">
+   672→          <div className="text-4xl">🎉</div>
+   673→          <h3 className="text-2xl font-bold">恭喜通关!</h3>
+   674→          <p className="text-muted-foreground">你逃出了{config.label}难度的迷宫!</p>
+   675→
+   676→          <Card className="w-full border-border/50 bg-card/80">
+   677→            <CardContent className="p-4 flex flex-col gap-4">
+   678→              <div className="grid grid-cols-3 gap-4 text-center">
+   679→                <div className="flex flex-col gap-1">
+   680→                  <div className="flex items-center justify-center gap-1 text-muted-foreground">
+   681→                    <Clock className="h-4 w-4" />
+   682→                    <span className="text-xs">用时</span>
+   683→                  </div>
+   684→                  <span className="text-xl font-bold tabular-nums">{formatTime(elapsed)}</span>
+   685→                </div>
+   686→                <div className="flex flex-col gap-1">
+   687→                  <div className="flex items-center justify-center gap-1 text-muted-foreground">
+   688→                    <Footprints className="h-4 w-4" />
+   689→                    <span className="text-xs">步数</span>
+   690→                  </div>
+   691→                  <span className="text-xl font-bold tabular-nums">{steps}</span>
+   692→                </div>
+   693→                <div className="flex flex-col gap-1">
+   694→                  <div className="flex items-center justify-center gap-1 text-muted-foreground">
+   695→                    <Trophy className="h-4 w-4 text-yellow-500" />
+   696→                    <span className="text-xs">分数</span>
+   697→                  </div>
+   698→                  <span className="text-xl font-bold text-yellow-500 tabular-nums">{finalScore}</span>
+   699→                </div>
+   700→              </div>
+   701→
+   702→              {finalScore >= highScore && finalScore > 0 && (
+   703→                <p className="text-sm font-semibold text-yellow-500 text-center animate-pulse">
+   704→                  新纪录!
+   705→                </p>
+   706→              )}
+   707→            </CardContent>
+   708→          </Card>
+   709→
+   710→          <div className="flex flex-col gap-3 w-full">
+   711→            <Button
+   712→              onClick={() => startGame(difficulty)}
+   713→              size="lg"
+   714→              className="w-full text-base font-semibold"
+   715→            >
+   716→              <RotateCcw className="h-4 w-4 mr-2" />
+   717→              再来一局
+   718→            </Button>
+   719→            <Button variant="outline" onClick={() => setPhase('settings')} className="w-full">
+   720→              换个难度
+   721→            </Button>
+   722→            <Button variant="ghost" onClick={onBack} className="w-full">
+   723→              返回大厅
+   724→            </Button>
+   725→          </div>
+   726→        </div>
+   727→      </div>
+   728→    );
+   729→  }
+   730→
+   731→  // ==================== PLAYING PHASE ====================
+   732→  const config = DIFFICULTY_CONFIG[difficulty];
+   733→  return (
+   734→    <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+   735→      <div className="flex items-center justify-between w-full px-2 pt-2 pb-1">
+   736→        <Button variant="ghost" size="sm" onClick={() => {
+   737→          cancelAnimationFrame(animFrameRef.current);
+   738→          gamePhaseRef.current = 'settings';
+   739→          setPhase('settings');
+   740→        }} className="text-muted-foreground hover:text-foreground">
+   741→          <ArrowLeft className="h-4 w-4 mr-1" />
+   742→          返回
+   743→        </Button>
+   744→        <h2 className="text-lg font-bold tracking-wide">迷宫 - {config.label}</h2>
+   745→        <div className="w-16" />
+   746→      </div>
+   747→
+   748→      {/* Stats bar */}
+   749→      <div className="w-full px-2 mb-2">
+   750→        <Card className="border-border/50 bg-card/80">
+   751→          <CardContent className="flex items-center justify-between p-3">
+   752→            <div className="flex items-center gap-2">
+   753→              <Clock className="h-4 w-4 text-muted-foreground" />
+   754→              <span className="text-sm font-semibold tabular-nums">{formatTime(elapsed)}</span>
+   755→            </div>
+   756→            <div className="flex items-center gap-2">
+   757→              <Footprints className="h-4 w-4 text-muted-foreground" />
+   758→              <span className="text-sm font-semibold tabular-nums">{steps}</span>
+   759→            </div>
+   760→            <div className="flex items-center gap-2">
+   761→              <Trophy className="h-4 w-4 text-yellow-500" />
+   762→              <span className="text-sm font-semibold tabular-nums text-yellow-500">{highScore}</span>
+   763→            </div>
+   764→          </CardContent>
+   765→        </Card>
+   766→      </div>
+   767→
+   768→      {/* Canvas */}
+   769→      <div
+   770→        ref={containerRef}
+   771→        className="w-full flex justify-center"
+   772→        onTouchStart={handleTouchStart}
+   773→        onTouchEnd={handleTouchEnd}
+   774→      >
+   775→        <canvas
+   776→          ref={canvasRef}
+   777→          className="rounded-lg border border-border/30 shadow-lg"
+   778→          style={{ width: '100%', maxWidth: LOGIC_SIZE, aspectRatio: '1/1', touchAction: 'none' }}
+   779→        />
+   780→      </div>
+   781→
+   782→      {/* Mobile D-pad */}
+   783→      <div className="grid grid-cols-3 gap-2 w-40 mt-4 md:hidden">
+   784→        <div />
+   785→        <Button
+   786→          variant="outline"
+   787→          size="icon"
+   788→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   789→          onTouchStart={(e) => { e.stopPropagation(); movePlayer(-1, 0); }}
+   790→          onMouseDown={() => movePlayer(-1, 0)}
+   791→        >
+   792→          <ChevronUp className="h-5 w-5" />
+   793→        </Button>
+   794→        <div />
+   795→        <Button
+   796→          variant="outline"
+   797→          size="icon"
+   798→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   799→          onTouchStart={(e) => { e.stopPropagation(); movePlayer(0, -1); }}
+   800→          onMouseDown={() => movePlayer(0, -1)}
+   801→        >
+   802→          <ChevronLeft className="h-5 w-5" />
+   803→        </Button>
+   804→        <Button
+   805→          variant="outline"
+   806→          size="icon"
+   807→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   808→          onTouchStart={(e) => { e.stopPropagation(); movePlayer(1, 0); }}
+   809→          onMouseDown={() => movePlayer(1, 0)}
+   810→        >
+   811→          <ChevronDown className="h-5 w-5" />
+   812→        </Button>
+   813→        <Button
+   814→          variant="outline"
+   815→          size="icon"
+   816→          className="h-12 w-12 rounded-lg active:bg-primary/20"
+   817→          onTouchStart={(e) => { e.stopPropagation(); movePlayer(0, 1); }}
+   818→          onMouseDown={() => movePlayer(0, 1)}
+   819→        >
+   820→          <ChevronRight className="h-5 w-5" />
+   821→        </Button>
+   822→      </div>
+   823→    </div>
+   824→  );
+   825→}
+   826→

@@ -1,0 +1,1359 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→     4→import { Button } from '@/components/ui/button';
+     5→     5→import { ArrowLeft, Trophy } from 'lucide-react';
+     6→     6→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     7→     7→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+     8→     8→
+     9→     9→const aircraftControlsInfo: GameControlsInfo = {
+    10→    10→  gameName: '飞机大战',
+    11→    11→  desktop: [
+    12→    12→    { action: '鼠标移动', keys: [], description: '移动飞机位置' },
+    13→    13→    { action: '空格 / 鼠标点击', keys: ['Space'], description: '发射子弹' },
+    14→    14→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    15→    15→  ],
+    16→    16→  mobile: [
+    17→    17→    { action: '触摸滑动', keys: [], description: '拖动手指控制飞机移动' },
+    18→    18→    { action: '自动发射', keys: [], description: '触摸屏幕时自动连续发射子弹' },
+    19→    19→  ],
+    20→    20→  rules: [
+    21→    21→    '击落敌机获得分数，每30个敌人出现Boss',
+    22→    22→    '被敌机、子弹碰到损失1生命并降级武器',
+    23→    23→    '收集掉落道具：武器升级、回血、炸弹、护盾',
+    24→    24→    '武器等级：单发 → 双发 → 三发扇形 → 五发扇形',
+    25→    25→  ],
+    26→    26→  tips: ['保持在屏幕中间，留出闪避空间', '注意躲避Boss的散弹攻击', '拾取武器升级道具提升火力'],
+    27→    27→};
+    28→    28→
+    29→    29→// ==================== TYPES & CONSTANTS ====================
+    30→    30→
+    31→    31→interface AircraftGameProps {
+    32→    32→  onBack: () => void;
+    33→    33→}
+    34→    34→
+    35→    35→const LOGIC_W = 480;
+    36→    36→const LOGIC_H = 640;
+    37→    37→const GAME_NAME = 'aircraft';
+    38→    38→const PLAYER_W = 40;
+    39→    39→const PLAYER_H = 48;
+    40→    40→const PLAYER_SPEED = 6;
+    41→    41→const BULLET_W = 4;
+    42→    42→const BULLET_H = 14;
+    43→    43→const BASE_SHOOT_INTERVAL = 10;
+    44→    44→const LEVEL_UP_KILLS = 15;
+    45→    45→const BOSS_SPAWN_KILLS = 30;
+    46→    46→const POWERUP_CHANCE = 0.20;
+    47→    47→const SHIELD_DURATION = 300;
+    48→    48→const INVINCIBLE_DURATION = 90;
+    49→    49→const MAX_WEAPON_LEVEL = 4;
+    50→    50→const MAX_LIVES = 5;
+    51→    51→const INITIAL_LIVES = 3;
+    52→    52→const BOSS_W = 64;
+    53→    53→const BOSS_H = 56;
+    54→    54→const BOSS_BULLET_SPEED = 3.5;
+    55→    55→const BOSS_SPREAD_ANGLE = Math.PI / 6;
+    56→    56→const BOSS_SHOOT_INTERVAL = 80;
+    57→    57→const SCREEN_FLASH_FRAMES = 15;
+    58→    58→
+    59→    59→// Enemy types
+    60→    60→enum EnemyType {
+    61→    61→  Normal = 'normal',
+    62→    62→  Fast = 'fast',
+    63→    63→  Tank = 'tank',
+    64→    64→}
+    65→    65→
+    66→    66→const ENEMY_CONFIG: Record<EnemyType, { w: number; h: number; hp: number; score: number; speed: number }> = {
+    67→    67→  [EnemyType.Normal]: { w: 30, h: 30, hp: 1, score: 10, speed: 2.0 },
+    68→    68→  [EnemyType.Fast]: { w: 22, h: 22, hp: 1, score: 15, speed: 4.0 },
+    69→    69→  [EnemyType.Tank]: { w: 48, h: 48, hp: 3, score: 30, speed: 1.0 },
+    70→    70→};
+    71→    71→
+    72→    72→const BOSS_EMOJIS = ['👾', '🛸', '🦑'];
+    73→    73→
+    74→    74→// Power-up types
+    75→    75→enum PowerUpType {
+    76→    76→  Weapon = 'weapon',
+    77→    77→  Heal = 'heal',
+    78→    78→  Bomb = 'bomb',
+    79→    79→  Shield = 'shield',
+    80→    80→}
+    81→    81→
+    82→    82→const POWERUP_EMOJIS: Record<PowerUpType, string> = {
+    83→    83→  [PowerUpType.Weapon]: '🔫',
+    84→    84→  [PowerUpType.Heal]: '💚',
+    85→    85→  [PowerUpType.Bomb]: '💣',
+    86→    86→  [PowerUpType.Shield]: '🛡',
+    87→    87→};
+    88→    88→
+    89→    89→const POWERUP_COLORS: Record<PowerUpType, string> = {
+    90→    90→  [PowerUpType.Weapon]: '#f59e0b',
+    91→    91→  [PowerUpType.Heal]: '#22c55e',
+    92→    92→  [PowerUpType.Bomb]: '#ef4444',
+    93→    93→  [PowerUpType.Shield]: '#06b6d4',
+    94→    94→};
+    95→    95→
+    96→    96→// ==================== GAME OBJECTS ====================
+    97→    97→
+    98→    98→interface Star {
+    99→    99→  x: number; y: number; r: number; alpha: number; twinkleSpeed: number; phase: number;
+   100→   100→}
+   101→   101→
+   102→   102→interface Player {
+   103→   103→  x: number; y: number;
+   104→   104→  shieldTimer: number;
+   105→   105→  weaponLevel: number;
+   106→   106→  lives: number;
+   107→   107→  invincibleTimer: number;
+   108→   108→}
+   109→   109→
+   110→   110→interface Bullet {
+   111→   111→  x: number; y: number; vx: number; vy: number;
+   112→   112→}
+   113→   113→
+   114→   114→interface EnemyBullet {
+   115→   115→  x: number; y: number; vx: number; vy: number;
+   116→   116→}
+   117→   117→
+   118→   118→interface Enemy {
+   119→   119→  x: number; y: number;
+   120→   120→  type: EnemyType;
+   121→   121→  hp: number; maxHp: number;
+   122→   122→  speed: number;
+   123→   123→  w: number; h: number;
+   124→   124→  score: number;
+   125→   125→}
+   126→   126→
+   127→   127→interface Boss {
+   128→   128→  x: number; y: number;
+   129→   129→  hp: number; maxHp: number;
+   130→   130→  bossIndex: number;
+   131→   131→  emoji: string;
+   132→   132→  flashTimer: number;
+   133→   133→  shootTimer: number;
+   134→   134→  dirX: number;
+   135→   135→  score: number;
+   136→   136→  entered: boolean;
+   137→   137→}
+   138→   138→
+   139→   139→interface Particle {
+   140→   140→  x: number; y: number; vx: number; vy: number;
+   141→   141→  life: number; maxLife: number; color: string; r: number;
+   142→   142→}
+   143→   143→
+   144→   144→interface PowerUp {
+   145→   145→  x: number; y: number;
+   146→   146→  type: PowerUpType;
+   147→   147→  phase: number;
+   148→   148→}
+   149→   149→
+   150→   150→type GameStatus = 'idle' | 'playing' | 'over';
+   151→   151→
+   152→   152→// ==================== HELPERS ====================
+   153→   153→
+   154→   154→function createStars(count: number): Star[] {
+   155→   155→  const stars: Star[] = [];
+   156→   156→  for (let i = 0; i < count; i++) {
+   157→   157→    stars.push({
+   158→   158→      x: Math.random() * LOGIC_W,
+   159→   159→      y: Math.random() * LOGIC_H,
+   160→   160→      r: Math.random() * 1.5 + 0.5,
+   161→   161→      alpha: Math.random() * 0.6 + 0.4,
+   162→   162→      twinkleSpeed: Math.random() * 0.03 + 0.01,
+   163→   163→      phase: Math.random() * Math.PI * 2,
+   164→   164→    });
+   165→   165→  }
+   166→   166→  return stars;
+   167→   167→}
+   168→   168→
+   169→   169→function createExplosion(x: number, y: number, color: string, count: number): Particle[] {
+   170→   170→  const particles: Particle[] = [];
+   171→   171→  for (let i = 0; i < count; i++) {
+   172→   172→    const angle = Math.random() * Math.PI * 2;
+   173→   173→    const speed = Math.random() * 3 + 1;
+   174→   174→    particles.push({
+   175→   175→      x, y,
+   176→   176→      vx: Math.cos(angle) * speed,
+   177→   177→      vy: Math.sin(angle) * speed,
+   178→   178→      life: Math.random() * 20 + 15,
+   179→   179→      maxLife: 35,
+   180→   180→      color,
+   181→   181→      r: Math.random() * 3 + 1,
+   182→   182→    });
+   183→   183→  }
+   184→   184→  return particles;
+   185→   185→}
+   186→   186→
+   187→   187→function rectCollide(
+   188→   188→  ax: number, ay: number, aw: number, ah: number,
+   189→   189→  bx: number, by: number, bw: number, bh: number,
+   190→   190→): boolean {
+   191→   191→  return Math.abs(ax - bx) < (aw + bw) / 2 && Math.abs(ay - by) < (ah + bh) / 2;
+   192→   192→}
+   193→   193→
+   194→   194→// ==================== DRAWING FUNCTIONS ====================
+   195→   195→
+   196→   196→function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, frame: number) {
+   197→   197→  ctx.save();
+   198→   198→  ctx.translate(p.x, p.y);
+   199→   199→
+   200→   200→  // Invincibility blink
+   201→   201→  if (p.invincibleTimer > 0 && Math.floor(frame / 3) % 2 === 0) {
+   202→   202→    ctx.globalAlpha = 0.35;
+   203→   203→  }
+   204→   204→
+   205→   205→  // Tail flame animation
+   206→   206→  const flameLen = 12 + Math.sin(frame * 0.5) * 4;
+   207→   207→  const flameW = 8 + Math.sin(frame * 0.7) * 2;
+   208→   208→  const flameGrad = ctx.createLinearGradient(0, PLAYER_H / 2, 0, PLAYER_H / 2 + flameLen);
+   209→   209→  flameGrad.addColorStop(0, '#38bdf8');
+   210→   210→  flameGrad.addColorStop(0.4, '#f97316');
+   211→   211→  flameGrad.addColorStop(1, 'rgba(239,68,68,0)');
+   212→   212→  ctx.fillStyle = flameGrad;
+   213→   213→  ctx.beginPath();
+   214→   214→  ctx.moveTo(-flameW, PLAYER_H / 2 - 2);
+   215→   215→  ctx.lineTo(flameW, PLAYER_H / 2 - 2);
+   216→   216→  ctx.lineTo(0, PLAYER_H / 2 + flameLen);
+   217→   217→  ctx.closePath();
+   218→   218→  ctx.fill();
+   219→   219→
+   220→   220→  // Aircraft body
+   221→   221→  ctx.fillStyle = '#e0f2fe';
+   222→   222→  ctx.beginPath();
+   223→   223→  ctx.moveTo(0, -PLAYER_H / 2);
+   224→   224→  ctx.lineTo(-PLAYER_W / 2, PLAYER_H / 2 - 6);
+   225→   225→  ctx.lineTo(-PLAYER_W / 4, PLAYER_H / 2);
+   226→   226→  ctx.lineTo(PLAYER_W / 4, PLAYER_H / 2);
+   227→   227→  ctx.lineTo(PLAYER_W / 2, PLAYER_H / 2 - 6);
+   228→   228→  ctx.closePath();
+   229→   229→  ctx.fill();
+   230→   230→
+   231→   231→  // Wing decoration lines
+   232→   232→  ctx.strokeStyle = '#38bdf8';
+   233→   233→  ctx.lineWidth = 1.5;
+   234→   234→  ctx.beginPath();
+   235→   235→  ctx.moveTo(-PLAYER_W / 2 + 4, PLAYER_H / 2 - 10);
+   236→   236→  ctx.lineTo(0, -PLAYER_H / 2 + 10);
+   237→   237→  ctx.lineTo(PLAYER_W / 2 - 4, PLAYER_H / 2 - 10);
+   238→   238→  ctx.stroke();
+   239→   239→
+   240→   240→  // Cockpit
+   241→   241→  ctx.fillStyle = '#7dd3fc';
+   242→   242→  ctx.beginPath();
+   243→   243→  ctx.ellipse(0, -PLAYER_H / 4, 4, 7, 0, 0, Math.PI * 2);
+   244→   244→  ctx.fill();
+   245→   245→
+   246→   246→  // Shield bubble
+   247→   247→  if (p.shieldTimer > 0) {
+   248→   248→    const shieldAlpha = p.shieldTimer < 60 ? (Math.sin(frame * 0.3) * 0.3 + 0.4) : 0.5;
+   249→   249→    ctx.strokeStyle = `rgba(6, 182, 212, ${shieldAlpha})`;
+   250→   250→    ctx.lineWidth = 2.5;
+   251→   251→    ctx.beginPath();
+   252→   252→  ctx.ellipse(0, 0, PLAYER_W / 2 + 8, PLAYER_H / 2 + 8, 0, 0, Math.PI * 2);
+   253→   253→    ctx.stroke();
+   254→   254→  }
+   255→   255→
+   256→   256→  ctx.restore();
+   257→   257→}
+   258→   258→
+   259→   259→function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy) {
+   260→   260→  ctx.save();
+   261→   261→  ctx.translate(e.x, e.y);
+   262→   262→
+   263→   263→  if (e.type === EnemyType.Normal) {
+   264→   264→    // Red inverted triangle
+   265→   265→    ctx.fillStyle = '#ef4444';
+   266→   266→    ctx.beginPath();
+   267→   267→    ctx.moveTo(0, e.h / 2);
+   268→   268→    ctx.lineTo(-e.w / 2, -e.h / 2);
+   269→   269→    ctx.lineTo(e.w / 2, -e.h / 2);
+   270→   270→    ctx.closePath();
+   271→   271→    ctx.fill();
+   272→   272→    ctx.strokeStyle = '#fca5a5';
+   273→   273→    ctx.lineWidth = 1;
+   274→   274→    ctx.beginPath();
+   275→   275→    ctx.moveTo(0, e.h / 2 - 6);
+   276→   276→    ctx.lineTo(-e.w / 4, -e.h / 4);
+   277→   277→    ctx.moveTo(0, e.h / 2 - 6);
+   278→   278→    ctx.lineTo(e.w / 4, -e.h / 4);
+   279→   279→    ctx.stroke();
+   280→   280→  } else if (e.type === EnemyType.Fast) {
+   281→   281→    // Yellow arrow shape
+   282→   282→    ctx.fillStyle = '#f59e0b';
+   283→   283→    ctx.beginPath();
+   284→   284→    ctx.moveTo(0, e.h / 2);
+   285→   285→    ctx.lineTo(-e.w / 2, -e.h / 3);
+   286→   286→    ctx.lineTo(-e.w / 4, -e.h / 2);
+   287→   287→    ctx.lineTo(e.w / 4, -e.h / 2);
+   288→   288→    ctx.lineTo(e.w / 2, -e.h / 3);
+   289→   289→    ctx.closePath();
+   290→   290→    ctx.fill();
+   291→   291→    ctx.fillStyle = '#fcd34d';
+   292→   292→    ctx.beginPath();
+   293→   293→    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+   294→   294→    ctx.fill();
+   295→   295→  } else if (e.type === EnemyType.Tank) {
+   296→   296→    // Purple hexagon
+   297→   297→    const r = e.w / 2;
+   298→   298→    ctx.fillStyle = '#a855f7';
+   299→   299→    ctx.beginPath();
+   300→   300→    for (let i = 0; i < 6; i++) {
+   301→   301→      const angle = (Math.PI / 3) * i - Math.PI / 2;
+   302→   302→      const px = Math.cos(angle) * r;
+   303→   303→      const py = Math.sin(angle) * r;
+   304→   304→      if (i === 0) ctx.moveTo(px, py);
+   305→   305→      else ctx.lineTo(px, py);
+   306→   306→    }
+   307→   307→    ctx.closePath();
+   308→   308→    ctx.fill();
+   309→   309→    ctx.strokeStyle = '#d8b4fe';
+   310→   310→    ctx.lineWidth = 1.5;
+   311→   311→    ctx.beginPath();
+   312→   312→    for (let i = 0; i < 6; i++) {
+   313→   313→      const angle = (Math.PI / 3) * i - Math.PI / 2;
+   314→   314→      const px = Math.cos(angle) * (r * 0.55);
+   315→   315→      const py = Math.sin(angle) * (r * 0.55);
+   316→   316→      if (i === 0) ctx.moveTo(px, py);
+   317→   317→      else ctx.lineTo(px, py);
+   318→   318→    }
+   319→   319→    ctx.closePath();
+   320→   320→    ctx.stroke();
+   321→   321→    ctx.fillStyle = '#e9d5ff';
+   322→   322→    ctx.beginPath();
+   323→   323→    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+   324→   324→    ctx.fill();
+   325→   325→  }
+   326→   326→
+   327→   327→  ctx.restore();
+   328→   328→
+   329→   329→  // HP bar (only when damaged)
+   330→   330→  if (e.hp < e.maxHp) {
+   331→   331→    const barW = e.w * 0.8;
+   332→   332→    const barH = 3;
+   333→   333→    const barX = e.x - barW / 2;
+   334→   334→    const barY = e.y - e.h / 2 - 6;
+   335→   335→    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+   336→   336→    ctx.fillRect(barX, barY, barW, barH);
+   337→   337→    ctx.fillStyle = '#22c55e';
+   338→   338→    ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH);
+   339→   339→  }
+   340→   340→}
+   341→   341→
+   342→   342→function drawBoss(ctx: CanvasRenderingContext2D, boss: Boss, frame: number) {
+   343→   343→  ctx.save();
+   344→   344→  ctx.translate(boss.x, boss.y);
+   345→   345→
+   346→   346→  // Flash white on hit
+   347→   347→  if (boss.flashTimer > 0) {
+   348→   348→    ctx.globalAlpha = 0.5 + Math.sin(frame) * 0.5;
+   349→   349→    // White overlay circle
+   350→   350→    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+   351→   351→    ctx.beginPath();
+   352→   352→    ctx.ellipse(0, 0, BOSS_W / 2 + 4, BOSS_H / 2 + 4, 0, 0, Math.PI * 2);
+   353→   353→    ctx.fill();
+   354→   354→    ctx.globalAlpha = 1;
+   355→   355→  }
+   356→   356→
+   357→   357→  // Boss emoji
+   358→   358→  ctx.font = `${BOSS_H}px sans-serif`;
+   359→   359→  ctx.textAlign = 'center';
+   360→   360→  ctx.textBaseline = 'middle';
+   361→   361→  ctx.fillText(boss.emoji, 0, 2);
+   362→   362→
+   363→   363→  ctx.restore();
+   364→   364→
+   365→   365→  // Boss HP bar at top of canvas
+   366→   366→  const barW = LOGIC_W * 0.6;
+   367→   367→  const barH = 8;
+   368→   368→  const barX = (LOGIC_W - barW) / 2;
+   369→   369→  const barY = 6;
+   370→   370→
+   371→   371→  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+   372→   372→  ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+   373→   373→
+   374→   374→  const hpRatio = boss.hp / boss.maxHp;
+   375→   375→  const hpColor = hpRatio > 0.5 ? '#ef4444' : hpRatio > 0.25 ? '#f97316' : '#fbbf24';
+   376→   376→  ctx.fillStyle = hpColor;
+   377→   377→  ctx.fillRect(barX, barY, barW * hpRatio, barH);
+   378→   378→
+   379→   379→  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+   380→   380→  ctx.lineWidth = 1;
+   381→   381→  ctx.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
+   382→   382→
+   383→   383→  ctx.fillStyle = '#ffffff';
+   384→   384→  ctx.font = 'bold 11px sans-serif';
+   385→   385→  ctx.textAlign = 'center';
+   386→   386→  ctx.textBaseline = 'top';
+   387→   387→  ctx.fillText('BOSS', LOGIC_W / 2, barY + barH + 2);
+   388→   388→}
+   389→   389→
+   390→   390→function drawPowerUp(ctx: CanvasRenderingContext2D, pw: PowerUp) {
+   391→   391→  const glow = 0.3 + Math.sin(pw.phase) * 0.2;
+   392→   392→  const color = POWERUP_COLORS[pw.type];
+   393→   393→
+   394→   394→  // Outer glow
+   395→   395→  ctx.save();
+   396→   396→  ctx.globalAlpha = glow;
+   397→   397→  ctx.fillStyle = color;
+   398→   398→  ctx.beginPath();
+   399→   399→  ctx.arc(pw.x, pw.y, 16, 0, Math.PI * 2);
+   400→   400→  ctx.fill();
+   401→   401→  ctx.restore();
+   402→   402→
+   403→   403→  // Inner circle
+   404→   404→  ctx.fillStyle = color;
+   405→   405→  ctx.beginPath();
+   406→   406→  ctx.arc(pw.x, pw.y, 12, 0, Math.PI * 2);
+   407→   407→  ctx.fill();
+   408→   408→
+   409→   409→  // Emoji icon
+   410→   410→  ctx.font = '14px sans-serif';
+   411→   411→  ctx.textAlign = 'center';
+   412→   412→  ctx.textBaseline = 'middle';
+   413→   413→  ctx.fillText(POWERUP_EMOJIS[pw.type], pw.x, pw.y);
+   414→   414→}
+   415→   415→
+   416→   416→function drawEnemyBullet(ctx: CanvasRenderingContext2D, b: EnemyBullet) {
+   417→   417→  ctx.save();
+   418→   418→  ctx.shadowColor = '#ef4444';
+   419→   419→  ctx.shadowBlur = 5;
+   420→   420→  ctx.fillStyle = '#fca5a5';
+   421→   421→  ctx.beginPath();
+   422→   422→  ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+   423→   423→  ctx.fill();
+   424→   424→  ctx.shadowBlur = 0;
+   425→   425→  ctx.restore();
+   426→   426→}
+   427→   427→
+   428→   428→function drawCanvasHUD(ctx: CanvasRenderingContext2D, p: Player, bossActive: boolean) {
+   429→   429→  const topOffset = bossActive ? 32 : 4;
+   430→   430→
+   431→   431→  // Lives as hearts
+   432→   432→  ctx.font = '14px sans-serif';
+   433→   433→  ctx.textAlign = 'left';
+   434→   434→  ctx.textBaseline = 'top';
+   435→   435→  let heartsStr = '';
+   436→   436→  for (let i = 0; i < p.lives; i++) heartsStr += '❤';
+   437→   437→  ctx.fillText(heartsStr, 6, topOffset);
+   438→   438→
+   439→   439→  // Weapon level indicator
+   440→   440→  ctx.textAlign = 'right';
+   441→   441→  ctx.fillStyle = '#fbbf24';
+   442→   442→  ctx.font = 'bold 12px sans-serif';
+   443→   443→  const wpnNames = ['', 'I', 'II', 'III', 'IV'];
+   444→   444→  ctx.fillText(`WPN ${wpnNames[p.weaponLevel]}`, LOGIC_W - 6, topOffset);
+   445→   445→  ctx.fillStyle = '#ffffff';
+   446→   446→}
+   447→   447→
+   448→   448→// ==================== MAIN COMPONENT ====================
+   449→   449→
+   450→   450→export default function AircraftGame({ onBack }: AircraftGameProps) {
+   451→   451→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   452→   452→  const containerRef = useRef<HTMLDivElement>(null);
+   453→   453→  const scaleRef = useRef(1);
+   454→   454→  const rafRef = useRef<number>(0);
+   455→   455→  const frameRef = useRef<number>(0);
+   456→   456→  const statusRef = useRef<GameStatus>('idle');
+   457→   457→  const playerRef = useRef<Player>({ x: LOGIC_W / 2, y: LOGIC_H - 60, shieldTimer: 0, weaponLevel: 1, lives: INITIAL_LIVES, invincibleTimer: 0 });
+   458→   458→  const bulletsRef = useRef<Bullet[]>([]);
+   459→   459→  const enemyBulletsRef = useRef<EnemyBullet[]>([]);
+   460→   460→  const enemiesRef = useRef<Enemy[]>([]);
+   461→   461→  const bossRef = useRef<Boss | null>(null);
+   462→   462→  const particlesRef = useRef<Particle[]>([]);
+   463→   463→  const powerupsRef = useRef<PowerUp[]>([]);
+   464→   464→  const starsRef = useRef<Star[]>(createStars(80));
+   465→   465→  const scoreRef = useRef<number>(0);
+   466→   466→  const killCountRef = useRef<number>(0);
+   467→   467→  const bossKillCounterRef = useRef<number>(0);
+   468→   468→  const bossSpawnedCountRef = useRef<number>(0);
+   469→   469→  const levelRef = useRef<number>(1);
+   470→   470→  const lastShootRef = useRef<number>(0);
+   471→   471→  const inputXRef = useRef<number | null>(null);
+   472→   472→  const isMobileRef = useRef<boolean>(false);
+   473→   473→  const shootRequestRef = useRef<boolean>(false);
+   474→   474→  const highScoreRef = useRef<number>(0);
+   475→   475→  const screenFlashRef = useRef<number>(0);
+   476→   476→  const scoreSubmittedRef = useRef<boolean>(false);
+   477→   477→
+   478→   478→  // UI state
+   479→   479→  const [score, setScore] = useState<number>(0);
+   480→   480→  const [highScore, setHighScore] = useState<number>(0);
+   481→   481→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   482→   482→  const [isNewRecord, setIsNewRecord] = useState<boolean>(false);
+   483→   483→  const [level, setLevel] = useState<number>(1);
+   484→   484→  const [loadingHighScore, setLoadingHighScore] = useState<boolean>(true);
+   485→   485→  const [paused, setPaused] = useState<boolean>(false);
+   486→   486→  const pausedRef = useRef<boolean>(false);
+   487→   487→  const [lives, setLives] = useState<number>(INITIAL_LIVES);
+   488→   488→  const [weaponLevel, setWeaponLevel] = useState<number>(1);
+   489→   489→
+   490→   490→  /** Damage the player - lose life, downgrade weapon */
+   491→   491→  const damagePlayer = useCallback(() => {
+   492→   492→    const p = playerRef.current;
+   493→   493→    if (p.shieldTimer > 0 || p.invincibleTimer > 0) return;
+   494→   494→
+   495→   495→    p.lives--;
+   496→   496→    p.weaponLevel = Math.max(1, p.weaponLevel - 1);
+   497→   497→    p.invincibleTimer = INVINCIBLE_DURATION;
+   498→   498→
+   499→   499→    setLives(p.lives);
+   500→   500→    setWeaponLevel(p.weaponLevel);
+   501→   501→
+   502→   502→    particlesRef.current.push(...createExplosion(p.x, p.y, '#38bdf8', 12));
+   503→   503→
+   504→   504→    if (p.lives <= 0) {
+   505→   505→      statusRef.current = 'over';
+   506→   506→      setGameStatus('over');
+   507→   507→      particlesRef.current.push(...createExplosion(p.x, p.y, '#f97316', 25));
+   508→   508→    }
+   509→   509→  }, []);
+   510→   510→
+   511→   511→  /** Spawn a regular enemy */
+   512→   512→  const spawnEnemy = useCallback(() => {
+   513→   513→    const lv = levelRef.current;
+   514→   514→    const rand = Math.random();
+   515→   515→    let type: EnemyType;
+   516→   516→
+   517→   517→    const tankChance = Math.min(0.1 + lv * 0.04, 0.35);
+   518→   518→    const fastChance = Math.min(0.15 + lv * 0.03, 0.4);
+   519→   519→
+   520→   520→    if (rand < tankChance) {
+   521→   521→      type = EnemyType.Tank;
+   522→   522→    } else if (rand < tankChance + fastChance) {
+   523→   523→      type = EnemyType.Fast;
+   524→   524→    } else {
+   525→   525→      type = EnemyType.Normal;
+   526→   526→    }
+   527→   527→
+   528→   528→    const cfg = ENEMY_CONFIG[type];
+   529→   529→    const speedMul = 1 + (lv - 1) * 0.12;
+   530→   530→    const x = Math.random() * (LOGIC_W - cfg.w - 20) + cfg.w / 2 + 10;
+   531→   531→
+   532→   532→    enemiesRef.current.push({
+   533→   533→      x, y: -cfg.h,
+   534→   534→      type,
+   535→   535→      hp: cfg.hp,
+   536→   536→      maxHp: cfg.hp,
+   537→   537→      speed: cfg.speed * speedMul,
+   538→   538→      w: cfg.w,
+   539→   539→      h: cfg.h,
+   540→   540→      score: cfg.score,
+   541→   541→    });
+   542→   542→  }, []);
+   543→   543→
+   544→   544→  /** Spawn a boss */
+   545→   545→  const spawnBoss = useCallback(() => {
+   546→   546→    const idx = bossSpawnedCountRef.current;
+   547→   547→    const emoji = BOSS_EMOJIS[idx % BOSS_EMOJIS.length];
+   548→   548→    const hp = 30 + idx * 15;
+   549→   549→    const score = 200 + idx * 100;
+   550→   550→
+   551→   551→    bossRef.current = {
+   552→   552→      x: LOGIC_W / 2,
+   553→   553→      y: -BOSS_H,
+   554→   554→      hp,
+   555→   555→      maxHp: hp,
+   556→   556→      bossIndex: idx,
+   557→   557→      emoji,
+   558→   558→      flashTimer: 0,
+   559→   559→      shootTimer: 0,
+   560→   560→      dirX: 1.5,
+   561→   561→      score,
+   562→   562→      entered: false,
+   563→   563→    };
+   564→   564→    bossSpawnedCountRef.current++;
+   565→   565→    bossKillCounterRef.current = 0;
+   566→   566→  }, []);
+   567→   567→
+   568→   568→  /** Fire player bullets based on weapon level */
+   569→   569→  const shoot = useCallback(() => {
+   570→   570→    const p = playerRef.current;
+   571→   571→    const speed = 8;
+   572→   572→    const bx = p.x;
+   573→   573→    const by = p.y - PLAYER_H / 2;
+   574→   574→    const bullets = bulletsRef.current;
+   575→   575→
+   576→   576→    switch (p.weaponLevel) {
+   577→   577→      case 1:
+   578→   578→        bullets.push({ x: bx, y: by, vx: 0, vy: -speed });
+   579→   579→        break;
+   580→   580→      case 2:
+   581→   581→        bullets.push(
+   582→   582→          { x: bx - 8, y: by, vx: 0, vy: -speed },
+   583→   583→          { x: bx + 8, y: by, vx: 0, vy: -speed },
+   584→   584→        );
+   585→   585→        break;
+   586→   586→      case 3: {
+   587→   587→        const a = Math.PI / 12; // 15 degrees
+   588→   588→        const svx = Math.sin(a) * speed;
+   589→   589→        const svy = -Math.cos(a) * speed;
+   590→   590→        bullets.push(
+   591→   591→          { x: bx, y: by, vx: 0, vy: -speed },
+   592→   592→          { x: bx, y: by, vx: svx, vy: svy },
+   593→   593→          { x: bx, y: by, vx: -svx, vy: svy },
+   594→   594→        );
+   595→   595→        break;
+   596→   596→      }
+   597→   597→      case 4: {
+   598→   598→        const a1 = Math.PI / 18; // 10 degrees
+   599→   599→        const a2 = Math.PI / 9;  // 20 degrees
+   600→   600→        bullets.push(
+   601→   601→          { x: bx, y: by, vx: 0, vy: -speed },
+   602→   602→          { x: bx, y: by, vx: Math.sin(a1) * speed, vy: -Math.cos(a1) * speed },
+   603→   603→          { x: bx, y: by, vx: -Math.sin(a1) * speed, vy: -Math.cos(a1) * speed },
+   604→   604→          { x: bx, y: by, vx: Math.sin(a2) * speed, vy: -Math.cos(a2) * speed },
+   605→   605→          { x: bx, y: by, vx: -Math.sin(a2) * speed, vy: -Math.cos(a2) * speed },
+   606→   606→        );
+   607→   607→        break;
+   608→   608→      }
+   609→   609→      default:
+   610→   610→        break;
+   611→   611→    }
+   612→   612→  }, []);
+   613→   613→
+   614→   614→  /** Get shoot interval based on weapon level */
+   615→   615→  const getShootInterval = useCallback(() => {
+   616→   616→    return Math.max(BASE_SHOOT_INTERVAL - playerRef.current.weaponLevel + 1, 6);
+   617→   617→  }, []);
+   618→   618→
+   619→   619→  /** Get enemy spawn interval based on difficulty */
+   620→   620→  const getSpawnInterval = useCallback(() => {
+   621→   621→    const lv = levelRef.current;
+   622→   622→    return Math.max(45 - (lv - 1) * 4, 15);
+   623→   623→  }, []);
+   624→   624→
+   625→   625→  /** Activate bomb powerup effect */
+   626→   626→  const activateBomb = useCallback(() => {
+   627→   627→    screenFlashRef.current = SCREEN_FLASH_FRAMES;
+   628→   628→
+   629→   629→    // Destroy all regular enemies
+   630→   630→    for (const e of enemiesRef.current) {
+   631→   631→      scoreRef.current += e.score;
+   632→   632→      const expColor = e.type === EnemyType.Fast ? '#f59e0b'
+   633→   633→        : e.type === EnemyType.Tank ? '#a855f7' : '#ef4444';
+   634→   634→      particlesRef.current.push(...createExplosion(e.x, e.y, expColor, 10));
+   635→   635→    }
+   636→   636→    setScore(scoreRef.current);
+   637→   637→    enemiesRef.current = [];
+   638→   638→
+   639→   639→    // Clear enemy bullets
+   640→   640→    enemyBulletsRef.current = [];
+   641→   641→
+   642→   642→    // Damage boss by 30% if present
+   643→   643→    const boss = bossRef.current;
+   644→   644→    if (boss) {
+   645→   645→      const dmg = Math.ceil(boss.maxHp * 0.3);
+   646→   646→      boss.hp = Math.max(1, boss.hp - dmg);
+   647→   647→      boss.flashTimer = 10;
+   648→   648→      particlesRef.current.push(...createExplosion(boss.x, boss.y, '#fbbf24', 20));
+   649→   649→
+   650→   650→      if (boss.hp <= 1) {
+   651→   651→        // Boss killed by bomb
+   652→   652→        scoreRef.current += boss.score;
+   653→   653→        setScore(scoreRef.current);
+   654→   654→        particlesRef.current.push(...createExplosion(boss.x, boss.y, '#f97316', 30));
+   655→   655→        // Drop powerups
+   656→   656→        const dropTypes = [PowerUpType.Weapon, PowerUpType.Heal, PowerUpType.Shield];
+   657→   657→        for (const dt of dropTypes) {
+   658→   658→          powerupsRef.current.push({
+   659→   659→            x: boss.x + (Math.random() - 0.5) * 60,
+   660→   660→            y: boss.y + (Math.random() - 0.5) * 30,
+   661→   661→            type: dt,
+   662→   662→            phase: Math.random() * Math.PI * 2,
+   663→   663→          });
+   664→   664→        }
+   665→   665→        bossRef.current = null;
+   666→   666→      }
+   667→   667→    }
+   668→   668→  }, []);
+   669→   669→
+   670→   670→  /** Main game loop */
+   671→   671→  const gameLoop = useCallback(() => {
+   672→   672→    const canvas = canvasRef.current;
+   673→   673→    if (!canvas) return;
+   674→   674→    const ctx = canvas.getContext('2d');
+   675→   675→    if (!ctx) return;
+   676→   676→
+   677→   677→    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+   678→   678→    ctx.setTransform(dpr * scaleRef.current, 0, 0, dpr * scaleRef.current, 0, 0);
+   679→   679→
+   680→   680→    const frame = frameRef.current;
+   681→   681→    frameRef.current++;
+   682→   682→    const p = playerRef.current;
+   683→   683→    const boss = bossRef.current;
+   684→   684→
+   685→   685→    // ==== UPDATE LOGIC ====
+   686→   686→
+   687→   687→    // Twinkling stars
+   688→   688→    starsRef.current.forEach((s) => { s.phase += s.twinkleSpeed; });
+   689→   689→
+   690→   690→    if (statusRef.current === 'playing' && !pausedRef.current) {
+   691→   691→      // Move player toward input
+   692→   692→      if (inputXRef.current !== null) {
+   693→   693→        const target = inputXRef.current;
+   694→   694→        const diff = target - p.x;
+   695→   695→        if (Math.abs(diff) > 2) {
+   696→   696→          p.x += diff * 0.15;
+   697→   697→        } else {
+   698→   698→          p.x = target;
+   699→   699→        }
+   700→   700→      }
+   701→   701→      p.x = Math.max(PLAYER_W / 2, Math.min(LOGIC_W - PLAYER_W / 2, p.x));
+   702→   702→
+   703→   703→      // Update timers
+   704→   704→      if (p.shieldTimer > 0) p.shieldTimer--;
+   705→   705→      if (p.invincibleTimer > 0) p.invincibleTimer--;
+   706→   706→      if (screenFlashRef.current > 0) screenFlashRef.current--;
+   707→   707→
+   708→   708→      // Shooting
+   709→   709→      const isMobile = isMobileRef.current;
+   710→   710→      const interval = getShootInterval();
+   711→   711→      if (isMobile) {
+   712→   712→        if (frame - lastShootRef.current >= interval) {
+   713→   713→          shoot();
+   714→   714→          lastShootRef.current = frame;
+   715→   715→        }
+   716→   716→      } else {
+   717→   717→        if (shootRequestRef.current) {
+   718→   718→          if (frame - lastShootRef.current >= interval) {
+   719→   719→            shoot();
+   720→   720→            lastShootRef.current = frame;
+   721→   721→          }
+   722→   722→        }
+   723→   723→      }
+   724→   724→      shootRequestRef.current = false;
+   725→   725→
+   726→   726→      // Spawn regular enemies (reduced rate during boss)
+   727→   727→      const spawnInterval = boss ? getSpawnInterval() * 1.5 : getSpawnInterval();
+   728→   728→      if (frame % Math.round(spawnInterval) === 0) {
+   729→   729→        spawnEnemy();
+   730→   730→      }
+   731→   731→
+   732→   732→      // Check boss spawn (every 30 kills, no boss currently active)
+   733→   733→      if (bossKillCounterRef.current >= BOSS_SPAWN_KILLS && !boss) {
+   734→   734→        spawnBoss();
+   735→   735→      }
+   736→   736→
+   737→   737→      // Update player bullets
+   738→   738→      bulletsRef.current = bulletsRef.current.filter((b) => {
+   739→   739→        b.x += b.vx;
+   740→   740→        b.y += b.vy;
+   741→   741→        return b.y > -BULLET_H && b.x > -BULLET_W && b.x < LOGIC_W + BULLET_W;
+   742→   742→      });
+   743→   743→
+   744→   744→      // Update enemy bullets
+   745→   745→      enemyBulletsRef.current = enemyBulletsRef.current.filter((b) => {
+   746→   746→        b.x += b.vx;
+   747→   747→        b.y += b.vy;
+   748→   748→        return b.y < LOGIC_H + 10 && b.x > -10 && b.x < LOGIC_W + 10;
+   749→   749→      });
+   750→   750→
+   751→   751→      // Update regular enemies
+   752→   752→      enemiesRef.current = enemiesRef.current.filter((e) => {
+   753→   753→        e.y += e.speed;
+   754→   754→        return e.y < LOGIC_H + e.h;
+   755→   755→      });
+   756→   756→
+   757→   757→      // Update boss
+   758→   758→      if (boss) {
+   759→   759→        if (!boss.entered) {
+   760→   760→          boss.y += 1.5;
+   761→   761→          if (boss.y >= 80) {
+   762→   762→            boss.y = 80;
+   763→   763→            boss.entered = true;
+   764→   764→          }
+   765→   765→        } else {
+   766→   766→          // Side-to-side movement
+   767→   767→          boss.x += boss.dirX;
+   768→   768→          if (boss.x > LOGIC_W - BOSS_W / 2 - 10) boss.dirX = -Math.abs(boss.dirX);
+   769→   769→          if (boss.x < BOSS_W / 2 + 10) boss.dirX = Math.abs(boss.dirX);
+   770→   770→
+   771→   771→          // Boss shooting
+   772→   772→          boss.shootTimer++;
+   773→   773→          if (boss.shootTimer >= BOSS_SHOOT_INTERVAL) {
+   774→   774→            boss.shootTimer = 0;
+   775→   775→            for (let i = -1; i <= 1; i++) {
+   776→   776→              const angle = Math.PI / 2 + i * BOSS_SPREAD_ANGLE;
+   777→   777→              enemyBulletsRef.current.push({
+   778→   778→                x: boss.x,
+   779→   779→                y: boss.y + BOSS_H / 2,
+   780→   780→                vx: Math.cos(angle) * BOSS_BULLET_SPEED,
+   781→   781→                vy: Math.sin(angle) * BOSS_BULLET_SPEED,
+   782→   782→              });
+   783→   783→            }
+   784→   784→          }
+   785→   785→        }
+   786→   786→        if (boss.flashTimer > 0) boss.flashTimer--;
+   787→   787→      }
+   788→   788→
+   789→   789→      // Update powerups
+   790→   790→      powerupsRef.current = powerupsRef.current.filter((pw) => {
+   791→   791→        pw.y += 2;
+   792→   792→        pw.phase += 0.1;
+   793→   793→        return pw.y < LOGIC_H + 20;
+   794→   794→      });
+   795→   795→
+   796→   796→      // === COLLISION: player bullets vs enemies ===
+   797→   797→      const bullets = bulletsRef.current;
+   798→   798→      const enemies = enemiesRef.current;
+   799→   799→      const hitBullets = new Set<number>();
+   800→   800→      const hitEnemies = new Set<number>();
+   801→   801→
+   802→   802→      for (let bi = 0; bi < bullets.length; bi++) {
+   803→   803→        const b = bullets[bi];
+   804→   804→        for (let ei = 0; ei < enemies.length; ei++) {
+   805→   805→          if (hitEnemies.has(ei)) continue;
+   806→   806→          const e = enemies[ei];
+   807→   807→          if (rectCollide(b.x, b.y, BULLET_W, BULLET_H, e.x, e.y, e.w, e.h)) {
+   808→   808→            hitBullets.add(bi);
+   809→   809→            e.hp--;
+   810→   810→            if (e.hp <= 0) {
+   811→   811→              hitEnemies.add(ei);
+   812→   812→              scoreRef.current += e.score;
+   813→   813→              killCountRef.current++;
+   814→   814→              bossKillCounterRef.current++;
+   815→   815→              setScore(scoreRef.current);
+   816→   816→
+   817→   817→              const expColor = e.type === EnemyType.Fast ? '#f59e0b'
+   818→   818→                : e.type === EnemyType.Tank ? '#a855f7' : '#ef4444';
+   819→   819→              const expCount = e.type === EnemyType.Tank ? 18 : e.type === EnemyType.Normal ? 8 : 6;
+   820→   820→              particlesRef.current.push(...createExplosion(e.x, e.y, expColor, expCount));
+   821→   821→
+   822→   822→              // Powerup drop (20%)
+   823→   823→              if (Math.random() < POWERUP_CHANCE) {
+   824→   824→                const types = [PowerUpType.Weapon, PowerUpType.Heal, PowerUpType.Bomb, PowerUpType.Shield];
+   825→   825→                const weights = [0.35, 0.25, 0.15, 0.25];
+   826→   826→                let r = Math.random();
+   827→   827→                let chosen = PowerUpType.Shield;
+   828→   828→                for (let ti = 0; ti < types.length; ti++) {
+   829→   829→                  r -= weights[ti];
+   830→   830→                  if (r <= 0) { chosen = types[ti]; break; }
+   831→   831→                }
+   832→   832→                powerupsRef.current.push({ x: e.x, y: e.y, type: chosen, phase: 0 });
+   833→   833→              }
+   834→   834→
+   835→   835→              // Difficulty level up
+   836→   836→              if (killCountRef.current % LEVEL_UP_KILLS === 0) {
+   837→   837→                levelRef.current++;
+   838→   838→                setLevel(levelRef.current);
+   839→   839→              }
+   840→   840→            } else {
+   841→   841→              particlesRef.current.push(...createExplosion(b.x, b.y, '#fbbf24', 3));
+   842→   842→            }
+   843→   843→            break;
+   844→   844→          }
+   845→   845→        }
+   846→   846→      }
+   847→   847→
+   848→   848→      bulletsRef.current = bullets.filter((_, i) => !hitBullets.has(i));
+   849→   849→      enemiesRef.current = enemies.filter((_, i) => !hitEnemies.has(i));
+   850→   850→
+   851→   851→      // === COLLISION: player bullets vs boss ===
+   852→   852→      if (boss && statusRef.current === 'playing') {
+   853→   853→        const bossBullets = bulletsRef.current;
+   854→   854→        const bossHitBullets = new Set<number>();
+   855→   855→        for (let bi = 0; bi < bossBullets.length; bi++) {
+   856→   856→          const b = bossBullets[bi];
+   857→   857→          if (rectCollide(b.x, b.y, BULLET_W, BULLET_H, boss.x, boss.y, BOSS_W, BOSS_H)) {
+   858→   858→            bossHitBullets.add(bi);
+   859→   859→            boss.hp--;
+   860→   860→            boss.flashTimer = 4;
+   861→   861→            particlesRef.current.push(...createExplosion(b.x, b.y, '#fbbf24', 2));
+   862→   862→
+   863→   863→            if (boss.hp <= 0) {
+   864→   864→              // Boss defeated!
+   865→   865→              scoreRef.current += boss.score;
+   866→   866→              setScore(scoreRef.current);
+   867→   867→              particlesRef.current.push(...createExplosion(boss.x, boss.y, '#f97316', 35));
+   868→   868→
+   869→   869→              // Drop 3 powerups
+   870→   870→              const dropTypes = [PowerUpType.Weapon, PowerUpType.Heal, PowerUpType.Shield];
+   871→   871→              for (const dt of dropTypes) {
+   872→   872→                powerupsRef.current.push({
+   873→   873→                  x: boss.x + (Math.random() - 0.5) * 80,
+   874→   874→                  y: boss.y + (Math.random() - 0.5) * 30,
+   875→   875→                  type: dt,
+   876→   876→                  phase: Math.random() * Math.PI * 2,
+   877→   877→                });
+   878→   878→              }
+   879→   879→              bossRef.current = null;
+   880→   880→              break;
+   881→   881→            }
+   882→   882→          }
+   883→   883→        }
+   884→   884→        if (bossRef.current !== null) {
+   885→   885→          bulletsRef.current = bossBullets.filter((_, i) => !bossHitBullets.has(i));
+   886→   886→        } else {
+   887→   887→          // Boss was just killed, remove all hit bullets
+   888→   888→          bulletsRef.current = bossBullets.filter((_, i) => !bossHitBullets.has(i));
+   889→   889→        }
+   890→   890→      }
+   891→   891→
+   892→   892→      // === COLLISION: enemy bullets vs player ===
+   893→   893→      if (statusRef.current === 'playing') {
+   894→   894→        for (const eb of enemyBulletsRef.current) {
+   895→   895→          if (rectCollide(p.x, p.y, PLAYER_W * 0.5, PLAYER_H * 0.5, eb.x, eb.y, 8, 8)) {
+   896→   896→            damagePlayer();
+   897→   897→            break;
+   898→   898→          }
+   899→   899→        }
+   900→   900→      }
+   901→   901→
+   902→   902→      // === COLLISION: enemies vs player ===
+   903→   903→      if (statusRef.current === 'playing') {
+   904→   904→        for (const e of enemiesRef.current) {
+   905→   905→          if (rectCollide(p.x, p.y, PLAYER_W * 0.6, PLAYER_H * 0.6, e.x, e.y, e.w, e.h)) {
+   906→   906→            damagePlayer();
+   907→   907→            // Destroy the enemy on contact
+   908→   908→            e.hp = 0;
+   909→   909→            break;
+   910→   910→          }
+   911→   911→        }
+   912→   912→        enemiesRef.current = enemiesRef.current.filter((e) => e.hp > 0);
+   913→   913→      }
+   914→   914→
+   915→   915→      // === COLLISION: boss vs player ===
+   916→   916→      if (boss && statusRef.current === 'playing') {
+   917→   917→        if (rectCollide(p.x, p.y, PLAYER_W * 0.6, PLAYER_H * 0.6, boss.x, boss.y, BOSS_W, BOSS_H)) {
+   918→   918→          damagePlayer();
+   919→   919→        }
+   920→   920→      }
+   921→   921→
+   922→   922→      // === COLLISION: powerups vs player ===
+   923→   923→      if (statusRef.current === 'playing') {
+   924→   924→        powerupsRef.current = powerupsRef.current.filter((pw) => {
+   925→   925→          if (rectCollide(p.x, p.y, PLAYER_W, PLAYER_H, pw.x, pw.y, 24, 24)) {
+   926→   926→            switch (pw.type) {
+   927→   927→              case PowerUpType.Weapon:
+   928→   928→                if (p.weaponLevel < MAX_WEAPON_LEVEL) {
+   929→   929→                  p.weaponLevel++;
+   930→   930→                  setWeaponLevel(p.weaponLevel);
+   931→   931→                }
+   932→   932→                break;
+   933→   933→              case PowerUpType.Heal:
+   934→   934→                if (p.lives < MAX_LIVES) {
+   935→   935→                  p.lives++;
+   936→   936→                  setLives(p.lives);
+   937→   937→                }
+   938→   938→                break;
+   939→   939→              case PowerUpType.Bomb:
+   940→   940→                activateBomb();
+   941→   941→                break;
+   942→   942→              case PowerUpType.Shield:
+   943→   943→                p.shieldTimer = SHIELD_DURATION;
+   944→   944→                break;
+   945→   945→            }
+   946→   946→            const pColor = POWERUP_COLORS[pw.type];
+   947→   947→            particlesRef.current.push(...createExplosion(pw.x, pw.y, pColor, 10));
+   948→   948→            return false;
+   949→   949→          }
+   950→   950→          return true;
+   951→   951→        });
+   952→   952→      }
+   953→   953→    }
+   954→   954→
+   955→   955→    // Submit score on game over (outside the playing block to avoid TS narrowing)
+   956→   956→    if (statusRef.current === 'over' && !scoreSubmittedRef.current) {
+   957→   957→      scoreSubmittedRef.current = true;
+   958→   958→      if (scoreRef.current > highScoreRef.current) {
+   959→   959→        setIsNewRecord(true);
+   960→   960→        fetch('/api/games/scores', {
+   961→   961→          method: 'POST',
+   962→   962→          headers: { 'Content-Type': 'application/json' },
+   963→   963→          body: JSON.stringify({ game: GAME_NAME, score: scoreRef.current }),
+   964→   964→        })
+   965→   965→          .then((r) => r.json())
+   966→   966→          .then((data) => {
+   967→   967→            if (data.data?.score !== undefined) {
+   968→   968→              setHighScore(data.data.score);
+   969→   969→              highScoreRef.current = data.data.score;
+   970→   970→            }
+   971→   971→          })
+   972→   972→          .catch(() => {});
+   973→   973→      }
+   974→   974→    }
+   975→   975→
+   976→   976→    // Update particles
+   977→   977→    particlesRef.current = particlesRef.current.filter((pt) => {
+   978→   978→      pt.x += pt.vx;
+   979→   979→      pt.y += pt.vy;
+   980→   980→      pt.life--;
+   981→   981→      pt.vx *= 0.97;
+   982→   982→      pt.vy *= 0.97;
+   983→   983→      return pt.life > 0;
+   984→   984→    });
+   985→   985→
+   986→   986→    // ==== DRAW LOGIC ====
+   987→   987→
+   988→   988→    // Deep space background
+   989→   989→    const bgGrad = ctx.createLinearGradient(0, 0, 0, LOGIC_H);
+   990→   990→    bgGrad.addColorStop(0, '#0a0e27');
+   991→   991→    bgGrad.addColorStop(0.5, '#0f1638');
+   992→   992→    bgGrad.addColorStop(1, '#0a0e27');
+   993→   993→    ctx.fillStyle = bgGrad;
+   994→   994→    ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+   995→   995→
+   996→   996→    // Stars
+   997→   997→    starsRef.current.forEach((s) => {
+   998→   998→      const alpha = s.alpha * (0.5 + Math.sin(s.phase) * 0.5);
+   999→   999→      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+  1000→  1000→      ctx.beginPath();
+  1001→  1001→      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+  1002→  1002→      ctx.fill();
+  1003→  1003→    });
+  1004→  1004→
+  1005→  1005→    // Powerups
+  1006→  1006→    powerupsRef.current.forEach((pw) => drawPowerUp(ctx, pw));
+  1007→  1007→
+  1008→  1008→    // Player bullets (cyan glow)
+  1009→  1009→    ctx.shadowColor = '#38bdf8';
+  1010→  1010→    ctx.shadowBlur = 6;
+  1011→  1011→    ctx.fillStyle = '#7dd3fc';
+  1012→  1012→    bulletsRef.current.forEach((b) => {
+  1013→  1013→      ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+  1014→  1014→    });
+  1015→  1015→    ctx.shadowBlur = 0;
+  1016→  1016→
+  1017→  1017→    // Enemy bullets
+  1018→  1018→    enemyBulletsRef.current.forEach((b) => drawEnemyBullet(ctx, b));
+  1019→  1019→
+  1020→  1020→    // Regular enemies
+  1021→  1021→    enemiesRef.current.forEach((e) => drawEnemy(ctx, e));
+  1022→  1022→
+  1023→  1023→    // Boss
+  1024→  1024→    if (bossRef.current) {
+  1025→  1025→      drawBoss(ctx, bossRef.current, frame);
+  1026→  1026→    }
+  1027→  1027→
+  1028→  1028→    // Particles
+  1029→  1029→    particlesRef.current.forEach((pt) => {
+  1030→  1030→      const alpha = pt.life / pt.maxLife;
+  1031→  1031→      ctx.globalAlpha = alpha;
+  1032→  1032→      ctx.fillStyle = pt.color;
+  1033→  1033→      ctx.beginPath();
+  1034→  1034→      ctx.arc(pt.x, pt.y, pt.r * alpha, 0, Math.PI * 2);
+  1035→  1035→      ctx.fill();
+  1036→  1036→    });
+  1037→  1037→    ctx.globalAlpha = 1;
+  1038→  1038→
+  1039→  1039→    // Player (not drawn when dead)
+  1040→  1040→    if (statusRef.current !== 'over') {
+  1041→  1041→      drawPlayer(ctx, p, frame);
+  1042→  1042→    }
+  1043→  1043→
+  1044→  1044→    // Canvas HUD (lives + weapon level)
+  1045→  1045→    if (statusRef.current === 'playing' || statusRef.current === 'over') {
+  1046→  1046→      drawCanvasHUD(ctx, p, !!bossRef.current);
+  1047→  1047→    }
+  1048→  1048→
+  1049→  1049→    // Screen flash effect (bomb)
+  1050→  1050→    if (screenFlashRef.current > 0) {
+  1051→  1051→      const flashAlpha = (screenFlashRef.current / SCREEN_FLASH_FRAMES) * 0.6;
+  1052→  1052→      ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+  1053→  1053→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1054→  1054→    }
+  1055→  1055→
+  1056→  1056→    // Overlay: idle screen
+  1057→  1057→    if (statusRef.current === 'idle') {
+  1058→  1058→      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  1059→  1059→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1060→  1060→      ctx.fillStyle = '#ffffff';
+  1061→  1061→      ctx.font = 'bold 28px sans-serif';
+  1062→  1062→      ctx.textAlign = 'center';
+  1063→  1063→      ctx.textBaseline = 'middle';
+  1064→  1064→      ctx.fillText('飞机大战', LOGIC_W / 2, LOGIC_H / 2 - 50);
+  1065→  1065→      ctx.font = '14px sans-serif';
+  1066→  1066→      ctx.fillStyle = '#94a3b8';
+  1067→  1067→      ctx.fillText('每30个敌人出现Boss', LOGIC_W / 2, LOGIC_H / 2 - 15);
+  1068→  1068→      ctx.fillText('收集道具升级武器和回血', LOGIC_W / 2, LOGIC_H / 2 + 10);
+  1069→  1069→      ctx.fillText('点击下方按钮开始', LOGIC_W / 2, LOGIC_H / 2 + 45);
+  1070→  1070→    }
+  1071→  1071→
+  1072→  1072→    // Overlay: paused
+  1073→  1073→    if (pausedRef.current && statusRef.current === 'playing') {
+  1074→  1074→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  1075→  1075→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1076→  1076→      ctx.fillStyle = '#ffffff';
+  1077→  1077→      ctx.font = 'bold 32px sans-serif';
+  1078→  1078→      ctx.textAlign = 'center';
+  1079→  1079→      ctx.textBaseline = 'middle';
+  1080→  1080→      ctx.fillText('已暂停', LOGIC_W / 2, LOGIC_H / 2 - 10);
+  1081→  1081→      ctx.font = '16px sans-serif';
+  1082→  1082→      ctx.fillStyle = '#94a3b8';
+  1083→  1083→      ctx.fillText('按 Esc 继续', LOGIC_W / 2, LOGIC_H / 2 + 25);
+  1084→  1084→    }
+  1085→  1085→
+  1086→  1086→    // Overlay: game over
+  1087→  1087→    if (statusRef.current === 'over') {
+  1088→  1088→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  1089→  1089→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1090→  1090→      ctx.fillStyle = '#ffffff';
+  1091→  1091→      ctx.font = 'bold 32px sans-serif';
+  1092→  1092→      ctx.textAlign = 'center';
+  1093→  1093→      ctx.textBaseline = 'middle';
+  1094→  1094→      ctx.fillText('游戏结束', LOGIC_W / 2, LOGIC_H / 2 - 40);
+  1095→  1095→      ctx.font = '20px sans-serif';
+  1096→  1096→      ctx.fillStyle = '#fbbf24';
+  1097→  1097→      ctx.fillText(`得分: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 5);
+  1098→  1098→      ctx.font = '14px sans-serif';
+  1099→  1099→      ctx.fillStyle = '#94a3b8';
+  1100→  1100→      ctx.fillText('点击重新开始', LOGIC_W / 2, LOGIC_H / 2 + 45);
+  1101→  1101→    }
+  1102→  1102→
+  1103→  1103→    rafRef.current = requestAnimationFrame(gameLoop);
+  1104→  1104→  }, [shoot, spawnEnemy, spawnBoss, getShootInterval, getSpawnInterval, damagePlayer, activateBomb]);
+  1105→  1105→
+  1106→  1106→  /** Start / restart game */
+  1107→  1107→  const startGame = useCallback(() => {
+  1108→  1108→    playerRef.current = {
+  1109→  1109→      x: LOGIC_W / 2, y: LOGIC_H - 60,
+  1110→  1110→      shieldTimer: 0, weaponLevel: 1,
+  1111→  1111→      lives: INITIAL_LIVES, invincibleTimer: 0,
+  1112→  1112→    };
+  1113→  1113→    bulletsRef.current = [];
+  1114→  1114→    enemyBulletsRef.current = [];
+  1115→  1115→    enemiesRef.current = [];
+  1116→  1116→    bossRef.current = null;
+  1117→  1117→    particlesRef.current = [];
+  1118→  1118→    powerupsRef.current = [];
+  1119→  1119→    scoreRef.current = 0;
+  1120→  1120→    killCountRef.current = 0;
+  1121→  1121→    bossKillCounterRef.current = 0;
+  1122→  1122→    bossSpawnedCountRef.current = 0;
+  1123→  1123→    levelRef.current = 1;
+  1124→  1124→    frameRef.current = 0;
+  1125→  1125→    lastShootRef.current = 0;
+  1126→  1126→    inputXRef.current = null;
+  1127→  1127→    shootRequestRef.current = false;
+  1128→  1128→    screenFlashRef.current = 0;
+  1129→  1129→    scoreSubmittedRef.current = false;
+  1130→  1130→
+  1131→  1131→    setScore(0);
+  1132→  1132→    setLevel(1);
+  1133→  1133→    setLives(INITIAL_LIVES);
+  1134→  1134→    setWeaponLevel(1);
+  1135→  1135→    setIsNewRecord(false);
+  1136→  1136→    pausedRef.current = false;
+  1137→  1137→    setPaused(false);
+  1138→  1138→    statusRef.current = 'playing';
+  1139→  1139→    setGameStatus('playing');
+  1140→  1140→  }, []);
+  1141→  1141→
+  1142→  1142→  /** Canvas click to restart */
+  1143→  1143→  const handleCanvasClick = useCallback(() => {
+  1144→  1144→    if (statusRef.current === 'over') {
+  1145→  1145→      startGame();
+  1146→  1146→    }
+  1147→  1147→  }, [startGame]);
+  1148→  1148→
+  1149→  1149→  /** Detect touch device */
+  1150→  1150→  useEffect(() => {
+  1151→  1151→    isMobileRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  1152→  1152→  }, []);
+  1153→  1153→
+  1154→  1154→  /** Mouse / keyboard events */
+  1155→  1155→  useEffect(() => {
+  1156→  1156→    const handleMouseMove = (e: MouseEvent) => {
+  1157→  1157→      if (statusRef.current !== 'playing' || pausedRef.current) return;
+  1158→  1158→      const canvas = canvasRef.current;
+  1159→  1159→      if (!canvas) return;
+  1160→  1160→      const rect = canvas.getBoundingClientRect();
+  1161→  1161→      const scaleX = LOGIC_W / rect.width;
+  1162→  1162→      inputXRef.current = (e.clientX - rect.left) * scaleX;
+  1163→  1163→    };
+  1164→  1164→
+  1165→  1165→    const handleMouseDown = () => {
+  1166→  1166→      if (statusRef.current === 'playing' && !pausedRef.current) {
+  1167→  1167→        shootRequestRef.current = true;
+  1168→  1168→      }
+  1169→  1169→    };
+  1170→  1170→
+  1171→  1171→    const handleKeyDown = (e: KeyboardEvent) => {
+  1172→  1172→      if (e.code === 'Escape' && statusRef.current === 'playing') {
+  1173→  1173→        e.preventDefault();
+  1174→  1174→        pausedRef.current = !pausedRef.current;
+  1175→  1175→        setPaused(pausedRef.current);
+  1176→  1176→        return;
+  1177→  1177→      }
+  1178→  1178→      if (e.code === 'Space' && statusRef.current === 'playing' && !pausedRef.current) {
+  1179→  1179→        e.preventDefault();
+  1180→  1180→        shootRequestRef.current = true;
+  1181→  1181→      }
+  1182→  1182→    };
+  1183→  1183→
+  1184→  1184→    window.addEventListener('mousemove', handleMouseMove);
+  1185→  1185→    window.addEventListener('mousedown', handleMouseDown);
+  1186→  1186→    window.addEventListener('keydown', handleKeyDown);
+  1187→  1187→    return () => {
+  1188→  1188→      window.removeEventListener('mousemove', handleMouseMove);
+  1189→  1189→      window.removeEventListener('mousedown', handleMouseDown);
+  1190→  1190→      window.removeEventListener('keydown', handleKeyDown);
+  1191→  1191→    };
+  1192→  1192→  }, []);
+  1193→  1193→
+  1194→  1194→  /** Touch events for mobile */
+  1195→  1195→  useEffect(() => {
+  1196→  1196→    const canvas = canvasRef.current;
+  1197→  1197→    if (!canvas) return;
+  1198→  1198→
+  1199→  1199→    const handleTouchMove = (e: TouchEvent) => {
+  1200→  1200→      if (statusRef.current !== 'playing' || pausedRef.current) return;
+  1201→  1201→      e.preventDefault();
+  1202→  1202→      const touch = e.touches[0];
+  1203→  1203→      const rect = canvas.getBoundingClientRect();
+  1204→  1204→      const scaleX = LOGIC_W / rect.width;
+  1205→  1205→      inputXRef.current = (touch.clientX - rect.left) * scaleX;
+  1206→  1206→    };
+  1207→  1207→
+  1208→  1208→    const handleTouchStart = (e: TouchEvent) => {
+  1209→  1209→      if (statusRef.current === 'over') {
+  1210→  1210→        startGame();
+  1211→  1211→        return;
+  1212→  1212→      }
+  1213→  1213→      if (statusRef.current === 'playing') {
+  1214→  1214→        e.preventDefault();
+  1215→  1215→        const touch = e.touches[0];
+  1216→  1216→        const rect = canvas.getBoundingClientRect();
+  1217→  1217→        const scaleX = LOGIC_W / rect.width;
+  1218→  1218→        inputXRef.current = (touch.clientX - rect.left) * scaleX;
+  1219→  1219→      }
+  1220→  1220→    };
+  1221→  1221→
+  1222→  1222→    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+  1223→  1223→    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+  1224→  1224→    return () => {
+  1225→  1225→      canvas.removeEventListener('touchmove', handleTouchMove);
+  1226→  1226→      canvas.removeEventListener('touchstart', handleTouchStart);
+  1227→  1227→    };
+  1228→  1228→  }, [startGame]);
+  1229→  1229→
+  1230→  1230→  /** Canvas setup and render loop */
+  1231→  1231→  useEffect(() => {
+  1232→  1232→    const canvas = canvasRef.current;
+  1233→  1233→    const container = containerRef.current;
+  1234→  1234→    if (!canvas || !container) return;
+  1235→  1235→
+  1236→  1236→    const resizeCanvas = () => {
+  1237→  1237→      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  1238→  1238→      const containerWidth = container.clientWidth;
+  1239→  1239→      const displayW = Math.min(containerWidth, LOGIC_W);
+  1240→  1240→      const displayH = displayW * (LOGIC_H / LOGIC_W);
+  1241→  1241→      const scale = displayW / LOGIC_W;
+  1242→  1242→      scaleRef.current = scale;
+  1243→  1243→
+  1244→  1244→      canvas.width = displayW * dpr;
+  1245→  1245→      canvas.height = displayH * dpr;
+  1246→  1246→      canvas.style.width = `${displayW}px`;
+  1247→  1247→      canvas.style.height = `${displayH}px`;
+  1248→  1248→    };
+  1249→  1249→
+  1250→  1250→    const ro = new ResizeObserver(resizeCanvas);
+  1251→  1251→    ro.observe(container);
+  1252→  1252→    resizeCanvas();
+  1253→  1253→
+  1254→  1254→    const onVisibilityChange = () => {
+  1255→  1255→      if (document.hidden) {
+  1256→  1256→        pausedRef.current = true;
+  1257→  1257→        setPaused(true);
+  1258→  1258→      } else if (statusRef.current === 'playing') {
+  1259→  1259→        pausedRef.current = false;
+  1260→  1260→        setPaused(false);
+  1261→  1261→      }
+  1262→  1262→    };
+  1263→  1263→    document.addEventListener('visibilitychange', onVisibilityChange);
+  1264→  1264→
+  1265→  1265→    rafRef.current = requestAnimationFrame(gameLoop);
+  1266→  1266→
+  1267→  1267→    return () => {
+  1268→  1268→      ro.disconnect();
+  1269→  1269→      document.removeEventListener('visibilitychange', onVisibilityChange);
+  1270→  1270→      cancelAnimationFrame(rafRef.current);
+  1271→  1271→    };
+  1272→  1272→  }, [gameLoop]);
+  1273→  1273→
+  1274→  1274→  /** Fetch high score */
+  1275→  1275→  useEffect(() => {
+  1276→  1276→    const fetchHighScore = async () => {
+  1277→  1277→      try {
+  1278→  1278→        const res = await fetch('/api/games/scores');
+  1279→  1279→        if (res.ok) {
+  1280→  1280→          const data = await res.json();
+  1281→  1281→          if (Array.isArray(data.data)) {
+  1282→  1282→            const s = data.data.find(
+  1283→  1283→              (item: { game: string; score: number }) => item.game === GAME_NAME,
+  1284→  1284→            );
+  1285→  1285→            if (s) {
+  1286→  1286→              setHighScore(s.score);
+  1287→  1287→              highScoreRef.current = s.score;
+  1288→  1288→            }
+  1289→  1289→          }
+  1290→  1290→        }
+  1291→  1291→      } catch {
+  1292→  1292→        // silent
+  1293→  1293→      } finally {
+  1294→  1294→        setLoadingHighScore(false);
+  1295→  1295→      }
+  1296→  1296→    };
+  1297→  1297→    fetchHighScore();
+  1298→  1298→  }, []);
+  1299→  1299→
+  1300→  1300→  // ==================== JSX ====================
+  1301→  1301→
+  1302→  1302→  return (
+  1303→  1303→    <div className="flex flex-col items-center w-full max-w-lg mx-auto px-2 py-2 gap-3">
+  1304→  1304→      <div className="flex items-center justify-between w-full">
+  1305→  1305→        <div className="flex items-center gap-1 shrink-0">
+  1306→  1306→          <Button
+  1307→  1307→            variant="ghost"
+  1308→  1308→            size="sm"
+  1309→  1309→            onClick={onBack}
+  1310→  1310→            className="text-muted-foreground hover:text-foreground min-h-[44px]"
+  1311→  1311→          >
+  1312→  1312→            <ArrowLeft className="h-4 w-4 mr-1" />
+  1313→  1313→            返回大厅
+  1314→  1314→          </Button>
+  1315→  1315→          {gameStatus === 'playing' && <GameControlsHelp info={aircraftControlsInfo} variant="button" />}
+  1316→  1316→        </div>
+  1317→  1317→        <div className="flex flex-col items-center">
+  1318→  1318→          <h2 className="text-base font-bold tracking-wide">✈️ 飞机大战</h2>
+  1319→  1319→          <span className="text-xs text-muted-foreground tabular-nums">
+  1320→  1320→            得分: {score} | 等级: {level} | ❤ {lives} | WPN {weaponLevel}
+  1321→  1321→          </span>
+  1322→  1322→        </div>
+  1323→  1323→        <div className="flex items-center gap-1 shrink-0">
+  1324→  1324→          <Trophy className="h-4 w-4 text-yellow-500" />
+  1325→  1325→          <span className="text-sm font-semibold text-yellow-500 tabular-nums">
+  1326→  1326→            {loadingHighScore ? '...' : highScore}
+  1327→  1327→          </span>
+  1328→  1328→        </div>
+  1329→  1329→      </div>
+  1330→  1330→
+  1331→  1331→      <div ref={containerRef} className="w-full flex justify-center">
+  1332→  1332→        <canvas
+  1333→  1333→          ref={canvasRef}
+  1334→  1334→          className="rounded-lg border border-border/30 shadow-lg cursor-crosshair"
+  1335→  1335→          style={{ maxWidth: `${LOGIC_W}px`, touchAction: 'none' }}
+  1336→  1336→          onClick={handleCanvasClick}
+  1337→  1337→        />
+  1338→  1338→      </div>
+  1339→  1339→
+  1340→  1340→      <div className="flex flex-col items-center gap-2 w-full">
+  1341→  1341→        {gameStatus === 'over' && isNewRecord && (
+  1342→  1342→          <p className="text-sm font-semibold text-yellow-500 animate-pulse">
+  1343→  1343→            🎉 新纪录！
+  1344→  1344→          </p>
+  1345→  1345→        )}
+  1346→  1346→
+  1347→  1347→        <Button
+  1348→  1348→          onClick={startGame}
+  1349→  1349→          size="lg"
+  1350→  1350→          className="w-full max-w-xs text-base font-semibold min-h-[44px]"
+  1351→  1351→          disabled={gameStatus === 'playing'}
+  1352→  1352→        >
+  1353→  1353→          {gameStatus === 'playing' ? (paused ? '已暂停...' : '游戏中...') : '开始游戏'}
+  1354→  1354→        </Button>
+  1355→  1355→      </div>
+  1356→  1356→    </div>
+  1357→  1357→  );
+  1358→  1358→}
+  1359→  1359→

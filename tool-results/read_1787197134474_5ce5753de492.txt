@@ -1,0 +1,2002 @@
+     1→▲ Next.js 16.1.3 (Turbopack)
+     2→- Local:         http://localhost:3000
+     3→- Network:       http://21.0.8.133:3000
+     4→- Environments: .env
+     5→
+     6→✓ Starting...
+     7→Attention: Next.js now collects completely anonymous telemetry regarding usage.
+     8→This information is used to shape Next.js' roadmap and prioritize features.
+     9→You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+    10→https://nextjs.org/telemetry
+    11→
+    12→
+    13→  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+    14→  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+    15→
+    16→        - include was updated to add '.next/dev/types/**/*.ts'
+    17→
+    18→  The following mandatory changes were made to your tsconfig.json:
+    19→
+    20→        - jsx was set to react-jsx (next.js uses the React automatic runtime)
+    21→
+    22→✓ Ready in 664ms
+    23→○ Compiling / ...
+    24→ GET / 200 in 4.1s (compile: 4.0s, render: 154ms)
+    25→ GET / 200 in 4.1s (compile: 3.9s, render: 221ms)
+    26→ GET / 200 in 25ms (compile: 2ms, render: 23ms)
+    27→ GET / 200 in 40ms (compile: 5ms, render: 35ms)
+    28→ GET / 200 in 33ms (compile: 3ms, render: 30ms)
+    29→ GET / 200 in 41ms (compile: 5ms, render: 36ms)
+    30→ GET / 200 in 37ms (compile: 3ms, render: 34ms)
+    31→ GET / 200 in 33ms (compile: 3ms, render: 30ms)
+    32→ GET / 200 in 44ms (compile: 4ms, render: 40ms)
+    33→ GET / 200 in 110ms (compile: 82ms, render: 27ms)
+    34→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+    35→ GET / 200 in 25ms (compile: 3ms, render: 22ms)
+    36→⚠ Cross origin request detected from preview-chat-b7cfe305-2e08-481f-aa7d-ac8c83ab9818.space-z.ai to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+    37→Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+    38→ GET / 200 in 25ms (compile: 2ms, render: 22ms)
+    39→ GET / 200 in 20ms (compile: 2ms, render: 17ms)
+    40→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+    41→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+    42→ GET / 200 in 20ms (compile: 3ms, render: 17ms)
+    43→ GET / 200 in 117ms (compile: 81ms, render: 36ms)
+    44→ GET / 200 in 17ms (compile: 3ms, render: 14ms)
+    45→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    46→ GET / 200 in 31ms (compile: 2ms, render: 29ms)
+    47→ GET / 200 in 28ms (compile: 9ms, render: 19ms)
+    48→ GET / 200 in 25ms (compile: 8ms, render: 17ms)
+    49→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    50→ GET / 200 in 20ms (compile: 2ms, render: 18ms)
+    51→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+    52→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    53→ GET / 200 in 124ms (compile: 92ms, render: 33ms)
+    54→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+    55→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+    56→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+    57→ GET / 200 in 17ms (compile: 2ms, render: 15ms)
+    58→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+    59→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+    60→ GET / 200 in 19ms (compile: 2ms, render: 17ms)
+    61→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+    62→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    63→ GET / 200 in 18ms (compile: 2ms, render: 16ms)
+    64→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    65→ GET / 200 in 127ms (compile: 96ms, render: 31ms)
+    66→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+    67→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+    68→ GET / 200 in 13ms (compile: 1968µs, render: 11ms)
+    69→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+    70→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    71→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+    72→ GET / 200 in 20ms (compile: 2ms, render: 17ms)
+    73→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    74→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+    75→ GET / 200 in 19ms (compile: 2ms, render: 17ms)
+    76→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+    77→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+    78→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+    79→ GET / 200 in 135ms (compile: 98ms, render: 38ms)
+    80→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    81→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+    82→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+    83→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+    84→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+    85→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+    86→ GET / 200 in 18ms (compile: 3ms, render: 16ms)
+    87→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    88→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+    89→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    90→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+    91→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+    92→ GET / 200 in 25ms (compile: 3ms, render: 23ms)
+    93→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+    94→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+    95→ GET / 200 in 159ms (compile: 133ms, render: 27ms)
+    96→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+    97→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+    98→ GET / 200 in 17ms (compile: 2ms, render: 15ms)
+    99→ GET / 200 in 16ms (compile: 3ms, render: 14ms)
+   100→ GET / 200 in 18ms (compile: 2ms, render: 15ms)
+   101→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+   102→ GET / 200 in 29ms (compile: 1960µs, render: 27ms)
+   103→ GET / 200 in 14ms (compile: 1913µs, render: 13ms)
+   104→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   105→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+   106→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   107→ GET / 200 in 21ms (compile: 3ms, render: 18ms)
+   108→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+   109→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   110→ GET / 200 in 16ms (compile: 3ms, render: 14ms)
+   111→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+   112→ GET / 200 in 13ms (compile: 1887µs, render: 11ms)
+   113→ GET / 200 in 96ms (compile: 67ms, render: 28ms)
+   114→ GET / 200 in 26ms (compile: 3ms, render: 24ms)
+   115→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+   116→ GET / 200 in 19ms (compile: 2ms, render: 17ms)
+   117→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+   118→ GET / 200 in 16ms (compile: 4ms, render: 12ms)
+   119→ GET / 200 in 16ms (compile: 3ms, render: 14ms)
+   120→ GET / 200 in 21ms (compile: 3ms, render: 18ms)
+   121→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   122→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   123→ GET / 200 in 18ms (compile: 3ms, render: 15ms)
+   124→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+   125→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+   126→ GET / 200 in 19ms (compile: 2ms, render: 17ms)
+   127→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   128→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+   129→ GET / 200 in 13ms (compile: 1998µs, render: 11ms)
+   130→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   131→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+   132→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   133→ GET / 200 in 140ms (compile: 114ms, render: 26ms)
+   134→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   135→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+   136→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   137→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+   138→ GET / 200 in 21ms (compile: 2ms, render: 19ms)
+   139→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   140→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   141→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   142→ GET / 200 in 18ms (compile: 3ms, render: 15ms)
+   143→ GET / 200 in 17ms (compile: 3ms, render: 15ms)
+   144→ GET / 200 in 25ms (compile: 3ms, render: 22ms)
+   145→ GET / 200 in 24ms (compile: 3ms, render: 20ms)
+   146→ GET / 200 in 21ms (compile: 2ms, render: 19ms)
+   147→ GET / 200 in 21ms (compile: 2ms, render: 19ms)
+   148→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   149→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+   150→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+   151→ GET / 200 in 13ms (compile: 1965µs, render: 11ms)
+   152→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   153→ GET / 200 in 17ms (compile: 3ms, render: 14ms)
+   154→ GET / 200 in 24ms (compile: 2ms, render: 22ms)
+   155→ GET / 200 in 78ms (compile: 49ms, render: 28ms)
+   156→ GET / 200 in 23ms (compile: 2ms, render: 21ms)
+   157→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+   158→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+   159→ GET / 200 in 17ms (compile: 2ms, render: 14ms)
+   160→ GET / 200 in 18ms (compile: 2ms, render: 16ms)
+   161→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+   162→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   163→ GET / 200 in 21ms (compile: 2ms, render: 18ms)
+   164→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+   165→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   166→ GET / 200 in 17ms (compile: 2ms, render: 15ms)
+   167→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+   168→ GET / 200 in 15ms (compile: 3ms, render: 12ms)
+   169→ GET / 200 in 19ms (compile: 2ms, render: 16ms)
+   170→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   171→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   172→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   173→ GET / 200 in 37ms (compile: 3ms, render: 34ms)
+   174→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+   175→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   176→ GET / 200 in 20ms (compile: 2ms, render: 18ms)
+   177→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   178→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+   179→ GET / 200 in 152ms (compile: 114ms, render: 37ms)
+   180→ GET / 200 in 15ms (compile: 1976µs, render: 13ms)
+   181→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   182→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+   183→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   184→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   185→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   186→ GET / 200 in 19ms (compile: 2ms, render: 17ms)
+   187→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+   188→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   189→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   190→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   191→ GET / 200 in 19ms (compile: 3ms, render: 16ms)
+   192→ GET / 200 in 20ms (compile: 9ms, render: 12ms)
+   193→ GET / 200 in 17ms (compile: 3ms, render: 14ms)
+   194→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   195→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   196→ GET / 200 in 16ms (compile: 3ms, render: 13ms)
+   197→ GET / 200 in 18ms (compile: 2ms, render: 15ms)
+   198→ GET / 200 in 18ms (compile: 3ms, render: 15ms)
+   199→ GET / 200 in 30ms (compile: 3ms, render: 27ms)
+   200→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   201→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   202→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   203→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   204→ GET / 200 in 18ms (compile: 2ms, render: 16ms)
+   205→ GET / 200 in 120ms (compile: 92ms, render: 28ms)
+   206→ GET / 200 in 25ms (compile: 3ms, render: 22ms)
+   207→ GET / 200 in 56ms (compile: 40ms, render: 16ms)
+   208→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+   209→ GET / 200 in 18ms (compile: 2ms, render: 15ms)
+   210→ GET / 200 in 18ms (compile: 2ms, render: 16ms)
+   211→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   212→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   213→ GET / 200 in 20ms (compile: 2ms, render: 18ms)
+   214→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   215→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   216→ GET / 200 in 17ms (compile: 2ms, render: 15ms)
+   217→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   218→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   219→ GET / 200 in 19ms (compile: 2ms, render: 17ms)
+   220→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+   221→ GET / 200 in 14ms (compile: 2ms, render: 11ms)
+   222→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   223→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   224→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   225→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   226→ GET / 200 in 30ms (compile: 3ms, render: 27ms)
+   227→ GET / 200 in 21ms (compile: 3ms, render: 18ms)
+   228→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   229→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+   230→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   231→ GET / 200 in 17ms (compile: 4ms, render: 13ms)
+   232→ GET / 200 in 21ms (compile: 2ms, render: 19ms)
+   233→ GET / 200 in 137ms (compile: 109ms, render: 27ms)
+   234→ GET / 200 in 19ms (compile: 3ms, render: 16ms)
+   235→ GET / 200 in 17ms (compile: 3ms, render: 14ms)
+   236→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   237→ GET / 200 in 16ms (compile: 2ms, render: 14ms)
+   238→ GET / 200 in 21ms (compile: 4ms, render: 17ms)
+   239→ GET / 200 in 31ms (compile: 10ms, render: 21ms)
+   240→ GET / 200 in 23ms (compile: 4ms, render: 19ms)
+   241→ GET / 200 in 21ms (compile: 7ms, render: 15ms)
+   242→ GET / 200 in 19ms (compile: 3ms, render: 17ms)
+   243→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   244→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   245→ GET / 200 in 22ms (compile: 3ms, render: 19ms)
+   246→ GET / 200 in 15ms (compile: 2ms, render: 13ms)
+   247→ GET / 200 in 13ms (compile: 2ms, render: 11ms)
+   248→ GET / 200 in 19ms (compile: 2ms, render: 16ms)
+   249→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   250→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   251→ GET / 200 in 23ms (compile: 3ms, render: 19ms)
+   252→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   253→ GET / 200 in 16ms (compile: 2ms, render: 13ms)
+   254→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   255→ GET / 200 in 20ms (compile: 2ms, render: 18ms)
+   256→ GET / 200 in 15ms (compile: 2ms, render: 12ms)
+   257→ GET / 200 in 14ms (compile: 2ms, render: 12ms)
+   258→ GET / 200 in 18ms (compile: 3ms, render: 15ms)
+   259→ GET / 200 in 17ms (compile: 3ms, render: 14ms)
+   260→ GET / 200 in 17ms (compile: 3ms, render: 15ms)
+   261→ GET / 200 in 30ms (compile: 3ms, render: 27ms)
+   262→ GET / 200 in 18ms (compile: 2ms, render: 16ms)
+   263→✓ Compiled in 308ms
+   264→✓ Compiled in 164ms
+   265→ GET / 200 in 69ms (compile: 48ms, render: 22ms)
+   266→ GET / 200 in 76ms (compile: 3ms, render: 73ms)
+   267→✓ Compiled in 220ms
+   268→✓ Compiled in 190ms
+   269→✓ Compiled in 204ms
+   270→✓ Compiled in 212ms
+   271→ GET / 200 in 53ms (compile: 5ms, render: 48ms)
+   272→ GET / 200 in 32ms (compile: 3ms, render: 30ms)
+   273→ GET / 200 in 28ms (compile: 2ms, render: 25ms)
+   274→✓ Compiled in 200ms
+   275→✓ Compiled in 212ms
+   276→✓ Compiled in 259ms
+   277→✓ Compiled in 217ms
+   278→ GET / 200 in 31ms (compile: 3ms, render: 27ms)
+   279→✓ Compiled in 220ms
+   280→✓ Compiled in 255ms
+   281→✓ Compiled in 197ms
+   282→✓ Compiled in 199ms
+   283→✓ Compiled in 206ms
+   284→✓ Compiled in 219ms
+   285→✓ Compiled in 209ms
+   286→✓ Compiled in 212ms
+   287→⨯ ./src/app/page.tsx:73:7
+   288→Parsing ecmascript source code failed
+   289→[0m [90m 71 |[39m       [33m<[39m[33m/[39m[33mmain[39m[33m>[39m
+   290→ [90m 72 |[39m
+   291→[31m[1m>[22m[39m[90m 73 |[39m       {[90m/* 粘性页脚 */[39m
+   292→ [90m    |[39m       [31m[1m^[22m[39m
+   293→ [90m 74 |[39m       [33m<[39m[33mFooter[39m [33m/[39m[33m>[39m
+   294→ [90m 75 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+   295→ [90m 76 |[39m   )[33m;[39m[0m
+   296→
+   297→Expected '</', got '{'
+   298→
+   299→Import traces:
+   300→  Client Component Browser:
+   301→    ./src/app/page.tsx [Client Component Browser]
+   302→    ./src/app/page.tsx [Server Component]
+   303→
+   304→  Client Component SSR:
+   305→    ./src/app/page.tsx [Client Component SSR]
+   306→    ./src/app/page.tsx [Server Component]
+   307→
+   308→
+   309→ GET / 500 in 1786ms (compile: 1649ms, render: 137ms)
+   310→✓ Compiled in 187ms
+   311→⨯ ./src/app/page.tsx:75:6
+   312→Parsing ecmascript source code failed
+   313→[0m [90m 73 |[39m       {[90m/* 粘性页脚 */[39m
+   314→ [90m 74 |[39m       [33m<[39m[33mFooter[39m [33m/[39m[33m>[39m
+   315→[31m[1m>[22m[39m[90m 75 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+   316→ [90m    |[39m      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   317→ [90m 76 |[39m   )[33m;[39m
+   318→ [90m 77 |[39m }
+   319→ [90m 78 |[39m[0m
+   320→
+   321→Unterminated regexp literal
+   322→
+   323→Import traces:
+   324→  Client Component Browser:
+   325→    ./src/app/page.tsx [Client Component Browser]
+   326→    ./src/app/page.tsx [Server Component]
+   327→
+   328→  Client Component SSR:
+   329→    ./src/app/page.tsx [Client Component SSR]
+   330→    ./src/app/page.tsx [Server Component]
+   331→
+   332→
+   333→ GET / 500 in 27ms (compile: 14ms, render: 13ms)
+   334→✓ Compiled in 4.5s
+   335→⨯ ./src/components/admin/AdminPanel.tsx:143:6
+   336→Parsing ecmascript source code failed
+   337→[0m [90m 141 |[39m         [33m<[39m[33m/[39m[33mCardContent[39m[33m>[39m
+   338→ [90m 142 |[39m       [33m<[39m[33m/[39m[33mCard[39m[33m>[39m
+   339→[31m[1m>[22m[39m[90m 143 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+   340→ [90m     |[39m      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   341→ [90m 144 |[39m   )[33m;[39m
+   342→ [90m 145 |[39m }
+   343→ [90m 146 |[39m[0m
+   344→
+   345→Unterminated regexp literal
+   346→
+   347→Import traces:
+   348→  Client Component Browser:
+   349→    ./src/components/admin/AdminPanel.tsx [Client Component Browser]
+   350→    ./src/app/page.tsx [Client Component Browser]
+   351→    ./src/app/page.tsx [Server Component]
+   352→
+   353→  Client Component SSR:
+   354→    ./src/components/admin/AdminPanel.tsx [Client Component SSR]
+   355→    ./src/app/page.tsx [Client Component SSR]
+   356→    ./src/app/page.tsx [Server Component]
+   357→
+   358→
+   359→
+   360→./src/components/blog/BlogList.tsx:148:19
+   361→Parsing ecmascript source code failed
+   362→[0m [90m 146 |[39m
+   363→ [90m 147 |[39m       {[90m/* 分页 */[39m
+   364→[31m[1m>[22m[39m[90m 148 |[39m       {totalPages [33m>[39m [35m1[39m [33m&&[39m (
+   365→ [90m     |[39m                   [31m[1m^[22m[39m
+   366→ [90m 149 |[39m         [33m<[39m[33mdiv[39m className[33m=[39m[32m"flex items-center justify-center gap-2"[39m[33m>[39m
+   367→ [90m 150 |[39m           [33m<[39m[33mButton[39m
+   368→ [90m 151 |[39m             variant[33m=[39m[32m"outline"[39m size[33m=[39m[32m"sm"[39m[0m
+   369→
+   370→Expected a semicolon
+   371→
+   372→Import traces:
+   373→  Client Component Browser:
+   374→    ./src/components/blog/BlogList.tsx [Client Component Browser]
+   375→    ./src/app/page.tsx [Client Component Browser]
+   376→    ./src/app/page.tsx [Server Component]
+   377→
+   378→  Client Component SSR:
+   379→    ./src/components/blog/BlogList.tsx [Client Component SSR]
+   380→    ./src/app/page.tsx [Client Component SSR]
+   381→    ./src/app/page.tsx [Server Component]
+   382→
+   383→
+   384→
+   385→./src/components/blog/BlogList.tsx:148:19
+   386→Parsing ecmascript source code failed
+   387→[0m [90m 146 |[39m
+   388→ [90m 147 |[39m       {[90m/* 分页 */[39m
+   389→[31m[1m>[22m[39m[90m 148 |[39m       {totalPages [33m>[39m [35m1[39m [33m&&[39m (
+   390→ [90m     |[39m                   [31m[1m^[22m[39m
+   391→ [90m 149 |[39m         [33m<[39m[33mdiv[39m className[33m=[39m[32m"flex items-center justify-center gap-2"[39m[33m>[39m
+   392→ [90m 150 |[39m           [33m<[39m[33mButton[39m
+   393→ [90m 151 |[39m             variant[33m=[39m[32m"outline"[39m size[33m=[39m[32m"sm"[39m[0m
+   394→
+   395→Expression expected
+   396→
+   397→Import traces:
+   398→  Client Component Browser:
+   399→    ./src/components/blog/BlogList.tsx [Client Component Browser]
+   400→    ./src/app/page.tsx [Client Component Browser]
+   401→    ./src/app/page.tsx [Server Component]
+   402→
+   403→  Client Component SSR:
+   404→    ./src/components/blog/BlogList.tsx [Client Component SSR]
+   405→    ./src/app/page.tsx [Client Component SSR]
+   406→    ./src/app/page.tsx [Server Component]
+   407→
+   408→
+   409→
+   410→./src/components/layout/Navbar.tsx:108:9
+   411→Parsing ecmascript source code failed
+   412→[0m [90m 106 |[39m         [33m<[39m[33m/[39m[33mnav[39m[33m>[39m
+   413→ [90m 107 |[39m
+   414→[31m[1m>[22m[39m[90m 108 |[39m         {[90m/* 右侧：主题切换 + 管理员登录/退出 */[39m}
+   415→ [90m     |[39m         [31m[1m^[22m[39m
+   416→ [90m 109 |[39m         [33m<[39m[33mdiv[39m className[33m=[39m[32m"flex items-center gap-2"[39m[33m>[39m
+   417→ [90m 110 |[39m           {mounted [33m&&[39m (
+   418→ [90m 111 |[39m             [33m<[39m[33mButton[39m[0m
+   419→
+   420→Expected '</', got '{'
+   421→
+   422→Import traces:
+   423→  Client Component Browser:
+   424→    ./src/components/layout/Navbar.tsx [Client Component Browser]
+   425→    ./src/app/page.tsx [Client Component Browser]
+   426→    ./src/app/page.tsx [Server Component]
+   427→
+   428→  Client Component SSR:
+   429→    ./src/components/layout/Navbar.tsx [Client Component SSR]
+   430→    ./src/app/page.tsx [Client Component SSR]
+   431→    ./src/app/page.tsx [Server Component]
+   432→
+   433→
+   434→
+   435→./src/components/tools/RandomQuote.tsx:57:9
+   436→Parsing ecmascript source code failed
+   437→[0m [90m 55 |[39m           [33m<[39m[33mp[39m className[33m=[39m[32m"text-right text-muted-foreground mt-3 text-sm"[39m[33m>[39m—— {quote[33m.[39mauthor}[33m<[39m[33m/[39m[33mp[39m[33m>[39m
+   438→ [90m 56 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+   439→[31m[1m>[22m[39m[90m 57 |[39m         {[90m/* 刷新按钮 */[39m
+   440→ [90m    |[39m         [31m[1m^[22m[39m
+   441→ [90m 58 |[39m         [33m<[39m[33mdiv[39m className[33m=[39m[32m"flex justify-center"[39m[33m>[39m
+   442→ [90m 59 |[39m           [33m<[39m[33mButton[39m variant[33m=[39m[32m"outline"[39m size[33m=[39m[32m"sm"[39m onClick[33m=[39m{refresh}[33m>[39m
+   443→ [90m 60 |[39m             [33m<[39m[33mRefreshCw[39m className[33m=[39m[32m"h-4 w-4 mr-1"[39m [33m/[39m[33m>[39m 换一条[0m
+   444→
+   445→Expected '</', got '{'
+   446→
+   447→Import traces:
+   448→  Client Component Browser:
+   449→    ./src/components/tools/RandomQuote.tsx [Client Component Browser]
+   450→    ./src/components/tools/Toolbox.tsx [Client Component Browser]
+   451→    ./src/app/page.tsx [Client Component Browser]
+   452→    ./src/app/page.tsx [Server Component]
+   453→
+   454→  Client Component SSR:
+   455→    ./src/components/tools/RandomQuote.tsx [Client Component SSR]
+   456→    ./src/components/tools/Toolbox.tsx [Client Component SSR]
+   457→    ./src/app/page.tsx [Client Component SSR]
+   458→    ./src/app/page.tsx [Server Component]
+   459→
+   460→
+   461→
+   462→./src/components/tools/TodoList.tsx:85:9
+   463→Parsing ecmascript source code failed
+   464→[0m [90m 83 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+   465→ [90m 84 |[39m
+   466→[31m[1m>[22m[39m[90m 85 |[39m         {[90m/* 待办列表 */[39m
+   467→ [90m    |[39m         [31m[1m^[22m[39m
+   468→ [90m 86 |[39m         [33m<[39m[33mScrollArea[39m className[33m=[39m[32m"max-h-72 custom-scrollbar"[39m[33m>[39m
+   469→ [90m 87 |[39m           {todos[33m.[39mlength [33m===[39m [35m0[39m [33m?[39m (
+   470→ [90m 88 |[39m             [33m<[39m[33mdiv[39m className[33m=[39m[32m"text-center py-8 text-muted-foreground text-sm"[39m[33m>[39m[0m
+   471→
+   472→Expected '</', got '{'
+   473→
+   474→Import traces:
+   475→  Client Component Browser:
+   476→    ./src/components/tools/TodoList.tsx [Client Component Browser]
+   477→    ./src/components/tools/Toolbox.tsx [Client Component Browser]
+   478→    ./src/app/page.tsx [Client Component Browser]
+   479→    ./src/app/page.tsx [Server Component]
+   480→
+   481→  Client Component SSR:
+   482→    ./src/components/tools/TodoList.tsx [Client Component SSR]
+   483→    ./src/components/tools/Toolbox.tsx [Client Component SSR]
+   484→    ./src/app/page.tsx [Client Component SSR]
+   485→    ./src/app/page.tsx [Server Component]
+   486→
+   487→
+   488→
+   489→./src/components/tools/WeatherQuery.tsx:77:9
+   490→Parsing ecmascript source code failed
+   491→[0m [90m 75 |[39m         [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+   492→ [90m 76 |[39m
+   493→[31m[1m>[22m[39m[90m 77 |[39m         {[90m/* 错误提示 */[39m
+   494→ [90m    |[39m         [31m[1m^[22m[39m
+   495→ [90m 78 |[39m         {error [33m&&[39m [33m<[39m[33mp[39m className[33m=[39m[32m"text-sm text-destructive"[39m[33m>[39m{error}[33m<[39m[33m/[39m[33mp[39m[33m>[39m}
+   496→ [90m 79 |[39m
+   497→ [90m 80 |[39m         {[90m/* 天气结果 */[39m[0m
+   498→
+   499→Expected '</', got '{'
+   500→
+   501→Import traces:
+   502→  Client Component Browser:
+   503→    ./src/components/tools/WeatherQuery.tsx [Client Component Browser]
+   504→    ./src/components/tools/Toolbox.tsx [Client Component Browser]
+   505→    ./src/app/page.tsx [Client Component Browser]
+   506→    ./src/app/page.tsx [Server Component]
+   507→
+   508→  Client Component SSR:
+   509→    ./src/components/tools/WeatherQuery.tsx [Client Component SSR]
+   510→    ./src/components/tools/Toolbox.tsx [Client Component SSR]
+   511→    ./src/app/page.tsx [Client Component SSR]
+   512→    ./src/app/page.tsx [Server Component]
+   513→
+   514→
+   515→ GET / 500 in 151ms (compile: 65ms, render: 86ms)
+   516→✓ Compiled in 213ms
+   517→⚠ Fast Refresh had to perform a full reload due to a runtime error.
+   518→⚠ Fast Refresh had to perform a full reload due to a runtime error.
+   519→ GET / 200 in 980ms (compile: 944ms, render: 35ms)
+   520→✓ Compiled in 0ms
+   521→ GET / 200 in 64ms (compile: 3ms, render: 61ms)
+   522→ GET / 200 in 17ms (compile: 3ms, render: 14ms)
+   523→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   524→prisma:query INSERT INTO `main`.`SiteStat` (`key`, `value`) VALUES (?,?) ON CONFLICT  (`key`) DO UPDATE SET `value` = (`main`.`SiteStat`.`value` + ?) WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) RETURNING `id` AS `id`, `key` AS `key`, `value` AS `value`
+   525→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   526→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   527→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   528→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   529→ GET /api/config 200 in 722ms (compile: 656ms, render: 67ms)
+   530→ POST /api/stats 200 in 712ms (compile: 681ms, render: 31ms)
+   531→ GET /api/stats 200 in 710ms (compile: 682ms, render: 28ms)
+   532→ GET /api/stats 200 in 14ms (compile: 2ms, render: 11ms)
+   533→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   534→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   535→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   536→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   537→⚠ Fast Refresh had to perform a full reload when ./src/app/page.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+   538→ GET / 200 in 31ms (compile: 4ms, render: 27ms)
+   539→ GET /api/config 200 in 13ms (compile: 3ms, render: 10ms)
+   540→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   541→prisma:query INSERT INTO `main`.`SiteStat` (`key`, `value`) VALUES (?,?) ON CONFLICT  (`key`) DO UPDATE SET `value` = (`main`.`SiteStat`.`value` + ?) WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) RETURNING `id` AS `id`, `key` AS `key`, `value` AS `value`
+   542→ POST /api/stats 200 in 8ms (compile: 3ms, render: 5ms)
+   543→ GET /api/stats 200 in 9ms (compile: 1751µs, render: 7ms)
+   544→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   545→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   546→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   547→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   548→ GET /api/stats 200 in 11ms (compile: 4ms, render: 6ms)
+   549→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   550→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   551→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   552→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   553→ GET / 200 in 58ms (compile: 3ms, render: 55ms)
+   554→ GET /api/config 200 in 24ms (compile: 4ms, render: 20ms)
+   555→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   556→ GET /api/stats 200 in 15ms (compile: 3ms, render: 12ms)
+   557→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   558→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   559→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   560→prisma:query SELECT 1
+   561→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   562→ POST /api/stats 200 in 22ms (compile: 8ms, render: 14ms)
+   563→prisma:query INSERT INTO `main`.`SiteStat` (`key`, `value`) VALUES (?,?) ON CONFLICT  (`key`) DO UPDATE SET `value` = (`main`.`SiteStat`.`value` + ?) WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) RETURNING `id` AS `id`, `key` AS `key`, `value` AS `value`
+   564→ GET /api/stats 200 in 28ms (compile: 3ms, render: 25ms)
+   565→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   566→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   567→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   568→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   569→prisma:query SELECT 1
+   570→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   571→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   572→ GET /api/articles?page=1&pageSize=8 200 in 149ms (compile: 138ms, render: 11ms)
+   573→ GET /api/games/scores 200 in 157ms (compile: 146ms, render: 10ms)
+   574→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   575→ GET /api/todos 200 in 123ms (compile: 112ms, render: 11ms)
+   576→prisma:query SELECT 1
+   577→prisma:query SELECT `main`.`Todo`.`id`, `main`.`Todo`.`content`, `main`.`Todo`.`completed`, `main`.`Todo`.`createdAt` FROM `main`.`Todo` WHERE 1=1 ORDER BY `main`.`Todo`.`createdAt` DESC LIMIT ? OFFSET ?
+   578→prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`nickname`, `main`.`Message`.`content`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE 1=1 ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+   579→ GET /api/messages 200 in 129ms (compile: 122ms, render: 6ms)
+   580→prisma:query SELECT 1
+   581→prisma:query INSERT INTO `main`.`Message` (`nickname`, `content`, `createdAt`) VALUES (?,?,?) RETURNING `id` AS `id`, `nickname` AS `nickname`, `content` AS `content`, `createdAt` AS `createdAt`
+   582→ POST /api/messages 200 in 16ms (compile: 5ms, render: 11ms)
+   583→prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`nickname`, `main`.`Message`.`content`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE 1=1 ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+   584→ GET /api/messages 200 in 11ms (compile: 1844µs, render: 9ms)
+   585→ GET / 200 in 115ms (compile: 4ms, render: 112ms)
+   586→ GET /api/config 200 in 29ms (compile: 2ms, render: 26ms)
+   587→prisma:query SELECT 1
+   588→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   589→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   590→prisma:query SELECT 1
+   591→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   592→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   593→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   594→ GET /api/stats 200 in 17ms (compile: 4ms, render: 13ms)
+   595→prisma:query INSERT INTO `main`.`SiteStat` (`key`, `value`) VALUES (?,?) ON CONFLICT  (`key`) DO UPDATE SET `value` = (`main`.`SiteStat`.`value` + ?) WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) RETURNING `id` AS `id`, `key` AS `key`, `value` AS `value`
+   596→ POST /api/stats 200 in 17ms (compile: 8ms, render: 9ms)
+   597→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   598→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   599→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   600→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   601→ GET /api/stats 200 in 16ms (compile: 1585µs, render: 14ms)
+   602→prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`nickname`, `main`.`Message`.`content`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE 1=1 ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+   603→ GET /api/messages 200 in 9ms (compile: 3ms, render: 6ms)
+   604→prisma:query SELECT 1
+   605→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE (`main`.`SiteConfig`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   606→ POST /api/auth/check 200 in 129ms (compile: 124ms, render: 6ms)
+   607→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE (`main`.`SiteConfig`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   608→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   609→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE 1=1 ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   610→ GET /api/articles/admin-list 200 in 131ms (compile: 120ms, render: 11ms)
+   611→prisma:query SELECT 1
+   612→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   613→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   614→ GET /api/articles?page=1&pageSize=8 200 in 18ms (compile: 3ms, render: 15ms)
+   615→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE (`main`.`Article`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+   616→prisma:query UPDATE `main`.`Article` SET `viewCount` = (`main`.`Article`.`viewCount` + ?), `updatedAt` = ? WHERE (`main`.`Article`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `title` AS `title`, `summary` AS `summary`, `content` AS `content`, `category` AS `category`, `status` AS `status`, `viewCount` AS `viewCount`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+   617→ GET /api/articles/3 200 in 880ms (compile: 866ms, render: 13ms)
+   618→prisma:query SELECT 1
+   619→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   620→ GET /api/games/scores 200 in 15ms (compile: 2ms, render: 12ms)
+   621→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   622→ GET /api/games/scores 200 in 24ms (compile: 2ms, render: 22ms)
+   623→prisma:query SELECT 1
+   624→prisma:query SELECT `main`.`Todo`.`id`, `main`.`Todo`.`content`, `main`.`Todo`.`completed`, `main`.`Todo`.`createdAt` FROM `main`.`Todo` WHERE 1=1 ORDER BY `main`.`Todo`.`createdAt` DESC LIMIT ? OFFSET ?
+   625→ GET /api/todos 200 in 12ms (compile: 2ms, render: 10ms)
+   626→ POST /api/todos 200 in 14ms (compile: 3ms, render: 10ms)
+   627→prisma:query INSERT INTO `main`.`Todo` (`content`, `completed`, `createdAt`) VALUES (?,?,?) RETURNING `id` AS `id`, `content` AS `content`, `completed` AS `completed`, `createdAt` AS `createdAt`
+   628→prisma:query SELECT `main`.`Todo`.`id`, `main`.`Todo`.`content`, `main`.`Todo`.`completed`, `main`.`Todo`.`createdAt` FROM `main`.`Todo` WHERE 1=1 ORDER BY `main`.`Todo`.`createdAt` DESC LIMIT ? OFFSET ?
+   629→ GET /api/todos 200 in 5ms (compile: 1340µs, render: 4ms)
+   630→prisma:query SELECT 1
+   631→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   632→ GET /api/articles?page=1&pageSize=8 200 in 12ms (compile: 5ms, render: 7ms)
+   633→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   634→prisma:query SELECT 1
+   635→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   636→ GET /api/games/scores 200 in 9ms (compile: 4ms, render: 5ms)
+   637→ GET /api/articles?page=1&pageSize=8 200 in 10ms (compile: 3ms, render: 7ms)
+   638→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   639→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   640→prisma:query SELECT 1
+   641→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE (`main`.`Article`.`status` = ? AND `main`.`Article`.`category` = ?) LIMIT ? OFFSET ?) AS `sub`
+   642→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE (`main`.`Article`.`status` = ? AND `main`.`Article`.`category` = ?) ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   643→ GET /api/articles?page=1&pageSize=8&category=%E7%94%9F%E6%B4%BB 200 in 9ms (compile: 2ms, render: 7ms)
+   644→ GET /api/todos 200 in 9ms (compile: 2ms, render: 7ms)
+   645→prisma:query SELECT `main`.`Todo`.`id`, `main`.`Todo`.`content`, `main`.`Todo`.`completed`, `main`.`Todo`.`createdAt` FROM `main`.`Todo` WHERE 1=1 ORDER BY `main`.`Todo`.`createdAt` DESC LIMIT ? OFFSET ?
+   646→ GET / 200 in 45ms (compile: 6ms, render: 39ms)
+   647→prisma:query SELECT 1
+   648→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   649→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   650→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   651→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   652→ GET /api/stats 200 in 10ms (compile: 2ms, render: 8ms)
+   653→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   654→ GET /api/config 200 in 9ms (compile: 2ms, render: 6ms)
+   655→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   656→ GET /api/games/scores 200 in 8ms (compile: 3ms, render: 5ms)
+   657→prisma:query SELECT 1
+   658→ GET /api/games/scores 200 in 7ms (compile: 2ms, render: 5ms)
+   659→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   660→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE (`main`.`GameScore`.`game` = ? AND 1=1) LIMIT ? OFFSET ?
+   661→prisma:query UPDATE `main`.`GameScore` SET `score` = ? WHERE (`main`.`GameScore`.`game` = ? AND 1=1) RETURNING `id` AS `id`, `game` AS `game`, `score` AS `score`, `createdAt` AS `createdAt`
+   662→ POST /api/games/scores 200 in 9ms (compile: 1984µs, render: 7ms)
+   663→prisma:query SELECT 1
+   664→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   665→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   666→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   667→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   668→ GET /api/stats 200 in 8ms (compile: 2ms, render: 6ms)
+   669→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   670→ GET /api/config 200 in 5ms (compile: 1604µs, render: 4ms)
+   671→ POST /api/auth/check 200 in 9ms (compile: 3ms, render: 6ms)
+   672→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE (`main`.`SiteConfig`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   673→prisma:query SELECT 1
+   674→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE (`main`.`SiteConfig`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   675→ GET /api/articles/admin-list 200 in 9ms (compile: 2ms, render: 7ms)
+   676→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   677→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE 1=1 ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   678→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE (`main`.`Article`.`id` = ? AND 1=1) LIMIT ? OFFSET ?
+   679→prisma:query UPDATE `main`.`Article` SET `viewCount` = (`main`.`Article`.`viewCount` + ?), `updatedAt` = ? WHERE (`main`.`Article`.`id` = ? AND 1=1) RETURNING `id` AS `id`, `title` AS `title`, `summary` AS `summary`, `content` AS `content`, `category` AS `category`, `status` AS `status`, `viewCount` AS `viewCount`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+   680→ GET /api/articles/3 200 in 50ms (compile: 32ms, render: 17ms)
+   681→prisma:query SELECT 1
+   682→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   683→ GET /api/config 200 in 8ms (compile: 2ms, render: 6ms)
+   684→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   685→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   686→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   687→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   688→ GET /api/stats 200 in 7ms (compile: 3ms, render: 5ms)
+   689→prisma:query SELECT 1
+   690→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   691→prisma:query SELECT `main`.`Article`.`id`, `main`.`Article`.`title`, `main`.`Article`.`summary`, `main`.`Article`.`content`, `main`.`Article`.`category`, `main`.`Article`.`status`, `main`.`Article`.`viewCount`, `main`.`Article`.`createdAt`, `main`.`Article`.`updatedAt` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? ORDER BY `main`.`Article`.`createdAt` DESC LIMIT ? OFFSET ?
+   692→ GET /api/articles?page=1&pageSize=8 200 in 8ms (compile: 2ms, render: 6ms)
+   693→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   694→ GET /api/config 200 in 7ms (compile: 2ms, render: 5ms)
+   695→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   696→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   697→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   698→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   699→ GET /api/stats 200 in 7ms (compile: 3ms, render: 5ms)
+   700→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   701→ GET /api/games/scores 200 in 14ms (compile: 3ms, render: 11ms)
+   702→prisma:query SELECT 1
+   703→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   704→ GET /api/config 200 in 7ms (compile: 2ms, render: 5ms)
+   705→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   706→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   707→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   708→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   709→ GET /api/stats 200 in 8ms (compile: 3ms, render: 5ms)
+   710→prisma:query SELECT 1
+   711→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   712→ GET /api/games/scores 200 in 10ms (compile: 2ms, render: 8ms)
+   713→prisma:query SELECT 1
+   714→ GET /api/games/scores 200 in 7ms (compile: 1978µs, render: 5ms)
+   715→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   716→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   717→ GET /api/games/scores 200 in 7ms (compile: 2ms, render: 5ms)
+   718→ GET /api/messages 200 in 9ms (compile: 2ms, render: 7ms)
+   719→prisma:query SELECT 1
+   720→prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`nickname`, `main`.`Message`.`content`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE 1=1 ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+   721→ GET /api/games/scores 200 in 8ms (compile: 2ms, render: 6ms)
+   722→prisma:query SELECT `main`.`GameScore`.`id`, `main`.`GameScore`.`game`, `main`.`GameScore`.`score`, `main`.`GameScore`.`createdAt` FROM `main`.`GameScore` WHERE 1=1 ORDER BY `main`.`GameScore`.`createdAt` DESC LIMIT ? OFFSET ?
+   723→ GET /api/config 200 in 8ms (compile: 2ms, render: 6ms)
+   724→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   725→ GET /api/stats 200 in 7ms (compile: 1606µs, render: 5ms)
+   726→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   727→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   728→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   729→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   730→ GET / 200 in 44ms (compile: 5ms, render: 40ms)
+   731→prisma:query SELECT 1
+   732→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   733→prisma:query SELECT 1
+   734→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   735→ GET /api/stats 200 in 9ms (compile: 1904µs, render: 7ms)
+   736→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   737→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   738→prisma:query SELECT `main`.`SiteConfig`.`id`, `main`.`SiteConfig`.`key`, `main`.`SiteConfig`.`value` FROM `main`.`SiteConfig` WHERE `main`.`SiteConfig`.`key` <> ? LIMIT ? OFFSET ?
+   739→ GET /api/config 200 in 9ms (compile: 2ms, render: 7ms)
+   740→ POST /api/stats 200 in 10ms (compile: 5ms, render: 5ms)
+   741→prisma:query INSERT INTO `main`.`SiteStat` (`key`, `value`) VALUES (?,?) ON CONFLICT  (`key`) DO UPDATE SET `value` = (`main`.`SiteStat`.`value` + ?) WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) RETURNING `id` AS `id`, `key` AS `key`, `value` AS `value`
+   742→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Article`.`id` FROM `main`.`Article` WHERE `main`.`Article`.`status` = ? LIMIT ? OFFSET ?) AS `sub`
+   743→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`GameScore`.`id` FROM `main`.`GameScore` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   744→prisma:query SELECT `main`.`SiteStat`.`id`, `main`.`SiteStat`.`key`, `main`.`SiteStat`.`value` FROM `main`.`SiteStat` WHERE (`main`.`SiteStat`.`key` = ? AND 1=1) LIMIT ? OFFSET ?
+   745→ GET /api/stats 200 in 6ms (compile: 2ms, render: 4ms)
+   746→prisma:query SELECT COUNT(*) AS `_count$_all` FROM (SELECT `main`.`Message`.`id` FROM `main`.`Message` WHERE 1=1 LIMIT ? OFFSET ?) AS `sub`
+   747→prisma:query SELECT `main`.`Message`.`id`, `main`.`Message`.`nickname`, `main`.`Message`.`content`, `main`.`Message`.`createdAt` FROM `main`.`Message` WHERE 1=1 ORDER BY `main`.`Message`.`createdAt` DESC LIMIT ? OFFSET ?
+   748→ GET /api/messages 200 in 8ms (compile: 2ms, render: 5ms)
+   749→✓ Compiled in 237ms
+   750→⨯ ./src/components/games/GamePlayer.tsx:12:1
+   751→Module not found: Can't resolve './AdventureGame'
+   752→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   753→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   754→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   755→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   756→ [90m 13 |[39m
+   757→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+   758→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+   759→
+   760→
+   761→
+   762→Import traces:
+   763→  Client Component Browser:
+   764→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   765→    ./src/app/page.tsx [Client Component Browser]
+   766→    ./src/app/page.tsx [Server Component]
+   767→
+   768→  Client Component SSR:
+   769→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   770→    ./src/app/page.tsx [Client Component SSR]
+   771→    ./src/app/page.tsx [Server Component]
+   772→
+   773→https://nextjs.org/docs/messages/module-not-found
+   774→
+   775→
+   776→⨯ ./src/components/games/GamePlayer.tsx:12:1
+   777→Module not found: Can't resolve './AdventureGame'
+   778→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   779→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   780→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   781→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   782→ [90m 13 |[39m
+   783→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+   784→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+   785→
+   786→
+   787→
+   788→Import traces:
+   789→  Client Component Browser:
+   790→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   791→    ./src/app/page.tsx [Client Component Browser]
+   792→    ./src/app/page.tsx [Server Component]
+   793→
+   794→  Client Component SSR:
+   795→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   796→    ./src/app/page.tsx [Client Component SSR]
+   797→    ./src/app/page.tsx [Server Component]
+   798→
+   799→https://nextjs.org/docs/messages/module-not-found
+   800→
+   801→
+   802→⨯ ./src/components/games/GamePlayer.tsx:12:1
+   803→Module not found: Can't resolve './AdventureGame'
+   804→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   805→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   806→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   807→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   808→ [90m 13 |[39m
+   809→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+   810→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+   811→
+   812→
+   813→
+   814→Import traces:
+   815→  Client Component Browser:
+   816→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   817→    ./src/app/page.tsx [Client Component Browser]
+   818→    ./src/app/page.tsx [Server Component]
+   819→
+   820→  Client Component SSR:
+   821→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   822→    ./src/app/page.tsx [Client Component SSR]
+   823→    ./src/app/page.tsx [Server Component]
+   824→
+   825→https://nextjs.org/docs/messages/module-not-found
+   826→
+   827→
+   828→⨯ ./src/components/games/GamePlayer.tsx:12:1
+   829→Module not found: Can't resolve './AdventureGame'
+   830→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   831→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   832→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   833→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   834→ [90m 13 |[39m
+   835→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+   836→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+   837→
+   838→
+   839→
+   840→Import traces:
+   841→  Client Component Browser:
+   842→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   843→    ./src/app/page.tsx [Client Component Browser]
+   844→    ./src/app/page.tsx [Server Component]
+   845→
+   846→  Client Component SSR:
+   847→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   848→    ./src/app/page.tsx [Client Component SSR]
+   849→    ./src/app/page.tsx [Server Component]
+   850→
+   851→https://nextjs.org/docs/messages/module-not-found
+   852→
+   853→
+   854→⨯ ./src/components/games/GamePlayer.tsx:10:1
+   855→Module not found: Can't resolve './AircraftGame'
+   856→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+   857→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+   858→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   859→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   860→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   861→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   862→ [90m 13 |[39m[0m
+   863→
+   864→
+   865→
+   866→Import traces:
+   867→  Client Component Browser:
+   868→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   869→    ./src/app/page.tsx [Client Component Browser]
+   870→    ./src/app/page.tsx [Server Component]
+   871→
+   872→  Client Component SSR:
+   873→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   874→    ./src/app/page.tsx [Client Component SSR]
+   875→    ./src/app/page.tsx [Server Component]
+   876→
+   877→https://nextjs.org/docs/messages/module-not-found
+   878→
+   879→
+   880→⨯ ./src/components/games/GamePlayer.tsx:10:1
+   881→Module not found: Can't resolve './AircraftGame'
+   882→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+   883→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+   884→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   885→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   886→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   887→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   888→ [90m 13 |[39m[0m
+   889→
+   890→
+   891→
+   892→Import traces:
+   893→  Client Component Browser:
+   894→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   895→    ./src/app/page.tsx [Client Component Browser]
+   896→    ./src/app/page.tsx [Server Component]
+   897→
+   898→  Client Component SSR:
+   899→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   900→    ./src/app/page.tsx [Client Component SSR]
+   901→    ./src/app/page.tsx [Server Component]
+   902→
+   903→https://nextjs.org/docs/messages/module-not-found
+   904→
+   905→
+   906→⨯ ./src/components/games/GamePlayer.tsx:10:1
+   907→Module not found: Can't resolve './AircraftGame'
+   908→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+   909→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+   910→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   911→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   912→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   913→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   914→ [90m 13 |[39m[0m
+   915→
+   916→
+   917→
+   918→Import traces:
+   919→  Client Component Browser:
+   920→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   921→    ./src/app/page.tsx [Client Component Browser]
+   922→    ./src/app/page.tsx [Server Component]
+   923→
+   924→  Client Component SSR:
+   925→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   926→    ./src/app/page.tsx [Client Component SSR]
+   927→    ./src/app/page.tsx [Server Component]
+   928→
+   929→https://nextjs.org/docs/messages/module-not-found
+   930→
+   931→
+   932→⨯ ./src/components/games/GamePlayer.tsx:10:1
+   933→Module not found: Can't resolve './AircraftGame'
+   934→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+   935→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+   936→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   937→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   938→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   939→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   940→ [90m 13 |[39m[0m
+   941→
+   942→
+   943→
+   944→Import traces:
+   945→  Client Component Browser:
+   946→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   947→    ./src/app/page.tsx [Client Component Browser]
+   948→    ./src/app/page.tsx [Server Component]
+   949→
+   950→  Client Component SSR:
+   951→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   952→    ./src/app/page.tsx [Client Component SSR]
+   953→    ./src/app/page.tsx [Server Component]
+   954→
+   955→https://nextjs.org/docs/messages/module-not-found
+   956→
+   957→
+   958→⨯ ./src/components/games/GamePlayer.tsx:11:1
+   959→Module not found: Can't resolve './BreakoutGame'
+   960→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+   961→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   962→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   963→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   964→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   965→ [90m 13 |[39m
+   966→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+   967→
+   968→
+   969→
+   970→Import traces:
+   971→  Client Component Browser:
+   972→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   973→    ./src/app/page.tsx [Client Component Browser]
+   974→    ./src/app/page.tsx [Server Component]
+   975→
+   976→  Client Component SSR:
+   977→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+   978→    ./src/app/page.tsx [Client Component SSR]
+   979→    ./src/app/page.tsx [Server Component]
+   980→
+   981→https://nextjs.org/docs/messages/module-not-found
+   982→
+   983→
+   984→⨯ ./src/components/games/GamePlayer.tsx:11:1
+   985→Module not found: Can't resolve './BreakoutGame'
+   986→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+   987→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+   988→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+   989→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+   990→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+   991→ [90m 13 |[39m
+   992→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+   993→
+   994→
+   995→
+   996→Import traces:
+   997→  Client Component Browser:
+   998→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+   999→    ./src/app/page.tsx [Client Component Browser]
+  1000→    ./src/app/page.tsx [Server Component]
+  1001→
+  1002→  Client Component SSR:
+  1003→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1004→    ./src/app/page.tsx [Client Component SSR]
+  1005→    ./src/app/page.tsx [Server Component]
+  1006→
+  1007→https://nextjs.org/docs/messages/module-not-found
+  1008→
+  1009→
+  1010→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1011→Module not found: Can't resolve './BreakoutGame'
+  1012→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1013→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1014→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1015→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1016→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1017→ [90m 13 |[39m
+  1018→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1019→
+  1020→
+  1021→
+  1022→Import traces:
+  1023→  Client Component Browser:
+  1024→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1025→    ./src/app/page.tsx [Client Component Browser]
+  1026→    ./src/app/page.tsx [Server Component]
+  1027→
+  1028→  Client Component SSR:
+  1029→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1030→    ./src/app/page.tsx [Client Component SSR]
+  1031→    ./src/app/page.tsx [Server Component]
+  1032→
+  1033→https://nextjs.org/docs/messages/module-not-found
+  1034→
+  1035→
+  1036→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1037→Module not found: Can't resolve './BreakoutGame'
+  1038→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1039→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1040→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1041→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1042→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1043→ [90m 13 |[39m
+  1044→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1045→
+  1046→
+  1047→
+  1048→Import traces:
+  1049→  Client Component Browser:
+  1050→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1051→    ./src/app/page.tsx [Client Component Browser]
+  1052→    ./src/app/page.tsx [Server Component]
+  1053→
+  1054→  Client Component SSR:
+  1055→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1056→    ./src/app/page.tsx [Client Component SSR]
+  1057→    ./src/app/page.tsx [Server Component]
+  1058→
+  1059→https://nextjs.org/docs/messages/module-not-found
+  1060→
+  1061→
+  1062→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1063→Module not found: Can't resolve './AdventureGame'
+  1064→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1065→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1066→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1067→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1068→ [90m 13 |[39m
+  1069→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1070→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1071→
+  1072→
+  1073→
+  1074→Import traces:
+  1075→  Client Component Browser:
+  1076→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1077→    ./src/app/page.tsx [Client Component Browser]
+  1078→    ./src/app/page.tsx [Server Component]
+  1079→
+  1080→  Client Component SSR:
+  1081→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1082→    ./src/app/page.tsx [Client Component SSR]
+  1083→    ./src/app/page.tsx [Server Component]
+  1084→
+  1085→https://nextjs.org/docs/messages/module-not-found
+  1086→
+  1087→
+  1088→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1089→Module not found: Can't resolve './AdventureGame'
+  1090→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1091→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1092→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1093→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1094→ [90m 13 |[39m
+  1095→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1096→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1097→
+  1098→
+  1099→
+  1100→Import traces:
+  1101→  Client Component Browser:
+  1102→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1103→    ./src/app/page.tsx [Client Component Browser]
+  1104→    ./src/app/page.tsx [Server Component]
+  1105→
+  1106→  Client Component SSR:
+  1107→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1108→    ./src/app/page.tsx [Client Component SSR]
+  1109→    ./src/app/page.tsx [Server Component]
+  1110→
+  1111→https://nextjs.org/docs/messages/module-not-found
+  1112→
+  1113→
+  1114→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1115→Module not found: Can't resolve './AdventureGame'
+  1116→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1117→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1118→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1119→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1120→ [90m 13 |[39m
+  1121→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1122→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1123→
+  1124→
+  1125→
+  1126→Import traces:
+  1127→  Client Component Browser:
+  1128→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1129→    ./src/app/page.tsx [Client Component Browser]
+  1130→    ./src/app/page.tsx [Server Component]
+  1131→
+  1132→  Client Component SSR:
+  1133→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1134→    ./src/app/page.tsx [Client Component SSR]
+  1135→    ./src/app/page.tsx [Server Component]
+  1136→
+  1137→https://nextjs.org/docs/messages/module-not-found
+  1138→
+  1139→
+  1140→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1141→Module not found: Can't resolve './AdventureGame'
+  1142→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1143→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1144→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1145→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1146→ [90m 13 |[39m
+  1147→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1148→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1149→
+  1150→
+  1151→
+  1152→Import traces:
+  1153→  Client Component Browser:
+  1154→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1155→    ./src/app/page.tsx [Client Component Browser]
+  1156→    ./src/app/page.tsx [Server Component]
+  1157→
+  1158→  Client Component SSR:
+  1159→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1160→    ./src/app/page.tsx [Client Component SSR]
+  1161→    ./src/app/page.tsx [Server Component]
+  1162→
+  1163→https://nextjs.org/docs/messages/module-not-found
+  1164→
+  1165→
+  1166→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1167→Module not found: Can't resolve './AircraftGame'
+  1168→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1169→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1170→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1171→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1172→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1173→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1174→ [90m 13 |[39m[0m
+  1175→
+  1176→
+  1177→
+  1178→Import traces:
+  1179→  Client Component Browser:
+  1180→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1181→    ./src/app/page.tsx [Client Component Browser]
+  1182→    ./src/app/page.tsx [Server Component]
+  1183→
+  1184→  Client Component SSR:
+  1185→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1186→    ./src/app/page.tsx [Client Component SSR]
+  1187→    ./src/app/page.tsx [Server Component]
+  1188→
+  1189→https://nextjs.org/docs/messages/module-not-found
+  1190→
+  1191→
+  1192→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1193→Module not found: Can't resolve './AircraftGame'
+  1194→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1195→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1196→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1197→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1198→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1199→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1200→ [90m 13 |[39m[0m
+  1201→
+  1202→
+  1203→
+  1204→Import traces:
+  1205→  Client Component Browser:
+  1206→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1207→    ./src/app/page.tsx [Client Component Browser]
+  1208→    ./src/app/page.tsx [Server Component]
+  1209→
+  1210→  Client Component SSR:
+  1211→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1212→    ./src/app/page.tsx [Client Component SSR]
+  1213→    ./src/app/page.tsx [Server Component]
+  1214→
+  1215→https://nextjs.org/docs/messages/module-not-found
+  1216→
+  1217→
+  1218→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1219→Module not found: Can't resolve './AircraftGame'
+  1220→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1221→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1222→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1223→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1224→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1225→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1226→ [90m 13 |[39m[0m
+  1227→
+  1228→
+  1229→
+  1230→Import traces:
+  1231→  Client Component Browser:
+  1232→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1233→    ./src/app/page.tsx [Client Component Browser]
+  1234→    ./src/app/page.tsx [Server Component]
+  1235→
+  1236→  Client Component SSR:
+  1237→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1238→    ./src/app/page.tsx [Client Component SSR]
+  1239→    ./src/app/page.tsx [Server Component]
+  1240→
+  1241→https://nextjs.org/docs/messages/module-not-found
+  1242→
+  1243→
+  1244→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1245→Module not found: Can't resolve './AircraftGame'
+  1246→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1247→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1248→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1249→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1250→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1251→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1252→ [90m 13 |[39m[0m
+  1253→
+  1254→
+  1255→
+  1256→Import traces:
+  1257→  Client Component Browser:
+  1258→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1259→    ./src/app/page.tsx [Client Component Browser]
+  1260→    ./src/app/page.tsx [Server Component]
+  1261→
+  1262→  Client Component SSR:
+  1263→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1264→    ./src/app/page.tsx [Client Component SSR]
+  1265→    ./src/app/page.tsx [Server Component]
+  1266→
+  1267→https://nextjs.org/docs/messages/module-not-found
+  1268→
+  1269→
+  1270→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1271→Module not found: Can't resolve './BreakoutGame'
+  1272→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1273→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1274→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1275→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1276→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1277→ [90m 13 |[39m
+  1278→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1279→
+  1280→
+  1281→
+  1282→Import traces:
+  1283→  Client Component Browser:
+  1284→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1285→    ./src/app/page.tsx [Client Component Browser]
+  1286→    ./src/app/page.tsx [Server Component]
+  1287→
+  1288→  Client Component SSR:
+  1289→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1290→    ./src/app/page.tsx [Client Component SSR]
+  1291→    ./src/app/page.tsx [Server Component]
+  1292→
+  1293→https://nextjs.org/docs/messages/module-not-found
+  1294→
+  1295→
+  1296→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1297→Module not found: Can't resolve './BreakoutGame'
+  1298→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1299→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1300→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1301→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1302→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1303→ [90m 13 |[39m
+  1304→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1305→
+  1306→
+  1307→
+  1308→Import traces:
+  1309→  Client Component Browser:
+  1310→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1311→    ./src/app/page.tsx [Client Component Browser]
+  1312→    ./src/app/page.tsx [Server Component]
+  1313→
+  1314→  Client Component SSR:
+  1315→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1316→    ./src/app/page.tsx [Client Component SSR]
+  1317→    ./src/app/page.tsx [Server Component]
+  1318→
+  1319→https://nextjs.org/docs/messages/module-not-found
+  1320→
+  1321→
+  1322→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1323→Module not found: Can't resolve './BreakoutGame'
+  1324→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1325→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1326→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1327→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1328→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1329→ [90m 13 |[39m
+  1330→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1331→
+  1332→
+  1333→
+  1334→Import traces:
+  1335→  Client Component Browser:
+  1336→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1337→    ./src/app/page.tsx [Client Component Browser]
+  1338→    ./src/app/page.tsx [Server Component]
+  1339→
+  1340→  Client Component SSR:
+  1341→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1342→    ./src/app/page.tsx [Client Component SSR]
+  1343→    ./src/app/page.tsx [Server Component]
+  1344→
+  1345→https://nextjs.org/docs/messages/module-not-found
+  1346→
+  1347→
+  1348→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1349→Module not found: Can't resolve './BreakoutGame'
+  1350→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1351→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1352→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1353→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1354→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1355→ [90m 13 |[39m
+  1356→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1357→
+  1358→
+  1359→
+  1360→Import traces:
+  1361→  Client Component Browser:
+  1362→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1363→    ./src/app/page.tsx [Client Component Browser]
+  1364→    ./src/app/page.tsx [Server Component]
+  1365→
+  1366→  Client Component SSR:
+  1367→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1368→    ./src/app/page.tsx [Client Component SSR]
+  1369→    ./src/app/page.tsx [Server Component]
+  1370→
+  1371→https://nextjs.org/docs/messages/module-not-found
+  1372→
+  1373→
+  1374→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1375→Module not found: Can't resolve './AdventureGame'
+  1376→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1377→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1378→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1379→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1380→ [90m 13 |[39m
+  1381→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1382→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1383→
+  1384→
+  1385→
+  1386→Import traces:
+  1387→  Client Component Browser:
+  1388→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1389→    ./src/app/page.tsx [Client Component Browser]
+  1390→    ./src/app/page.tsx [Server Component]
+  1391→
+  1392→  Client Component SSR:
+  1393→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1394→    ./src/app/page.tsx [Client Component SSR]
+  1395→    ./src/app/page.tsx [Server Component]
+  1396→
+  1397→https://nextjs.org/docs/messages/module-not-found
+  1398→
+  1399→
+  1400→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1401→Module not found: Can't resolve './AdventureGame'
+  1402→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1403→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1404→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1405→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1406→ [90m 13 |[39m
+  1407→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1408→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1409→
+  1410→
+  1411→
+  1412→Import traces:
+  1413→  Client Component Browser:
+  1414→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1415→    ./src/app/page.tsx [Client Component Browser]
+  1416→    ./src/app/page.tsx [Server Component]
+  1417→
+  1418→  Client Component SSR:
+  1419→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1420→    ./src/app/page.tsx [Client Component SSR]
+  1421→    ./src/app/page.tsx [Server Component]
+  1422→
+  1423→https://nextjs.org/docs/messages/module-not-found
+  1424→
+  1425→
+  1426→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1427→Module not found: Can't resolve './AdventureGame'
+  1428→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1429→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1430→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1431→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1432→ [90m 13 |[39m
+  1433→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1434→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1435→
+  1436→
+  1437→
+  1438→Import traces:
+  1439→  Client Component Browser:
+  1440→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1441→    ./src/app/page.tsx [Client Component Browser]
+  1442→    ./src/app/page.tsx [Server Component]
+  1443→
+  1444→  Client Component SSR:
+  1445→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1446→    ./src/app/page.tsx [Client Component SSR]
+  1447→    ./src/app/page.tsx [Server Component]
+  1448→
+  1449→https://nextjs.org/docs/messages/module-not-found
+  1450→
+  1451→
+  1452→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1453→Module not found: Can't resolve './AdventureGame'
+  1454→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1455→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1456→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1457→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1458→ [90m 13 |[39m
+  1459→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1460→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1461→
+  1462→
+  1463→
+  1464→Import traces:
+  1465→  Client Component Browser:
+  1466→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1467→    ./src/app/page.tsx [Client Component Browser]
+  1468→    ./src/app/page.tsx [Server Component]
+  1469→
+  1470→  Client Component SSR:
+  1471→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1472→    ./src/app/page.tsx [Client Component SSR]
+  1473→    ./src/app/page.tsx [Server Component]
+  1474→
+  1475→https://nextjs.org/docs/messages/module-not-found
+  1476→
+  1477→
+  1478→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1479→Module not found: Can't resolve './AircraftGame'
+  1480→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1481→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1482→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1483→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1484→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1485→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1486→ [90m 13 |[39m[0m
+  1487→
+  1488→
+  1489→
+  1490→Import traces:
+  1491→  Client Component Browser:
+  1492→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1493→    ./src/app/page.tsx [Client Component Browser]
+  1494→    ./src/app/page.tsx [Server Component]
+  1495→
+  1496→  Client Component SSR:
+  1497→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1498→    ./src/app/page.tsx [Client Component SSR]
+  1499→    ./src/app/page.tsx [Server Component]
+  1500→
+  1501→https://nextjs.org/docs/messages/module-not-found
+  1502→
+  1503→
+  1504→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1505→Module not found: Can't resolve './AircraftGame'
+  1506→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1507→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1508→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1509→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1510→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1511→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1512→ [90m 13 |[39m[0m
+  1513→
+  1514→
+  1515→
+  1516→Import traces:
+  1517→  Client Component Browser:
+  1518→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1519→    ./src/app/page.tsx [Client Component Browser]
+  1520→    ./src/app/page.tsx [Server Component]
+  1521→
+  1522→  Client Component SSR:
+  1523→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1524→    ./src/app/page.tsx [Client Component SSR]
+  1525→    ./src/app/page.tsx [Server Component]
+  1526→
+  1527→https://nextjs.org/docs/messages/module-not-found
+  1528→
+  1529→
+  1530→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1531→Module not found: Can't resolve './AircraftGame'
+  1532→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1533→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1534→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1535→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1536→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1537→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1538→ [90m 13 |[39m[0m
+  1539→
+  1540→
+  1541→
+  1542→Import traces:
+  1543→  Client Component Browser:
+  1544→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1545→    ./src/app/page.tsx [Client Component Browser]
+  1546→    ./src/app/page.tsx [Server Component]
+  1547→
+  1548→  Client Component SSR:
+  1549→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1550→    ./src/app/page.tsx [Client Component SSR]
+  1551→    ./src/app/page.tsx [Server Component]
+  1552→
+  1553→https://nextjs.org/docs/messages/module-not-found
+  1554→
+  1555→
+  1556→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1557→Module not found: Can't resolve './AircraftGame'
+  1558→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1559→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1560→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1561→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1562→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1563→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1564→ [90m 13 |[39m[0m
+  1565→
+  1566→
+  1567→
+  1568→Import traces:
+  1569→  Client Component Browser:
+  1570→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1571→    ./src/app/page.tsx [Client Component Browser]
+  1572→    ./src/app/page.tsx [Server Component]
+  1573→
+  1574→  Client Component SSR:
+  1575→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1576→    ./src/app/page.tsx [Client Component SSR]
+  1577→    ./src/app/page.tsx [Server Component]
+  1578→
+  1579→https://nextjs.org/docs/messages/module-not-found
+  1580→
+  1581→
+  1582→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1583→Module not found: Can't resolve './BreakoutGame'
+  1584→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1585→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1586→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1587→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1588→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1589→ [90m 13 |[39m
+  1590→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1591→
+  1592→
+  1593→
+  1594→Import traces:
+  1595→  Client Component Browser:
+  1596→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1597→    ./src/app/page.tsx [Client Component Browser]
+  1598→    ./src/app/page.tsx [Server Component]
+  1599→
+  1600→  Client Component SSR:
+  1601→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1602→    ./src/app/page.tsx [Client Component SSR]
+  1603→    ./src/app/page.tsx [Server Component]
+  1604→
+  1605→https://nextjs.org/docs/messages/module-not-found
+  1606→
+  1607→
+  1608→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1609→Module not found: Can't resolve './BreakoutGame'
+  1610→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1611→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1612→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1613→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1614→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1615→ [90m 13 |[39m
+  1616→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1617→
+  1618→
+  1619→
+  1620→Import traces:
+  1621→  Client Component Browser:
+  1622→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1623→    ./src/app/page.tsx [Client Component Browser]
+  1624→    ./src/app/page.tsx [Server Component]
+  1625→
+  1626→  Client Component SSR:
+  1627→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1628→    ./src/app/page.tsx [Client Component SSR]
+  1629→    ./src/app/page.tsx [Server Component]
+  1630→
+  1631→https://nextjs.org/docs/messages/module-not-found
+  1632→
+  1633→
+  1634→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1635→Module not found: Can't resolve './BreakoutGame'
+  1636→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1637→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1638→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1639→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1640→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1641→ [90m 13 |[39m
+  1642→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1643→
+  1644→
+  1645→
+  1646→Import traces:
+  1647→  Client Component Browser:
+  1648→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1649→    ./src/app/page.tsx [Client Component Browser]
+  1650→    ./src/app/page.tsx [Server Component]
+  1651→
+  1652→  Client Component SSR:
+  1653→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1654→    ./src/app/page.tsx [Client Component SSR]
+  1655→    ./src/app/page.tsx [Server Component]
+  1656→
+  1657→https://nextjs.org/docs/messages/module-not-found
+  1658→
+  1659→
+  1660→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1661→Module not found: Can't resolve './BreakoutGame'
+  1662→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1663→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1664→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1665→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1666→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1667→ [90m 13 |[39m
+  1668→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1669→
+  1670→
+  1671→
+  1672→Import traces:
+  1673→  Client Component Browser:
+  1674→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1675→    ./src/app/page.tsx [Client Component Browser]
+  1676→    ./src/app/page.tsx [Server Component]
+  1677→
+  1678→  Client Component SSR:
+  1679→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1680→    ./src/app/page.tsx [Client Component SSR]
+  1681→    ./src/app/page.tsx [Server Component]
+  1682→
+  1683→https://nextjs.org/docs/messages/module-not-found
+  1684→
+  1685→
+  1686→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1687→Module not found: Can't resolve './AdventureGame'
+  1688→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1689→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1690→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1691→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1692→ [90m 13 |[39m
+  1693→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1694→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1695→
+  1696→
+  1697→
+  1698→Import traces:
+  1699→  Client Component Browser:
+  1700→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1701→    ./src/app/page.tsx [Client Component Browser]
+  1702→    ./src/app/page.tsx [Server Component]
+  1703→
+  1704→  Client Component SSR:
+  1705→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1706→    ./src/app/page.tsx [Client Component SSR]
+  1707→    ./src/app/page.tsx [Server Component]
+  1708→
+  1709→https://nextjs.org/docs/messages/module-not-found
+  1710→
+  1711→
+  1712→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1713→Module not found: Can't resolve './AdventureGame'
+  1714→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1715→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1716→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1717→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1718→ [90m 13 |[39m
+  1719→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1720→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1721→
+  1722→
+  1723→
+  1724→Import traces:
+  1725→  Client Component Browser:
+  1726→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1727→    ./src/app/page.tsx [Client Component Browser]
+  1728→    ./src/app/page.tsx [Server Component]
+  1729→
+  1730→  Client Component SSR:
+  1731→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1732→    ./src/app/page.tsx [Client Component SSR]
+  1733→    ./src/app/page.tsx [Server Component]
+  1734→
+  1735→https://nextjs.org/docs/messages/module-not-found
+  1736→
+  1737→
+  1738→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1739→Module not found: Can't resolve './AdventureGame'
+  1740→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1741→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1742→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1743→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1744→ [90m 13 |[39m
+  1745→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1746→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1747→
+  1748→
+  1749→
+  1750→Import traces:
+  1751→  Client Component Browser:
+  1752→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1753→    ./src/app/page.tsx [Client Component Browser]
+  1754→    ./src/app/page.tsx [Server Component]
+  1755→
+  1756→  Client Component SSR:
+  1757→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1758→    ./src/app/page.tsx [Client Component SSR]
+  1759→    ./src/app/page.tsx [Server Component]
+  1760→
+  1761→https://nextjs.org/docs/messages/module-not-found
+  1762→
+  1763→
+  1764→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1765→Module not found: Can't resolve './AdventureGame'
+  1766→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1767→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1768→[31m[1m>[22m[39m[90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1769→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1770→ [90m 13 |[39m
+  1771→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {
+  1772→ [90m 15 |[39m   [36mconst[39m { setCurrentGame[33m,[39m setCurrentPage } [33m=[39m useSiteStore[33m.[39mgetState()[33m;[39m[0m
+  1773→
+  1774→
+  1775→
+  1776→Import traces:
+  1777→  Client Component Browser:
+  1778→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1779→    ./src/app/page.tsx [Client Component Browser]
+  1780→    ./src/app/page.tsx [Server Component]
+  1781→
+  1782→  Client Component SSR:
+  1783→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1784→    ./src/app/page.tsx [Client Component SSR]
+  1785→    ./src/app/page.tsx [Server Component]
+  1786→
+  1787→https://nextjs.org/docs/messages/module-not-found
+  1788→
+  1789→
+  1790→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1791→Module not found: Can't resolve './AircraftGame'
+  1792→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1793→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1794→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1795→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1796→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1797→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1798→ [90m 13 |[39m[0m
+  1799→
+  1800→
+  1801→
+  1802→Import traces:
+  1803→  Client Component Browser:
+  1804→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1805→    ./src/app/page.tsx [Client Component Browser]
+  1806→    ./src/app/page.tsx [Server Component]
+  1807→
+  1808→  Client Component SSR:
+  1809→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1810→    ./src/app/page.tsx [Client Component SSR]
+  1811→    ./src/app/page.tsx [Server Component]
+  1812→
+  1813→https://nextjs.org/docs/messages/module-not-found
+  1814→
+  1815→
+  1816→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1817→Module not found: Can't resolve './AircraftGame'
+  1818→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1819→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1820→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1821→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1822→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1823→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1824→ [90m 13 |[39m[0m
+  1825→
+  1826→
+  1827→
+  1828→Import traces:
+  1829→  Client Component Browser:
+  1830→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1831→    ./src/app/page.tsx [Client Component Browser]
+  1832→    ./src/app/page.tsx [Server Component]
+  1833→
+  1834→  Client Component SSR:
+  1835→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1836→    ./src/app/page.tsx [Client Component SSR]
+  1837→    ./src/app/page.tsx [Server Component]
+  1838→
+  1839→https://nextjs.org/docs/messages/module-not-found
+  1840→
+  1841→
+  1842→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1843→Module not found: Can't resolve './AircraftGame'
+  1844→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1845→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1846→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1847→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1848→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1849→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1850→ [90m 13 |[39m[0m
+  1851→
+  1852→
+  1853→
+  1854→Import traces:
+  1855→  Client Component Browser:
+  1856→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1857→    ./src/app/page.tsx [Client Component Browser]
+  1858→    ./src/app/page.tsx [Server Component]
+  1859→
+  1860→  Client Component SSR:
+  1861→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1862→    ./src/app/page.tsx [Client Component SSR]
+  1863→    ./src/app/page.tsx [Server Component]
+  1864→
+  1865→https://nextjs.org/docs/messages/module-not-found
+  1866→
+  1867→
+  1868→⨯ ./src/components/games/GamePlayer.tsx:10:1
+  1869→Module not found: Can't resolve './AircraftGame'
+  1870→[0m [90m  8 |[39m [36mimport[39m [33mGame2048[39m [36mfrom[39m [32m'./Game2048'[39m[33m;[39m
+  1871→ [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1872→[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1873→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1874→ [90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1875→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1876→ [90m 13 |[39m[0m
+  1877→
+  1878→
+  1879→
+  1880→Import traces:
+  1881→  Client Component Browser:
+  1882→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1883→    ./src/app/page.tsx [Client Component Browser]
+  1884→    ./src/app/page.tsx [Server Component]
+  1885→
+  1886→  Client Component SSR:
+  1887→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1888→    ./src/app/page.tsx [Client Component SSR]
+  1889→    ./src/app/page.tsx [Server Component]
+  1890→
+  1891→https://nextjs.org/docs/messages/module-not-found
+  1892→
+  1893→
+  1894→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1895→Module not found: Can't resolve './BreakoutGame'
+  1896→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1897→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1898→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1899→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1900→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1901→ [90m 13 |[39m
+  1902→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1903→
+  1904→
+  1905→
+  1906→Import traces:
+  1907→  Client Component Browser:
+  1908→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1909→    ./src/app/page.tsx [Client Component Browser]
+  1910→    ./src/app/page.tsx [Server Component]
+  1911→
+  1912→  Client Component SSR:
+  1913→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1914→    ./src/app/page.tsx [Client Component SSR]
+  1915→    ./src/app/page.tsx [Server Component]
+  1916→
+  1917→https://nextjs.org/docs/messages/module-not-found
+  1918→
+  1919→
+  1920→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1921→Module not found: Can't resolve './BreakoutGame'
+  1922→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1923→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1924→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1925→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1926→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1927→ [90m 13 |[39m
+  1928→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1929→
+  1930→
+  1931→
+  1932→Import traces:
+  1933→  Client Component Browser:
+  1934→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1935→    ./src/app/page.tsx [Client Component Browser]
+  1936→    ./src/app/page.tsx [Server Component]
+  1937→
+  1938→  Client Component SSR:
+  1939→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1940→    ./src/app/page.tsx [Client Component SSR]
+  1941→    ./src/app/page.tsx [Server Component]
+  1942→
+  1943→https://nextjs.org/docs/messages/module-not-found
+  1944→
+  1945→
+  1946→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1947→Module not found: Can't resolve './BreakoutGame'
+  1948→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1949→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1950→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1951→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1952→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1953→ [90m 13 |[39m
+  1954→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1955→
+  1956→
+  1957→
+  1958→Import traces:
+  1959→  Client Component Browser:
+  1960→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1961→    ./src/app/page.tsx [Client Component Browser]
+  1962→    ./src/app/page.tsx [Server Component]
+  1963→
+  1964→  Client Component SSR:
+  1965→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1966→    ./src/app/page.tsx [Client Component SSR]
+  1967→    ./src/app/page.tsx [Server Component]
+  1968→
+  1969→https://nextjs.org/docs/messages/module-not-found
+  1970→
+  1971→
+  1972→⨯ ./src/components/games/GamePlayer.tsx:11:1
+  1973→Module not found: Can't resolve './BreakoutGame'
+  1974→[0m [90m  9 |[39m [36mimport[39m [33mGomokuGame[39m [36mfrom[39m [32m'./GomokuGame'[39m[33m;[39m
+  1975→ [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+  1976→[31m[1m>[22m[39m[90m 11 |[39m [36mimport[39m [33mBreakoutGame[39m [36mfrom[39m [32m'./BreakoutGame'[39m[33m;[39m
+  1977→ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+  1978→ [90m 12 |[39m [36mimport[39m [33mAdventureGame[39m [36mfrom[39m [32m'./AdventureGame'[39m[33m;[39m
+  1979→ [90m 13 |[39m
+  1980→ [90m 14 |[39m [36mconst[39m handleBack [33m=[39m () [33m=>[39m {[0m
+  1981→
+  1982→
+  1983→
+  1984→Import traces:
+  1985→  Client Component Browser:
+  1986→    ./src/components/games/GamePlayer.tsx [Client Component Browser]
+  1987→    ./src/app/page.tsx [Client Component Browser]
+  1988→    ./src/app/page.tsx [Server Component]
+  1989→
+  1990→  Client Component SSR:
+  1991→    ./src/components/games/GamePlayer.tsx [Client Component SSR]
+  1992→    ./src/app/page.tsx [Client Component SSR]
+  1993→    ./src/app/page.tsx [Server Component]
+  1994→
+  1995→https://nextjs.org/docs/messages/module-not-found
+  1996→
+  1997→
+  1998→⨯ ./src/components/games/GamePlayer.tsx:12:1
+  1999→Module not found: Can't resolve './AdventureGame'
+  2000→[0m [90m 10 |[39m [36mimport[39m [33mAircraftGame[39m [36mfrom[39m [32m'./AircraftGame'[39m[33m;[39m
+
+[showing lines 1-2000 of 3698; use offset=2001 with limit to continue reading]

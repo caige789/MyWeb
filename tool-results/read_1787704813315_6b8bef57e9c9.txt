@@ -1,0 +1,999 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { ArrowLeft, Trophy } from 'lucide-react';
+     6→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     7→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+     8→
+     9→const aircraftControlsInfo: GameControlsInfo = {
+    10→  gameName: '飞机大战',
+    11→  desktop: [
+    12→    { action: '鼠标移动', keys: [], description: '移动飞机左右位置' },
+    13→    { action: '空格 / 鼠标点击', keys: ['Space'], description: '发射子弹' },
+    14→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    15→  ],
+    16→  mobile: [
+    17→    { action: '触摸滑动', keys: [], description: '拖动手指控制飞机移动' },
+    18→    { action: '自动发射', keys: [], description: '触摸屏幕时自动连续发射子弹' },
+    19→  ],
+    20→  rules: ['击落敌机获得分数，不同敌机分值不同', '被敌机或子弹碰到则损失生命值', '收集掉落道具可以获得额外能力', '每波敌人数量和速度逐渐增加'],
+    21→  tips: ['保持在屏幕中间，留出闪避空间', '注意躲避密集的子弹群', '道具效果有限时，抓紧利用增强期'],
+    22→};
+    23→
+    24→/** 组件属性接口 */
+    25→interface AircraftGameProps {
+    26→  onBack: () => void;
+    27→}
+    28→
+    29→/** 游戏逻辑画布逻辑宽度 */
+    30→const LOGIC_W = 480;
+    31→/** 游戏逻辑画布逻辑高度 */
+    32→const LOGIC_H = 640;
+    33→/** 游戏标识（用于API存取最高分） */
+    34→const GAME_NAME = 'aircraft';
+    35→/** 玩家飞机宽度 */
+    36→const PLAYER_W = 40;
+    37→/** 玩家飞机高度 */
+    38→const PLAYER_H = 48;
+    39→/** 玩家移动速度 */
+    40→const PLAYER_SPEED = 6;
+    41→/** 子弹宽度 */
+    42→const BULLET_W = 4;
+    43→/** 子弹高度 */
+    44→const BULLET_H = 14;
+    45→/** 子弹发射间隔（帧数） */
+    46→const SHOOT_INTERVAL = 10;
+    47→/** 双发子弹发射间隔 */
+    48→const DUAL_SHOOT_INTERVAL = 8;
+    49→/** 每次升级需要击落的敌机数 */
+    50→const LEVEL_UP_KILLS = 15;
+    51→/** 道具掉落概率（0~1） */
+    52→const POWERUP_CHANCE = 0.12;
+    53→/** 护盾持续帧数（约5秒） */
+    54→const SHIELD_DURATION = 300;
+    55→/** 双发子弹持续帧数（约8秒） */
+    56→const DUAL_SHOT_DURATION = 480;
+    57→
+    58→/** 敌机类型枚举 */
+    59→enum EnemyType {
+    60→  Small = 'small',
+    61→  Medium = 'medium',
+    62→  Large = 'large',
+    63→}
+    64→
+    65→/** 敌机配置表 */
+    66→const ENEMY_CONFIG = {
+    67→  [EnemyType.Small]:  { w: 28, h: 28, hp: 1, score: 10, speed: 2.5 },
+    68→  [EnemyType.Medium]: { w: 38, h: 38, hp: 3, score: 30, speed: 1.8 },
+    69→  [EnemyType.Large]:  { w: 52, h: 52, hp: 6, score: 50, speed: 1.2 },
+    70→};
+    71→
+    72→/** 道具类型枚举 */
+    73→enum PowerUpType {
+    74→  DualShot = 'dual',
+    75→  Shield = 'shield',
+    76→}
+    77→
+    78→/** 星星对象 */
+    79→interface Star {
+    80→  x: number;
+    81→  y: number;
+    82→  r: number;
+    83→  alpha: number;
+    84→  twinkleSpeed: number;
+    85→  phase: number;
+    86→}
+    87→
+    88→/** 玩家对象 */
+    89→interface Player {
+    90→  x: number;
+    91→  y: number;
+    92→  shieldTimer: number;
+    93→  dualShotTimer: number;
+    94→}
+    95→
+    96→/** 子弹对象 */
+    97→interface Bullet {
+    98→  x: number;
+    99→  y: number;
+   100→  vy: number;
+   101→}
+   102→
+   103→/** 敌机对象 */
+   104→interface Enemy {
+   105→  x: number;
+   106→  y: number;
+   107→  type: EnemyType;
+   108→  hp: number;
+   109→  maxHp: number;
+   110→  speed: number;
+   111→  w: number;
+   112→  h: number;
+   113→  score: number;
+   114→}
+   115→
+   116→/** 粒子对象（爆炸效果） */
+   117→interface Particle {
+   118→  x: number;
+   119→  y: number;
+   120→  vx: number;
+   121→  vy: number;
+   122→  life: number;
+   123→  maxLife: number;
+   124→  color: string;
+   125→  r: number;
+   126→}
+   127→
+   128→/** 道具对象 */
+   129→interface PowerUp {
+   130→  x: number;
+   131→  y: number;
+   132→  type: PowerUpType;
+   133→  phase: number;
+   134→}
+   135→
+   136→/** 游戏状态类型 */
+   137→type GameStatus = 'idle' | 'playing' | 'over';
+   138→
+   139→/** 生成随机星星数组 */
+   140→function createStars(count: number): Star[] {
+   141→  const stars: Star[] = [];
+   142→  for (let i = 0; i < count; i++) {
+   143→    stars.push({
+   144→      x: Math.random() * LOGIC_W,
+   145→      y: Math.random() * LOGIC_H,
+   146→      r: Math.random() * 1.5 + 0.5,
+   147→      alpha: Math.random() * 0.6 + 0.4,
+   148→      twinkleSpeed: Math.random() * 0.03 + 0.01,
+   149→      phase: Math.random() * Math.PI * 2,
+   150→    });
+   151→  }
+   152→  return stars;
+   153→}
+   154→
+   155→/** 绘制玩家飞机 */
+   156→function drawPlayer(ctx: CanvasRenderingContext2D, p: Player, frame: number) {
+   157→  ctx.save();
+   158→  ctx.translate(p.x, p.y);
+   159→
+   160→  // 绘制尾焰动画
+   161→  const flameLen = 12 + Math.sin(frame * 0.5) * 4;
+   162→  const flameW = 8 + Math.sin(frame * 0.7) * 2;
+   163→  const flameGrad = ctx.createLinearGradient(0, PLAYER_H / 2, 0, PLAYER_H / 2 + flameLen);
+   164→  flameGrad.addColorStop(0, '#60a5fa');
+   165→  flameGrad.addColorStop(0.4, '#f97316');
+   166→  flameGrad.addColorStop(1, 'rgba(239,68,68,0)');
+   167→  ctx.fillStyle = flameGrad;
+   168→  ctx.beginPath();
+   169→  ctx.moveTo(-flameW, PLAYER_H / 2 - 2);
+   170→  ctx.lineTo(flameW, PLAYER_H / 2 - 2);
+   171→  ctx.lineTo(0, PLAYER_H / 2 + flameLen);
+   172→  ctx.closePath();
+   173→  ctx.fill();
+   174→
+   175→  // 绘制飞机机身
+   176→  ctx.fillStyle = '#e0f2fe';
+   177→  ctx.beginPath();
+   178→  ctx.moveTo(0, -PLAYER_H / 2);
+   179→  ctx.lineTo(-PLAYER_W / 2, PLAYER_H / 2 - 6);
+   180→  ctx.lineTo(-PLAYER_W / 4, PLAYER_H / 2);
+   181→  ctx.lineTo(PLAYER_W / 4, PLAYER_H / 2);
+   182→  ctx.lineTo(PLAYER_W / 2, PLAYER_H / 2 - 6);
+   183→  ctx.closePath();
+   184→  ctx.fill();
+   185→
+   186→  // 机翼装饰线
+   187→  ctx.strokeStyle = '#3b82f6';
+   188→  ctx.lineWidth = 1.5;
+   189→  ctx.beginPath();
+   190→  ctx.moveTo(-PLAYER_W / 2 + 4, PLAYER_H / 2 - 10);
+   191→  ctx.lineTo(0, -PLAYER_H / 2 + 10);
+   192→  ctx.lineTo(PLAYER_W / 2 - 4, PLAYER_H / 2 - 10);
+   193→  ctx.stroke();
+   194→
+   195→  // 座舱
+   196→  ctx.fillStyle = '#93c5fd';
+   197→  ctx.beginPath();
+   198→  ctx.ellipse(0, -PLAYER_H / 4, 4, 7, 0, 0, Math.PI * 2);
+   199→  ctx.fill();
+   200→
+   201→  // 如果有护盾，绘制护盾效果
+   202→  if (p.shieldTimer > 0) {
+   203→    const shieldAlpha = p.shieldTimer < 60 ? (Math.sin(frame * 0.3) * 0.3 + 0.4) : 0.5;
+   204→    ctx.strokeStyle = `rgba(74, 222, 128, ${shieldAlpha})`;
+   205→    ctx.lineWidth = 2.5;
+   206→    ctx.beginPath();
+   207→    ctx.ellipse(0, 0, PLAYER_W / 2 + 8, PLAYER_H / 2 + 8, 0, 0, Math.PI * 2);
+   208→    ctx.stroke();
+   209→  }
+   210→
+   211→  ctx.restore();
+   212→}
+   213→
+   214→/** 绘制小型敌机（红色三角形） */
+   215→function drawSmallEnemy(ctx: CanvasRenderingContext2D, e: Enemy) {
+   216→  ctx.save();
+   217→  ctx.translate(e.x, e.y);
+   218→  ctx.fillStyle = '#ef4444';
+   219→  ctx.beginPath();
+   220→  ctx.moveTo(0, e.h / 2);
+   221→  ctx.lineTo(-e.w / 2, -e.h / 2);
+   222→  ctx.lineTo(e.w / 2, -e.h / 2);
+   223→  ctx.closePath();
+   224→  ctx.fill();
+   225→  // 内部线条装饰
+   226→  ctx.strokeStyle = '#fca5a5';
+   227→  ctx.lineWidth = 1;
+   228→  ctx.beginPath();
+   229→  ctx.moveTo(0, e.h / 2 - 6);
+   230→  ctx.lineTo(-e.w / 4, -e.h / 4);
+   231→  ctx.moveTo(0, e.h / 2 - 6);
+   232→  ctx.lineTo(e.w / 4, -e.h / 4);
+   233→  ctx.stroke();
+   234→  ctx.restore();
+   235→}
+   236→
+   237→/** 绘制中型敌机（橙色菱形） */
+   238→function drawMediumEnemy(ctx: CanvasRenderingContext2D, e: Enemy) {
+   239→  ctx.save();
+   240→  ctx.translate(e.x, e.y);
+   241→  ctx.fillStyle = '#f97316';
+   242→  ctx.beginPath();
+   243→  ctx.moveTo(0, -e.h / 2);
+   244→  ctx.lineTo(e.w / 2, 0);
+   245→  ctx.lineTo(0, e.h / 2);
+   246→  ctx.lineTo(-e.w / 2, 0);
+   247→  ctx.closePath();
+   248→  ctx.fill();
+   249→  // 装饰
+   250→  ctx.strokeStyle = '#fdba74';
+   251→  ctx.lineWidth = 1.5;
+   252→  ctx.beginPath();
+   253→  ctx.moveTo(-e.w / 4, 0);
+   254→  ctx.lineTo(0, -e.h / 4);
+   255→  ctx.lineTo(e.w / 4, 0);
+   256→  ctx.lineTo(0, e.h / 4);
+   257→  ctx.closePath();
+   258→  ctx.stroke();
+   259→  ctx.restore();
+   260→}
+   261→
+   262→/** 绘制大型敌机（紫色六边形） */
+   263→function drawLargeEnemy(ctx: CanvasRenderingContext2D, e: Enemy) {
+   264→  ctx.save();
+   265→  ctx.translate(e.x, e.y);
+   266→  const r = e.w / 2;
+   267→  ctx.fillStyle = '#a855f7';
+   268→  ctx.beginPath();
+   269→  for (let i = 0; i < 6; i++) {
+   270→    const angle = (Math.PI / 3) * i - Math.PI / 2;
+   271→    const px = Math.cos(angle) * r;
+   272→    const py = Math.sin(angle) * r;
+   273→    if (i === 0) ctx.moveTo(px, py);
+   274→    else ctx.lineTo(px, py);
+   275→  }
+   276→  ctx.closePath();
+   277→  ctx.fill();
+   278→  // 内部装饰
+   279→  ctx.strokeStyle = '#d8b4fe';
+   280→  ctx.lineWidth = 1.5;
+   281→  ctx.beginPath();
+   282→  for (let i = 0; i < 6; i++) {
+   283→    const angle = (Math.PI / 3) * i - Math.PI / 2;
+   284→    const px = Math.cos(angle) * (r * 0.55);
+   285→    const py = Math.sin(angle) * (r * 0.55);
+   286→    if (i === 0) ctx.moveTo(px, py);
+   287→    else ctx.lineTo(px, py);
+   288→  }
+   289→  ctx.closePath();
+   290→  ctx.stroke();
+   291→  // 中心点
+   292→  ctx.fillStyle = '#e9d5ff';
+   293→  ctx.beginPath();
+   294→  ctx.arc(0, 0, 3, 0, Math.PI * 2);
+   295→  ctx.fill();
+   296→  ctx.restore();
+   297→}
+   298→
+   299→/** 根据敌机类型分发绘制 */
+   300→function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy) {
+   301→  switch (e.type) {
+   302→    case EnemyType.Small: drawSmallEnemy(ctx, e); break;
+   303→    case EnemyType.Medium: drawMediumEnemy(ctx, e); break;
+   304→    case EnemyType.Large: drawLargeEnemy(ctx, e); break;
+   305→  }
+   306→  // 血条（非满血时显示）
+   307→  if (e.hp < e.maxHp) {
+   308→    const barW = e.w * 0.8;
+   309→    const barH = 3;
+   310→    const barX = e.x - barW / 2;
+   311→    const barY = e.y - e.h / 2 - 6;
+   312→    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+   313→    ctx.fillRect(barX, barY, barW, barH);
+   314→    ctx.fillStyle = '#22c55e';
+   315→    ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH);
+   316→  }
+   317→}
+   318→
+   319→/** 创建爆炸粒子 */
+   320→function createExplosion(x: number, y: number, color: string, count: number): Particle[] {
+   321→  const particles: Particle[] = [];
+   322→  for (let i = 0; i < count; i++) {
+   323→    const angle = Math.random() * Math.PI * 2;
+   324→    const speed = Math.random() * 3 + 1;
+   325→    particles.push({
+   326→      x,
+   327→      y,
+   328→      vx: Math.cos(angle) * speed,
+   329→      vy: Math.sin(angle) * speed,
+   330→      life: Math.random() * 20 + 15,
+   331→      maxLife: 35,
+   332→      color,
+   333→      r: Math.random() * 3 + 1,
+   334→    });
+   335→  }
+   336→  return particles;
+   337→}
+   338→
+   339→/** 矩形碰撞检测 */
+   340→function rectCollide(
+   341→  ax: number, ay: number, aw: number, ah: number,
+   342→  bx: number, by: number, bw: number, bh: number
+   343→): boolean {
+   344→  return Math.abs(ax - bx) < (aw + bw) / 2 && Math.abs(ay - by) < (ah + bh) / 2;
+   345→}
+   346→
+   347→export default function AircraftGame({ onBack }: AircraftGameProps) {
+   348→  // Canvas 引用
+   349→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   350→  // 容器引用（用于自适应宽度）
+   351→  const containerRef = useRef<HTMLDivElement>(null);
+   352→  // 动画帧ID
+   353→  const rafRef = useRef<number>(0);
+   354→  // 当前帧计数
+   355→  const frameRef = useRef<number>(0);
+   356→  // 游戏状态
+   357→  const statusRef = useRef<GameStatus>('idle');
+   358→  // 玩家
+   359→  const playerRef = useRef<Player>({ x: LOGIC_W / 2, y: LOGIC_H - 60, shieldTimer: 0, dualShotTimer: 0 });
+   360→  // 子弹数组
+   361→  const bulletsRef = useRef<Bullet[]>([]);
+   362→  // 敌机数组
+   363→  const enemiesRef = useRef<Enemy[]>([]);
+   364→  // 粒子数组
+   365→  const particlesRef = useRef<Particle[]>([]);
+   366→  // 道具数组
+   367→  const powerupsRef = useRef<PowerUp[]>([]);
+   368→  // 星星背景
+   369→  const starsRef = useRef<Star[]>(createStars(80));
+   370→  // 分数
+   371→  const scoreRef = useRef<number>(0);
+   372→  // 击杀数
+   373→  const killCountRef = useRef<number>(0);
+   374→  // 当前难度等级
+   375→  const levelRef = useRef<number>(1);
+   376→  // 上次射击帧
+   377→  const lastShootRef = useRef<number>(0);
+   378→  // 鼠标/触摸X坐标（null表示未激活）
+   379→  const inputXRef = useRef<number | null>(null);
+   380→  // 是否为触屏设备
+   381→  const isMobileRef = useRef<boolean>(false);
+   382→  // 发射子弹的请求（桌面端点击/空格触发）
+   383→  const shootRequestRef = useRef<boolean>(false);
+   384→  // 最高分
+   385→  const highScoreRef = useRef<number>(0);
+   386→
+   387→  // UI状态
+   388→  const [score, setScore] = useState<number>(0);
+   389→  const [highScore, setHighScore] = useState<number>(0);
+   390→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   391→  const [isNewRecord, setIsNewRecord] = useState<boolean>(false);
+   392→  const [level, setLevel] = useState<number>(1);
+   393→  const [loadingHighScore, setLoadingHighScore] = useState<boolean>(true);
+   394→  const [paused, setPaused] = useState<boolean>(false);
+   395→  const pausedRef = useRef<boolean>(false);
+   396→
+   397→  /** 根据难度等级生成敌机 */
+   398→  const spawnEnemy = useCallback(() => {
+   399→    const lv = levelRef.current;
+   400→    // 根据等级决定大型敌机出现概率
+   401→    const rand = Math.random();
+   402→    let type: EnemyType;
+   403→    const largeChance = Math.min(0.1 + lv * 0.05, 0.4);
+   404→    const mediumChance = Math.min(0.2 + lv * 0.04, 0.5);
+   405→
+   406→    if (rand < largeChance) {
+   407→      type = EnemyType.Large;
+   408→    } else if (rand < largeChance + mediumChance) {
+   409→      type = EnemyType.Medium;
+   410→    } else {
+   411→      type = EnemyType.Small;
+   412→    }
+   413→
+   414→    const cfg = ENEMY_CONFIG[type];
+   415→    const speedMul = 1 + (lv - 1) * 0.15;
+   416→    const x = Math.random() * (LOGIC_W - cfg.w - 20) + cfg.w / 2 + 10;
+   417→
+   418→    enemiesRef.current.push({
+   419→      x,
+   420→      y: -cfg.h,
+   421→      type,
+   422→      hp: cfg.hp,
+   423→      maxHp: cfg.hp,
+   424→      speed: cfg.speed * speedMul,
+   425→      w: cfg.w,
+   426→      h: cfg.h,
+   427→      score: cfg.score,
+   428→    });
+   429→  }, []);
+   430→
+   431→  /** 发射子弹 */
+   432→  const shoot = useCallback(() => {
+   433→    const p = playerRef.current;
+   434→    const isDual = p.dualShotTimer > 0;
+   435→    const bulletSpeed = -8;
+   436→
+   437→    if (isDual) {
+   438→      // 双发子弹：左右偏移
+   439→      bulletsRef.current.push(
+   440→        { x: p.x - 10, y: p.y - PLAYER_H / 2, vy: bulletSpeed },
+   441→        { x: p.x + 10, y: p.y - PLAYER_H / 2, vy: bulletSpeed },
+   442→      );
+   443→    } else {
+   444→      bulletsRef.current.push(
+   445→        { x: p.x, y: p.y - PLAYER_H / 2, vy: bulletSpeed },
+   446→      );
+   447→    }
+   448→  }, []);
+   449→
+   450→  /** 获取生成敌机的间隔帧数 */
+   451→  const getSpawnInterval = useCallback(() => {
+   452→    const lv = levelRef.current;
+   453→    // 初始每45帧生成一个，最少每15帧
+   454→    return Math.max(45 - (lv - 1) * 4, 15);
+   455→  }, []);
+   456→
+   457→  /** 游戏主循环 */
+   458→  const gameLoop = useCallback(() => {
+   459→    const canvas = canvasRef.current;
+   460→    if (!canvas) return;
+   461→    const ctx = canvas.getContext('2d');
+   462→    if (!ctx) return;
+   463→
+   464→    // Set transform to map LOGIC_W x LOGIC_H to canvas buffer
+   465→    ctx.setTransform(canvas.width / LOGIC_W, 0, 0, canvas.height / LOGIC_H, 0, 0);
+   466→
+   467→    const frame = frameRef.current;
+   468→    frameRef.current++;
+   469→    const p = playerRef.current;
+   470→
+   471→    // ==== 更新逻辑 ====
+   472→
+   473→    // 更新星星闪烁
+   474→    starsRef.current.forEach((s) => {
+   475→      s.phase += s.twinkleSpeed;
+   476→    });
+   477→
+   478→    if (statusRef.current === 'playing' && !pausedRef.current) {
+   479→      // 移动玩家（根据输入坐标）
+   480→      if (inputXRef.current !== null) {
+   481→        const target = inputXRef.current;
+   482→        const diff = target - p.x;
+   483→        // 平滑跟随
+   484→        if (Math.abs(diff) > 2) {
+   485→          p.x += diff * 0.15;
+   486→        } else {
+   487→          p.x = target;
+   488→        }
+   489→      }
+   490→      // 限制玩家在画布内
+   491→      p.x = Math.max(PLAYER_W / 2, Math.min(LOGIC_W - PLAYER_W / 2, p.x));
+   492→
+   493→      // 更新计时器
+   494→      if (p.shieldTimer > 0) p.shieldTimer--;
+   495→      if (p.dualShotTimer > 0) p.dualShotTimer--;
+   496→
+   497→      // 发射子弹
+   498→      const isMobile = isMobileRef.current;
+   499→      const interval = p.dualShotTimer > 0 ? DUAL_SHOOT_INTERVAL : SHOOT_INTERVAL;
+   500→      // 手机端自动发射，桌面端需要点击/空格
+   501→      if (isMobile) {
+   502→        if (frame - lastShootRef.current >= interval) {
+   503→          shoot();
+   504→          lastShootRef.current = frame;
+   505→        }
+   506→      } else {
+   507→        if (shootRequestRef.current) {
+   508→          if (frame - lastShootRef.current >= interval) {
+   509→            shoot();
+   510→            lastShootRef.current = frame;
+   511→          }
+   512→        }
+   513→      }
+   514→      shootRequestRef.current = false;
+   515→
+   516→      // 生成敌机
+   517→      const spawnInterval = getSpawnInterval();
+   518→      if (frame % spawnInterval === 0) {
+   519→        spawnEnemy();
+   520→      }
+   521→
+   522→      // 更新子弹位置
+   523→      bulletsRef.current = bulletsRef.current.filter((b) => {
+   524→        b.y += b.vy;
+   525→        return b.y > -BULLET_H;
+   526→      });
+   527→
+   528→      // 更新敌机位置
+   529→      enemiesRef.current = enemiesRef.current.filter((e) => {
+   530→        e.y += e.speed;
+   531→        return e.y < LOGIC_H + e.h;
+   532→      });
+   533→
+   534→      // 更新道具位置
+   535→      powerupsRef.current = powerupsRef.current.filter((pw) => {
+   536→        pw.y += 2;
+   537→        pw.phase += 0.1;
+   538→        return pw.y < LOGIC_H + 20;
+   539→      });
+   540→
+   541→      // 子弹-敌机碰撞检测
+   542→      const bullets = bulletsRef.current;
+   543→      const enemies = enemiesRef.current;
+   544→      const hitBullets = new Set<number>();
+   545→      const hitEnemies = new Set<number>();
+   546→
+   547→      for (let bi = 0; bi < bullets.length; bi++) {
+   548→        const b = bullets[bi];
+   549→        for (let ei = 0; ei < enemies.length; ei++) {
+   550→          if (hitEnemies.has(ei)) continue;
+   551→          const e = enemies[ei];
+   552→          if (rectCollide(b.x, b.y, BULLET_W, BULLET_H, e.x, e.y, e.w, e.h)) {
+   553→            hitBullets.add(bi);
+   554→            e.hp--;
+   555→            if (e.hp <= 0) {
+   556→              hitEnemies.add(ei);
+   557→              scoreRef.current += e.score;
+   558→              killCountRef.current++;
+   559→              setScore(scoreRef.current);
+   560→
+   561→              // 爆炸粒子
+   562→              const expColor = e.type === EnemyType.Small ? '#ef4444'
+   563→                : e.type === EnemyType.Medium ? '#f97316' : '#a855f7';
+   564→              const expCount = e.type === EnemyType.Large ? 20 : e.type === EnemyType.Medium ? 14 : 8;
+   565→              particlesRef.current.push(...createExplosion(e.x, e.y, expColor, expCount));
+   566→
+   567→              // 道具掉落
+   568→              if (Math.random() < POWERUP_CHANCE) {
+   569→                const pwType = Math.random() < 0.5 ? PowerUpType.DualShot : PowerUpType.Shield;
+   570→                powerupsRef.current.push({ x: e.x, y: e.y, type: pwType, phase: 0 });
+   571→              }
+   572→
+   573→              // 检查升级
+   574→              if (killCountRef.current % LEVEL_UP_KILLS === 0) {
+   575→                levelRef.current++;
+   576→                setLevel(levelRef.current);
+   577→              }
+   578→            } else {
+   579→              // 敌机受伤但没死，小爆炸
+   580→              particlesRef.current.push(...createExplosion(b.x, b.y, '#fbbf24', 3));
+   581→            }
+   582→            break;
+   583→          }
+   584→        }
+   585→      }
+   586→
+   587→      // 移除被击中的子弹和敌机
+   588→      bulletsRef.current = bullets.filter((_, i) => !hitBullets.has(i));
+   589→      enemiesRef.current = enemies.filter((_, i) => !hitEnemies.has(i));
+   590→
+   591→      // 敌机-玩家碰撞检测
+   592→      if (p.shieldTimer <= 0) {
+   593→        for (const e of enemiesRef.current) {
+   594→          if (rectCollide(p.x, p.y, PLAYER_W * 0.7, PLAYER_H * 0.7, e.x, e.y, e.w, e.h)) {
+   595→            // 玩家被撞，游戏结束
+   596→            statusRef.current = 'over';
+   597→            setGameStatus('over');
+   598→            // 玩家爆炸
+   599→            particlesRef.current.push(...createExplosion(p.x, p.y, '#60a5fa', 25));
+   600→            break;
+   601→          }
+   602→        }
+   603→      }
+   604→
+   605→      // 道具-玩家碰撞检测
+   606→      if (statusRef.current === 'playing') {
+   607→        powerupsRef.current = powerupsRef.current.filter((pw) => {
+   608→          if (rectCollide(p.x, p.y, PLAYER_W, PLAYER_H, pw.x, pw.y, 24, 24)) {
+   609→            if (pw.type === PowerUpType.DualShot) {
+   610→              p.dualShotTimer = DUAL_SHOT_DURATION;
+   611→            } else if (pw.type === PowerUpType.Shield) {
+   612→              p.shieldTimer = SHIELD_DURATION;
+   613→            }
+   614→            // 拾取粒子
+   615→            const pColor = pw.type === PowerUpType.DualShot ? '#3b82f6' : '#22c55e';
+   616→            particlesRef.current.push(...createExplosion(pw.x, pw.y, pColor, 10));
+   617→            return false;
+   618→          }
+   619→          return true;
+   620→        });
+   621→      }
+   622→
+   623→      // 游戏结束时提交分数
+   624→      if (statusRef.current === 'over') {
+   625→        if (scoreRef.current > highScoreRef.current) {
+   626→          setIsNewRecord(true);
+   627→          fetch('/api/games/scores', {
+   628→            method: 'POST',
+   629→            headers: { 'Content-Type': 'application/json' },
+   630→            body: JSON.stringify({ game: GAME_NAME, score: scoreRef.current }),
+   631→          })
+   632→            .then((r) => r.json())
+   633→            .then((data) => {
+   634→              if (data.data?.score !== undefined) {
+   635→                setHighScore(data.data.score);
+   636→                highScoreRef.current = data.data.score;
+   637→              }
+   638→            })
+   639→            .catch(() => {});
+   640→        }
+   641→      }
+   642→    }
+   643→
+   644→    // 更新粒子
+   645→    particlesRef.current = particlesRef.current.filter((pt) => {
+   646→      pt.x += pt.vx;
+   647→      pt.y += pt.vy;
+   648→      pt.life--;
+   649→      pt.vx *= 0.97;
+   650→      pt.vy *= 0.97;
+   651→      return pt.life > 0;
+   652→    });
+   653→
+   654→    // ==== 绘制逻辑 ====
+   655→
+   656→    // 深蓝色星空背景
+   657→    const bgGrad = ctx.createLinearGradient(0, 0, 0, LOGIC_H);
+   658→    bgGrad.addColorStop(0, '#0a0e27');
+   659→    bgGrad.addColorStop(0.5, '#0f1638');
+   660→    bgGrad.addColorStop(1, '#0a0e27');
+   661→    ctx.fillStyle = bgGrad;
+   662→    ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+   663→
+   664→    // 绘制星星
+   665→    starsRef.current.forEach((s) => {
+   666→      const alpha = s.alpha * (0.5 + Math.sin(s.phase) * 0.5);
+   667→      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+   668→      ctx.beginPath();
+   669→      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+   670→      ctx.fill();
+   671→    });
+   672→
+   673→    // 绘制道具
+   674→    powerupsRef.current.forEach((pw) => {
+   675→      const glow = 0.5 + Math.sin(pw.phase) * 0.3;
+   676→      const color = pw.type === PowerUpType.DualShot ? `rgba(59, 130, 246, ${glow})` : `rgba(34, 197, 94, ${glow})`;
+   677→      const solidColor = pw.type === PowerUpType.DualShot ? '#3b82f6' : '#22c55e';
+   678→      // 外圈光晕
+   679→      ctx.fillStyle = color;
+   680→      ctx.beginPath();
+   681→      ctx.arc(pw.x, pw.y, 14, 0, Math.PI * 2);
+   682→      ctx.fill();
+   683→      // 内圈实心
+   684→      ctx.fillStyle = solidColor;
+   685→      ctx.beginPath();
+   686→      ctx.arc(pw.x, pw.y, 8, 0, Math.PI * 2);
+   687→      ctx.fill();
+   688→      // 图标文字
+   689→      ctx.fillStyle = '#ffffff';
+   690→      ctx.font = 'bold 10px sans-serif';
+   691→      ctx.textAlign = 'center';
+   692→      ctx.textBaseline = 'middle';
+   693→      ctx.fillText(pw.type === PowerUpType.DualShot ? 'D' : 'S', pw.x, pw.y);
+   694→    });
+   695→
+   696→    // 绘制子弹（蓝色光束）
+   697→    ctx.shadowColor = '#3b82f6';
+   698→    ctx.shadowBlur = 6;
+   699→    ctx.fillStyle = '#93c5fd';
+   700→    bulletsRef.current.forEach((b) => {
+   701→      ctx.fillRect(b.x - BULLET_W / 2, b.y - BULLET_H / 2, BULLET_W, BULLET_H);
+   702→    });
+   703→    ctx.shadowBlur = 0;
+   704→
+   705→    // 绘制敌机
+   706→    enemiesRef.current.forEach((e) => drawEnemy(ctx, e));
+   707→
+   708→    // 绘制粒子
+   709→    particlesRef.current.forEach((pt) => {
+   710→      const alpha = pt.life / pt.maxLife;
+   711→      ctx.globalAlpha = alpha;
+   712→      ctx.fillStyle = pt.color;
+   713→      ctx.beginPath();
+   714→      ctx.arc(pt.x, pt.y, pt.r * alpha, 0, Math.PI * 2);
+   715→      ctx.fill();
+   716→    });
+   717→    ctx.globalAlpha = 1;
+   718→
+   719→    // 绘制玩家（仅非死亡状态）
+   720→    if (statusRef.current !== 'over') {
+   721→      drawPlayer(ctx, p, frame);
+   722→    }
+   723→
+   724→    // 绘制状态覆盖层
+   725→    if (statusRef.current === 'idle') {
+   726→      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+   727→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+   728→      ctx.fillStyle = '#ffffff';
+   729→      ctx.font = 'bold 28px sans-serif';
+   730→      ctx.textAlign = 'center';
+   731→      ctx.textBaseline = 'middle';
+   732→      ctx.fillText('飞机大战', LOGIC_W / 2, LOGIC_H / 2 - 30);
+   733→      ctx.font = '16px sans-serif';
+   734→      ctx.fillStyle = '#94a3b8';
+   735→      ctx.fillText('点击下方按钮开始', LOGIC_W / 2, LOGIC_H / 2 + 15);
+   736→    }
+   737→
+   738→    if (pausedRef.current && statusRef.current === 'playing') {
+   739→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+   740→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+   741→      ctx.fillStyle = '#ffffff';
+   742→      ctx.font = 'bold 32px sans-serif';
+   743→      ctx.textAlign = 'center';
+   744→      ctx.textBaseline = 'middle';
+   745→      ctx.fillText('已暂停', LOGIC_W / 2, LOGIC_H / 2 - 10);
+   746→      ctx.font = '16px sans-serif';
+   747→      ctx.fillStyle = '#94a3b8';
+   748→      ctx.fillText('按 Esc 继续', LOGIC_W / 2, LOGIC_H / 2 + 25);
+   749→    }
+   750→
+   751→    if (statusRef.current === 'over') {
+   752→      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+   753→      ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+   754→      ctx.fillStyle = '#ffffff';
+   755→      ctx.font = 'bold 32px sans-serif';
+   756→      ctx.textAlign = 'center';
+   757→      ctx.textBaseline = 'middle';
+   758→      ctx.fillText('游戏结束', LOGIC_W / 2, LOGIC_H / 2 - 40);
+   759→      ctx.font = '20px sans-serif';
+   760→      ctx.fillStyle = '#fbbf24';
+   761→      ctx.fillText(`得分: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 5);
+   762→      ctx.font = '14px sans-serif';
+   763→      ctx.fillStyle = '#94a3b8';
+   764→      ctx.fillText('点击重新开始', LOGIC_W / 2, LOGIC_H / 2 + 45);
+   765→    }
+   766→
+   767→    // 继续下一帧
+   768→    rafRef.current = requestAnimationFrame(gameLoop);
+   769→  }, [shoot, spawnEnemy, getSpawnInterval]);
+   770→
+   771→  /** 开始/重新开始游戏 */
+   772→  const startGame = useCallback(() => {
+   773→    // 重置所有游戏状态
+   774→    playerRef.current = { x: LOGIC_W / 2, y: LOGIC_H - 60, shieldTimer: 0, dualShotTimer: 0 };
+   775→    bulletsRef.current = [];
+   776→    enemiesRef.current = [];
+   777→    particlesRef.current = [];
+   778→    powerupsRef.current = [];
+   779→    scoreRef.current = 0;
+   780→    killCountRef.current = 0;
+   781→    levelRef.current = 1;
+   782→    frameRef.current = 0;
+   783→    lastShootRef.current = 0;
+   784→    inputXRef.current = null;
+   785→    shootRequestRef.current = false;
+   786→
+   787→    setScore(0);
+   788→    setLevel(1);
+   789→    setIsNewRecord(false);
+   790→    pausedRef.current = false;
+   791→    setPaused(false);
+   792→    statusRef.current = 'playing';
+   793→    setGameStatus('playing');
+   794→  }, []);
+   795→
+   796→  /** Canvas 点击事件（用于重新开始） */
+   797→  const handleCanvasClick = useCallback(() => {
+   798→    if (statusRef.current === 'over') {
+   799→      startGame();
+   800→    }
+   801→  }, [startGame]);
+   802→
+   803→  /** 检测是否为触屏设备 */
+   804→  useEffect(() => {
+   805→    isMobileRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+   806→  }, []);
+   807→
+   808→  /** 鼠标移动事件（桌面端控制飞机） */
+   809→  useEffect(() => {
+   810→    const handleMouseMove = (e: MouseEvent) => {
+   811→      if (statusRef.current !== 'playing' || pausedRef.current) return;
+   812→      const canvas = canvasRef.current;
+   813→      if (!canvas) return;
+   814→      const rect = canvas.getBoundingClientRect();
+   815→      const scaleX = LOGIC_W / rect.width;
+   816→      inputXRef.current = (e.clientX - rect.left) * scaleX;
+   817→    };
+   818→
+   819→    const handleMouseDown = () => {
+   820→      if (statusRef.current === 'playing' && !pausedRef.current) {
+   821→        shootRequestRef.current = true;
+   822→      }
+   823→    };
+   824→
+   825→    const handleKeyDown = (e: KeyboardEvent) => {
+   826→      if (e.code === 'Escape' && statusRef.current === 'playing') {
+   827→        e.preventDefault();
+   828→        pausedRef.current = !pausedRef.current;
+   829→        setPaused(pausedRef.current);
+   830→        return;
+   831→      }
+   832→      if (e.code === 'Space' && statusRef.current === 'playing' && !pausedRef.current) {
+   833→        e.preventDefault();
+   834→        shootRequestRef.current = true;
+   835→      }
+   836→    };
+   837→
+   838→    window.addEventListener('mousemove', handleMouseMove);
+   839→    window.addEventListener('mousedown', handleMouseDown);
+   840→    window.addEventListener('keydown', handleKeyDown);
+   841→    return () => {
+   842→      window.removeEventListener('mousemove', handleMouseMove);
+   843→      window.removeEventListener('mousedown', handleMouseDown);
+   844→      window.removeEventListener('keydown', handleKeyDown);
+   845→    };
+   846→  }, []);
+   847→
+   848→  /** 触摸事件（移动端控制飞机 + 自动发射） */
+   849→  useEffect(() => {
+   850→    const canvas = canvasRef.current;
+   851→    if (!canvas) return;
+   852→
+   853→    const handleTouchMove = (e: TouchEvent) => {
+   854→      if (statusRef.current !== 'playing' || pausedRef.current) return;
+   855→      e.preventDefault();
+   856→      const touch = e.touches[0];
+   857→      const rect = canvas.getBoundingClientRect();
+   858→      const scaleX = LOGIC_W / rect.width;
+   859→      inputXRef.current = (touch.clientX - rect.left) * scaleX;
+   860→    };
+   861→
+   862→    const handleTouchStart = (e: TouchEvent) => {
+   863→      if (statusRef.current === 'over') {
+   864→        startGame();
+   865→        return;
+   866→      }
+   867→      if (statusRef.current === 'playing') {
+   868→        e.preventDefault();
+   869→        const touch = e.touches[0];
+   870→        const rect = canvas.getBoundingClientRect();
+   871→        const scaleX = LOGIC_W / rect.width;
+   872→        inputXRef.current = (touch.clientX - rect.left) * scaleX;
+   873→      }
+   874→    };
+   875→
+   876→    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+   877→    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+   878→    return () => {
+   879→      canvas.removeEventListener('touchmove', handleTouchMove);
+   880→      canvas.removeEventListener('touchstart', handleTouchStart);
+   881→    };
+   882→  }, [startGame]);
+   883→
+   884→  /** 初始化Canvas尺寸并启动渲染循环 */
+   885→  useEffect(() => {
+   886→    const canvas = canvasRef.current;
+   887→    const container = containerRef.current;
+   888→    if (!canvas || !container) return;
+   889→
+   890→    const resizeCanvas = () => {
+   891→      const dpr = window.devicePixelRatio || 1;
+   892→      const rect = canvas.getBoundingClientRect();
+   893→      canvas.width = rect.width * dpr;
+   894→      canvas.height = rect.height * dpr;
+   895→    };
+   896→
+   897→    resizeCanvas();
+   898→    window.addEventListener('resize', resizeCanvas);
+   899→
+   900→    // 启动渲染循环
+   901→    rafRef.current = requestAnimationFrame(gameLoop);
+   902→
+   903→    return () => {
+   904→      window.removeEventListener('resize', resizeCanvas);
+   905→      cancelAnimationFrame(rafRef.current);
+   906→    };
+   907→  }, [gameLoop]);
+   908→
+   909→  /** 获取最高分 */
+   910→  useEffect(() => {
+   911→    const fetchHighScore = async () => {
+   912→      try {
+   913→        const res = await fetch('/api/games/scores');
+   914→        if (res.ok) {
+   915→          const data = await res.json();
+   916→          if (Array.isArray(data.data)) {
+   917→            const s = data.data.find(
+   918→              (item: { game: string; score: number }) => item.game === GAME_NAME
+   919→            );
+   920→            if (s) {
+   921→              setHighScore(s.score);
+   922→              highScoreRef.current = s.score;
+   923→            }
+   924→          }
+   925→        }
+   926→      } catch {
+   927→        // 网络异常时静默处理
+   928→      } finally {
+   929→        setLoadingHighScore(false);
+   930→      }
+   931→    };
+   932→    fetchHighScore();
+   933→  }, []);
+   934→
+   935→  return (
+   936→    <div className="flex flex-col items-center w-full max-w-lg mx-auto px-2 py-2 gap-3">
+   937→      {/* Top bar: back | game name + score | best */}
+   938→      <div className="flex items-center justify-between w-full">
+   939→        <div className="flex items-center gap-1 shrink-0">
+   940→          <Button
+   941→            variant="ghost"
+   942→            size="sm"
+   943→            onClick={onBack}
+   944→            className="text-muted-foreground hover:text-foreground"
+   945→          >
+   946→            <ArrowLeft className="h-4 w-4 mr-1" />
+   947→            返回
+   948→          </Button>
+   949→          {gameStatus === 'playing' && (
+   950→            <div className="hidden sm:block">
+   951→              <GameControlsHelp info={aircraftControlsInfo} variant="button" />
+   952→            </div>
+   953→          )}
+   954→        </div>
+   955→        <div className="flex flex-col items-center">
+   956→          <h2 className="text-sm sm:text-base font-bold tracking-wide">✈️ 飞机大战</h2>
+   957→          <span className="text-[10px] sm:text-xs text-muted-foreground tabular-nums">
+   958→            得分: {score} | 等级: {level}
+   959→          </span>
+   960→        </div>
+   961→        <div className="flex items-center gap-1 shrink-0">
+   962→          <Trophy className="h-4 w-4 text-yellow-500" />
+   963→          <span className="text-xs sm:text-sm font-semibold text-yellow-500 tabular-nums">
+   964→            {loadingHighScore ? '...' : highScore}
+   965→          </span>
+   966→        </div>
+   967→      </div>
+   968→
+   969→      {/* Canvas game area */}
+   970→      <div ref={containerRef} className="w-full flex justify-center">
+   971→        <canvas
+   972→          ref={canvasRef}
+   973→          className="rounded-lg border border-border/30 shadow-lg cursor-crosshair"
+   974→          style={{ width: '100%', maxWidth: `${LOGIC_W}px`, aspectRatio: `${LOGIC_W}/${LOGIC_H}`, touchAction: 'none' }}
+   975→          onClick={handleCanvasClick}
+   976→        />
+   977→      </div>
+   978→
+   979→      {/* Bottom area */}
+   980→      <div className="flex flex-col items-center gap-2 w-full">
+   981→        {gameStatus === 'over' && isNewRecord && (
+   982→          <p className="text-sm font-semibold text-yellow-500 animate-pulse">
+   983→            🎉 新纪录！
+   984→          </p>
+   985→        )}
+   986→
+   987→        <Button
+   988→          onClick={startGame}
+   989→          size="lg"
+   990→          className="w-full max-w-xs text-base font-semibold"
+   991→          disabled={gameStatus === 'playing'}
+   992→        >
+   993→          {gameStatus === 'playing' ? (paused ? '已暂停...' : '游戏中...') : '开始游戏'}
+   994→        </Button>
+   995→      </div>
+   996→    </div>
+   997→  );
+   998→}
+   999→

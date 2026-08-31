@@ -1,0 +1,976 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+     6→import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react';
+     7→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     8→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+     9→
+    10→const adventureControlsInfo: GameControlsInfo = {
+    11→  gameName: '冒险勇士',
+    12→  desktop: [
+    13→    { action: 'A/D/←→', keys: ['KeyA','KeyD','ArrowLeft','ArrowRight'], description: '左右移动' },
+    14→    { action: 'W/空格/↑', keys: ['KeyW','Space','ArrowUp'], description: '跳跃' },
+    15→    { action: 'J/鼠标', keys: ['KeyJ'], description: '攻击' },
+    16→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    17→  ],
+    18→  mobile: [
+    19→    { action: '虚拟按钮', keys: [], description: '屏幕下方的方向和动作按钮(手机端显示)' },
+    20→  ],
+    21→  rules: ['自动横向卷轴，需要跳跃和攻击前进','踩在怪物头上可以消灭它们','收集金币获得额外分数','掉入深渊或碰到怪物侧面会损失生命'],
+    22→  tips: ['保持跑动不要停留在边缘','跳跃攻击比地面攻击更安全','注意平台间距提前起跳'],
+    23→};
+    24→
+    25→/** 组件属性接口 */
+    26→interface AdventureGameProps {
+    27→  onBack: () => void;
+    28→}
+    29→
+    30→/** 画布逻辑宽度 */
+    31→const CANVAS_W = 640;
+    32→/** 画布逻辑高度 */
+    33→const CANVAS_H = 400;
+    34→/** 重力加速度 */
+    35→const GRAVITY = 0.38;
+    36→/** 跳跃力 */
+    37→const JUMP_FORCE = -9.8;
+    38→/** 移动速度 */
+    39→const MOVE_SPEED = 3;
+    40→/** 最大下落速度 */
+    41→const MAX_FALL = 12;
+    42→/** 地面Y坐标 */
+    43→const GROUND_Y = 340;
+    44→/** 玩家宽度 */
+    45→const PLAYER_W = 28;
+    46→/** 玩家高度 */
+    47→const PLAYER_H = 40;
+    48→/** 无敌时间(毫秒) */
+    49→const INVINCIBLE_TIME = 1500;
+    50→/** 攻击持续帧数 */
+    51→const ATTACK_DURATION = 18;
+    52→/** 攻击范围 */
+    53→const ATTACK_RANGE = 38;
+    54→/** 地图自动滚动速度 */
+    55→const SCROLL_SPEED = 0.8;
+    56→/** 分块宽度 */
+    57→const CHUNK_W = 640;
+    58→/** 游戏标识 */
+    59→const GAME_NAME = 'adventure';
+    60→
+    61→/** 平台 */
+    62→interface Platform { x: number; y: number; w: number; h: number }
+    63→/** 金币 */
+    64→interface Coin { x: number; y: number; collected: boolean; phase: number }
+    65→/** 怪物种类 */
+    66→type MonsterKind = 'slime' | 'skeleton';
+    67→/** 怪物 */
+    68→interface Monster {
+    69→  x: number; y: number; w: number; h: number;
+    70→  kind: MonsterKind; hp: number; vx: number;
+    71→  alive: boolean; phase: number;
+    72→}
+    73→/** 飘字 */
+    74→interface FloatText { x: number; y: number; text: string; color: string; life: number }
+    75→/** 玩家 */
+    76→interface PlayerState {
+    77→  x: number; y: number; vx: number; vy: number;
+    78→  onGround: boolean; facing: number;
+    79→  attacking: boolean; atkTimer: number;
+    80→  invincible: boolean; invTimer: number;
+    81→  frame: number; frameTimer: number;
+    82→}
+    83→/** 游戏状态 */
+    84→type Status = 'idle' | 'playing' | 'over';
+    85→
+    86→/** 创建玩家初始状态 */
+    87→function makePlayer(): PlayerState {
+    88→  return {
+    89→    x: 100, y: GROUND_Y - PLAYER_H,
+    90→    vx: 0, vy: 0, onGround: false, facing: 1,
+    91→    attacking: false, atkTimer: 0,
+    92→    invincible: false, invTimer: 0,
+    93→    frame: 0, frameTimer: 0,
+    94→  };
+    95→}
+    96→
+    97→/** 创建怪物 */
+    98→function makeMonster(kind: MonsterKind, x: number, groundY: number): Monster {
+    99→  const isSlime = kind === 'slime';
+   100→  return {
+   101→    x, y: groundY - (isSlime ? 22 : 36),
+   102→    w: isSlime ? 28 : 26, h: isSlime ? 22 : 36,
+   103→    kind, hp: isSlime ? 1 : 2,
+   104→    vx: (isSlime ? 0.8 : 1.5) * (Math.random() < 0.5 ? 1 : -1),
+   105→    alive: true, phase: Math.random() * Math.PI * 2,
+   106→  };
+   107→}
+   108→
+   109→/** 在[fromX, toX)区间程序化生成地图 */
+   110→function generateChunk(
+   111→  platforms: Platform[], coins: Coin[], monsters: Monster[],
+   112→  fromX: number, toX: number
+   113→): number {
+   114→  let x = fromX;
+   115→  while (x < toX) {
+   116→    const r = Math.random();
+   117→    if (r < 0.35) {
+   118→      /* 地面段 */
+   119→      const w = 120 + Math.random() * 200;
+   120→      platforms.push({ x, y: GROUND_Y, w, h: 60 });
+   121→      if (Math.random() < 0.5) {
+   122→        monsters.push(makeMonster(Math.random() < 0.6 ? 'slime' : 'skeleton', x + 30, GROUND_Y));
+   123→      }
+   124→      const nc = Math.floor(Math.random() * 4) + 1;
+   125→      for (let i = 0; i < nc; i++) {
+   126→        coins.push({ x: x + 20 + i * 30, y: GROUND_Y - 40, collected: false, phase: Math.random() * 6.28 });
+   127→      }
+   128→      x += w + 30 + Math.random() * 50;
+   129→    } else if (r < 0.65) {
+   130→      /* 浮空平台 */
+   131→      const w = 80 + Math.random() * 100;
+   132→      const py = GROUND_Y - 60 - Math.random() * 80;
+   133→      platforms.push({ x, y: py, w, h: 20 });
+   134→      coins.push({ x: x + w / 2, y: py - 35, collected: false, phase: Math.random() * 6.28 });
+   135→      if (Math.random() < 0.3) monsters.push(makeMonster('slime', x + 10, py));
+   136→      x += w + 50 + Math.random() * 80;
+   137→    } else if (r < 0.8) {
+   138→      /* 阶梯 */
+   139→      const steps = 2 + Math.floor(Math.random() * 2);
+   140→      let sx = x;
+   141→      for (let s = 0; s < steps; s++) {
+   142→        const sw = 60 + Math.random() * 40;
+   143→        const py = GROUND_Y - 50 - s * 38;
+   144→        platforms.push({ x: sx, y: py, w: sw, h: 18 });
+   145→        coins.push({ x: sx + sw / 2, y: py - 30, collected: false, phase: Math.random() * 6.28 });
+   146→        sx += sw + 20;
+   147→      }
+   148→      x = sx + 40;
+   149→    } else {
+   150→      /* 深渊+地面 */
+   151→      x += 60 + Math.random() * 60;
+   152→      const w = 150 + Math.random() * 200;
+   153→      platforms.push({ x, y: GROUND_Y, w, h: 60 });
+   154→      if (Math.random() < 0.6) {
+   155→        monsters.push(makeMonster(Math.random() < 0.6 ? 'slime' : 'skeleton', x + 20, GROUND_Y));
+   156→      }
+   157→      const nc = Math.floor(Math.random() * 3) + 1;
+   158→      for (let i = 0; i < nc; i++) {
+   159→        coins.push({ x: x + 30 + i * 35, y: GROUND_Y - 40, collected: false, phase: Math.random() * 6.28 });
+   160→      }
+   161→      x += w + 30 + Math.random() * 50;
+   162→    }
+   163→  }
+   164→  return x;
+   165→}
+   166→
+   167→/** 绘制云朵 */
+   168→function drawClouds(ctx: CanvasRenderingContext2D, cam: number) {
+   169→  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+   170→  const off = cam * 0.15;
+   171→  for (let i = 0; i < 8; i++) {
+   172→    const cx = ((i * 250 + 100 - off) % (CANVAS_W + 300)) - 100;
+   173→    const cy = 30 + (i % 3) * 35;
+   174→    ctx.beginPath();
+   175→    ctx.arc(cx, cy, 25, 0, Math.PI * 2);
+   176→    ctx.arc(cx + 22, cy - 8, 20, 0, Math.PI * 2);
+   177→    ctx.arc(cx + 40, cy, 22, 0, Math.PI * 2);
+   178→    ctx.arc(cx + 18, cy + 5, 18, 0, Math.PI * 2);
+   179→    ctx.fill();
+   180→  }
+   181→}
+   182→
+   183→/** 绘制平台 */
+   184→function drawPlatform(ctx: CanvasRenderingContext2D, pl: Platform, cam: number) {
+   185→  const x = pl.x - cam;
+   186→  ctx.fillStyle = '#8B6914';
+   187→  ctx.fillRect(x, pl.y, pl.w, pl.h);
+   188→  const gh = pl.h > 30 ? 8 : 5;
+   189→  ctx.fillStyle = '#4ade80';
+   190→  ctx.fillRect(x, pl.y, pl.w, gh);
+   191→  ctx.fillStyle = '#86efac';
+   192→  ctx.fillRect(x, pl.y, pl.w, 2);
+   193→  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+   194→  ctx.lineWidth = 1;
+   195→  ctx.strokeRect(x, pl.y, pl.w, pl.h);
+   196→}
+   197→
+   198→/** 绘制金币 */
+   199→function drawCoin(ctx: CanvasRenderingContext2D, x: number, y: number, t: number) {
+   200→  const sx = Math.cos(t * 3);
+   201→  ctx.save();
+   202→  ctx.translate(x, y);
+   203→  ctx.scale(sx, 1);
+   204→  ctx.fillStyle = '#fbbf24';
+   205→  ctx.beginPath();
+   206→  ctx.arc(0, 0, 10, 0, Math.PI * 2);
+   207→  ctx.fill();
+   208→  ctx.fillStyle = '#fde68a';
+   209→  ctx.beginPath();
+   210→  ctx.arc(-2, -3, 4, 0, Math.PI * 2);
+   211→  ctx.fill();
+   212→  const sp = Math.sin(t * 5) * 0.5 + 0.5;
+   213→  ctx.globalAlpha = sp * 0.6;
+   214→  ctx.fillStyle = '#fff';
+   215→  ctx.beginPath();
+   216→  ctx.arc(3, -2, 2, 0, Math.PI * 2);
+   217→  ctx.fill();
+   218→  ctx.globalAlpha = 1;
+   219→  ctx.restore();
+   220→}
+   221→
+   222→/** 绘制史莱姆 */
+   223→function drawSlime(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, phase: number, vx: number) {
+   224→  const bounce = Math.abs(Math.sin(phase)) * 4;
+   225→  const sy = y - bounce;
+   226→  ctx.fillStyle = '#4ade80';
+   227→  ctx.beginPath();
+   228→  ctx.ellipse(x + w / 2, sy + h - 4, w / 2 + 2, h / 2 + bounce * 0.5, 0, 0, Math.PI * 2);
+   229→  ctx.fill();
+   230→  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+   231→  ctx.beginPath();
+   232→  ctx.ellipse(x + w / 2 - 4, sy + h / 2 - 2, 6, 4, -0.3, 0, Math.PI * 2);
+   233→  ctx.fill();
+   234→  const eo = vx > 0 ? 3 : -3;
+   235→  ctx.fillStyle = '#fff';
+   236→  ctx.beginPath();
+   237→  ctx.arc(x + w / 2 - 5, sy + h / 2 - 2, 4, 0, Math.PI * 2);
+   238→  ctx.arc(x + w / 2 + 5, sy + h / 2 - 2, 4, 0, Math.PI * 2);
+   239→  ctx.fill();
+   240→  ctx.fillStyle = '#1a1a2e';
+   241→  ctx.beginPath();
+   242→  ctx.arc(x + w / 2 - 5 + eo, sy + h / 2 - 1, 2, 0, Math.PI * 2);
+   243→  ctx.arc(x + w / 2 + 5 + eo, sy + h / 2 - 1, 2, 0, Math.PI * 2);
+   244→  ctx.fill();
+   245→}
+   246→
+   247→/** 绘制骷髅 */
+   248→function drawSkeleton(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, phase: number, hp: number) {
+   249→  const fl = Math.sin(phase * 0.7) * 3;
+   250→  const sy = y - fl;
+   251→  ctx.fillStyle = '#991b1b';
+   252→  ctx.fillRect(x + 6, sy + 14, w - 12, h - 18);
+   253→  ctx.fillStyle = '#f5f5f4';
+   254→  ctx.beginPath();
+   255→  ctx.arc(x + w / 2, sy + 10, 11, 0, Math.PI * 2);
+   256→  ctx.fill();
+   257→  ctx.fillRect(x + w / 2 - 8, sy + 16, 16, 5);
+   258→  ctx.fillStyle = '#1a1a2e';
+   259→  ctx.beginPath();
+   260→  ctx.arc(x + w / 2 - 4, sy + 9, 3, 0, Math.PI * 2);
+   261→  ctx.arc(x + w / 2 + 4, sy + 9, 3, 0, Math.PI * 2);
+   262→  ctx.fill();
+   263→  ctx.fillStyle = '#ef4444';
+   264→  ctx.beginPath();
+   265→  ctx.arc(x + w / 2 - 4, sy + 9, 1.5, 0, Math.PI * 2);
+   266→  ctx.arc(x + w / 2 + 4, sy + 9, 1.5, 0, Math.PI * 2);
+   267→  ctx.fill();
+   268→  ctx.fillStyle = '#1a1a2e';
+   269→  ctx.beginPath();
+   270→  ctx.moveTo(x + w / 2, sy + 12);
+   271→  ctx.lineTo(x + w / 2 - 2, sy + 15);
+   272→  ctx.lineTo(x + w / 2 + 2, sy + 15);
+   273→  ctx.fill();
+   274→  ctx.fillStyle = '#f5f5f4';
+   275→  for (let i = 0; i < 4; i++) ctx.fillRect(x + w / 2 - 6 + i * 3, sy + 18, 2, 2);
+   276→  /* 血条 */
+   277→  const bx = x + (w - 20) / 2;
+   278→  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   279→  ctx.fillRect(bx, sy - 6, 20, 3);
+   280→  ctx.fillStyle = '#ef4444';
+   281→  ctx.fillRect(bx, sy - 6, 20 * (hp / 2), 3);
+   282→}
+   283→
+   284→/** 绘制剑和挥砍效果 */
+   285→function drawSword(ctx: CanvasRenderingContext2D, x: number, y: number, timer: number) {
+   286→  const progress = 1 - timer / ATTACK_DURATION;
+   287→  const angle = -Math.PI / 2 + progress * Math.PI * 1.2;
+   288→  ctx.save();
+   289→  ctx.translate(x, y + 3);
+   290→  ctx.rotate(angle);
+   291→  ctx.fillStyle = '#92400e';
+   292→  ctx.fillRect(-2, -2, 6, 4);
+   293→  ctx.fillStyle = '#d1d5db';
+   294→  ctx.fillRect(1, -18, 3, 16);
+   295→  ctx.fillStyle = '#e5e7eb';
+   296→  ctx.beginPath();
+   297→  ctx.moveTo(1, -18);
+   298→  ctx.lineTo(2.5, -23);
+   299→  ctx.lineTo(4, -18);
+   300→  ctx.fill();
+   301→  if (timer > ATTACK_DURATION * 0.3) {
+   302→    ctx.globalAlpha = 0.4;
+   303→    ctx.strokeStyle = '#93c5fd';
+   304→    ctx.lineWidth = 2;
+   305→    ctx.beginPath();
+   306→    ctx.arc(0, 0, 22, angle - 0.5, angle + 0.5);
+   307→    ctx.stroke();
+   308→    ctx.globalAlpha = 1;
+   309→  }
+   310→  ctx.restore();
+   311→}
+   312→
+   313→/** 绘制玩家角色 */
+   314→function drawPlayer(ctx: CanvasRenderingContext2D, p: PlayerState, cam: number) {
+   315→  if (p.invincible && Math.sin(performance.now() / 60) > 0) return;
+   316→  const x = p.x - cam;
+   317→  const y = p.y;
+   318→  const running = Math.abs(p.vx) > 0.5;
+   319→  const air = !p.onGround;
+   320→  ctx.save();
+   321→  ctx.translate(x + PLAYER_W / 2, y + PLAYER_H / 2);
+   322→  ctx.scale(p.facing, 1);
+   323→  ctx.translate(-PLAYER_W / 2, -PLAYER_H / 2);
+   324→  /* 腿 */
+   325→  const ls = running && !air ? Math.sin(p.frame * Math.PI / 2) * 6 : 0;
+   326→  ctx.fillStyle = '#1e40af';
+   327→  ctx.fillRect(6, 30, 6, 10 + (air ? -3 : ls));
+   328→  ctx.fillRect(16, 30, 6, 10 + (air ? 3 : -ls));
+   329→  ctx.fillStyle = '#78350f';
+   330→  ctx.fillRect(4, 38 + (air ? -3 : ls), 9, 3);
+   331→  ctx.fillRect(15, 38 + (air ? 3 : -ls), 9, 3);
+   332→  /* 身体 */
+   333→  ctx.fillStyle = '#3b82f6';
+   334→  ctx.fillRect(5, 16, 18, 16);
+   335→  ctx.fillStyle = '#92400e';
+   336→  ctx.fillRect(5, 28, 18, 3);
+   337→  ctx.fillStyle = '#fbbf24';
+   338→  ctx.fillRect(12, 27, 5, 5);
+   339→  /* 手臂 */
+   340→  const as = running && !air ? Math.sin(p.frame * Math.PI / 2) * 8 : 0;
+   341→  if (p.attacking) {
+   342→    ctx.fillStyle = '#2563eb';
+   343→    ctx.fillRect(18, 18, 16, 5);
+   344→    drawSword(ctx, 34, 16, p.atkTimer);
+   345→  } else {
+   346→    ctx.fillStyle = '#2563eb';
+   347→    ctx.fillRect(18, 18, 5, 12 + as);
+   348→  }
+   349→  ctx.fillStyle = '#2563eb';
+   350→  ctx.fillRect(0, 18, 5, 12 - as);
+   351→  /* 头 */
+   352→  ctx.fillStyle = '#fbbf24';
+   353→  ctx.fillRect(5, 2, 18, 15);
+   354→  ctx.fillStyle = '#78350f';
+   355→  ctx.fillRect(4, 0, 20, 5);
+   356→  ctx.fillRect(3, 2, 4, 8);
+   357→  ctx.fillStyle = '#1a1a2e';
+   358→  ctx.fillRect(16, 6, 3, 3);
+   359→  ctx.fillStyle = '#dc2626';
+   360→  ctx.fillRect(15, 12, 5, 1);
+   361→  ctx.restore();
+   362→}
+   363→
+   364→/** 游戏核心状态（全部存ref，避免闭包问题） */
+   365→interface GameCore {
+   366→  status: Status;
+   367→  player: PlayerState;
+   368→  platforms: Platform[];
+   369→  coins: Coin[];
+   370→  monsters: Monster[];
+   371→  floats: FloatText[];
+   372→  score: number;
+   373→  lives: number;
+   374→  cam: number;
+   375→  genUpTo: number;
+   376→  distance: number;
+   377→  lastTime: number;
+   378→  keys: Set<string>;
+   379→  touchL: boolean;
+   380→  touchR: boolean;
+   381→  touchJ: boolean;
+   382→  touchA: boolean;
+   383→  jumpHeld: boolean;
+   384→  scale: number;
+   385→}
+   386→
+   387→export default function AdventureGame({ onBack }: AdventureGameProps) {
+   388→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   389→  const containerRef = useRef<HTMLDivElement>(null);
+   390→  const rafRef = useRef(0);
+   391→  const [score, setScore] = useState(0);
+   392→  const [highScore, setHighScore] = useState(0);
+   393→  const [lives, setLives] = useState(3);
+   394→  const [gameStatus, setGameStatus] = useState<Status>('idle');
+   395→  const [isNewRecord, setIsNewRecord] = useState(false);
+   396→  const [isMobile, setIsMobile] = useState(false);
+   397→  const [distance, setDistance] = useState(0);
+   398→  const [paused, setPaused] = useState(false);
+   399→  const pausedRef = useRef(false);
+   400→  const uiUpdateRef = useRef(0);
+   401→  /* 使用ref保存所有游戏状态，避免闭包和immutability问题 */
+   402→  const gRef = useRef<GameCore>({
+   403→    status: 'idle', player: makePlayer(),
+   404→    platforms: [], coins: [], monsters: [], floats: [],
+   405→    score: 0, lives: 3, cam: 0, genUpTo: 0, distance: 0,
+   406→    lastTime: 0, keys: new Set(),
+   407→    touchL: false, touchR: false, touchJ: false, touchA: false,
+   408→    jumpHeld: false, scale: 1,
+   409→  });
+   410→
+   411→  /* 检测移动端 */
+   412→  useEffect(() => {
+   413→    const check = () => setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+   414→    check();
+   415→    window.addEventListener('resize', check);
+   416→    return () => window.removeEventListener('resize', check);
+   417→  }, []);
+   418→
+   419→  /* 获取最高分 */
+   420→  useEffect(() => {
+   421→    fetch('/api/games/scores')
+   422→      .then(r => r.json())
+   423→      .then(res => {
+   424→        if (res.code === 0 && res.data) {
+   425→          const found = res.data.find((s: { game: string; score: number }) => s.game === GAME_NAME);
+   426→          if (found) setHighScore(found.score);
+   427→        }
+   428→      })
+   429→      .catch(() => {})
+   430→  }, []);
+   431→
+   432→  /* 提交分数 */
+   433→  const submitScore = (finalScore: number) => {
+   434→    fetch('/api/games/scores', {
+   435→      method: 'POST',
+   436→      headers: { 'Content-Type': 'application/json' },
+   437→      body: JSON.stringify({ game: GAME_NAME, score: finalScore }),
+   438→    })
+   439→      .then(r => r.json())
+   440→      .then(res => {
+   441→        if (res.code === 0 && res.data && finalScore >= res.data.score) {
+   442→          setIsNewRecord(true);
+   443→          setHighScore(finalScore);
+   444→        }
+   445→      })
+   446→      .catch(() => {})
+   447→  };
+   448→
+   449→  /* 初始化游戏数据 */
+   450→  const initGameData = () => {
+   451→    const g = gRef.current;
+   452→    g.player = makePlayer();
+   453→    g.platforms = [];
+   454→    g.coins = [];
+   455→    g.monsters = [];
+   456→    g.floats = [];
+   457→    g.score = 0;
+   458→    g.lives = 3;
+   459→    g.cam = 0;
+   460→    g.genUpTo = 0;
+   461→    g.distance = 0;
+   462→    g.lastTime = 0;
+   463→    g.status = 'playing';
+   464→    pausedRef.current = false;
+   465→    setPaused(false);
+   466→    /* starting ground */
+   467→    g.platforms.push({ x: 0, y: GROUND_Y, w: 400, h: 60 });
+   468→    for (let i = 0; i < 5; i++) {
+   469→      g.coins.push({ x: 200 + i * 40, y: GROUND_Y - 40, collected: false, phase: Math.random() * 6.28 });
+   470→    }
+   471→    g.genUpTo = generateChunk(g.platforms, g.coins, g.monsters, 400, 400 + CHUNK_W * 3);
+   472→    setScore(0);
+   473→    setLives(3);
+   474→    setIsNewRecord(false);
+   475→    setGameStatus('playing');
+   476→  };
+   477→
+   478→  /* 游戏结束 */
+   479→  const endGame = (g: GameCore) => {
+   480→    g.status = 'over';
+   481→    setGameStatus('over');
+   482→    submitScore(g.score);
+   483→  };
+   484→
+   485→  /* 玩家受伤 */
+   486→  const hurtPlayer = (g: GameCore) => {
+   487→    if (g.player.invincible) return;
+   488→    g.lives--;
+   489→    setLives(g.lives);
+   490→    if (g.lives <= 0) {
+   491→      endGame(g);
+   492→    } else {
+   493→      g.player.invincible = true;
+   494→      g.player.invTimer = INVINCIBLE_TIME;
+   495→    }
+   496→  };
+   497→
+   498→  /* 重生 */
+   499→  const respawn = (g: GameCore) => {
+   500→    let best: Platform | null = null;
+   501→    let bd = Infinity;
+   502→    for (const pl of g.platforms) {
+   503→      if (pl.x + pl.w > g.cam && pl.x < g.cam + CANVAS_W) {
+   504→        const d = Math.abs(pl.x + pl.w / 2 - (g.cam + CANVAS_W / 3));
+   505→        if (d < bd) { bd = d; best = pl; }
+   506→      }
+   507→    }
+   508→    if (best) {
+   509→      g.player.x = best.x + best.w / 2 - PLAYER_W / 2;
+   510→      g.player.y = best.y - PLAYER_H;
+   511→    } else {
+   512→      g.player.x = g.cam + 100;
+   513→      g.player.y = GROUND_Y - PLAYER_H;
+   514→    }
+   515→    g.player.vx = 0;
+   516→    g.player.vy = 0;
+   517→    g.player.onGround = false;
+   518→    g.player.invincible = true;
+   519→    g.player.invTimer = INVINCIBLE_TIME;
+   520→  };
+   521→
+   522→  /* Core update logic (pure function, receives g as param) */
+   523→  const tick = (g: GameCore, dt: number) => {
+   524→    if (pausedRef.current) return;
+   525→    const p = g.player;
+   526→    const k = g.keys;
+   527→
+   528→    /* 读取输入 */
+   529→    const ml = k.has('ArrowLeft') || k.has('a') || k.has('A') || g.touchL;
+   530→    const mr = k.has('ArrowRight') || k.has('d') || k.has('D') || g.touchR;
+   531→    const wj = k.has('ArrowUp') || k.has('w') || k.has('W') || k.has(' ') || g.touchJ;
+   532→    const wa = k.has('j') || k.has('J') || g.touchA;
+   533→
+   534→    /* 移动 */
+   535→    if (ml) { p.vx = -MOVE_SPEED; p.facing = -1; }
+   536→    else if (mr) { p.vx = MOVE_SPEED; p.facing = 1; }
+   537→    else { p.vx *= 0.7; if (Math.abs(p.vx) < 0.3) p.vx = 0; }
+   538→
+   539→    /* 跳跃 */
+   540→    if (wj && !g.jumpHeld && p.onGround) {
+   541→      p.vy = JUMP_FORCE;
+   542→      p.onGround = false;
+   543→      g.jumpHeld = true;
+   544→    }
+   545→    if (!wj) g.jumpHeld = false;
+   546→
+   547→    /* 攻击 */
+   548→    if (wa && !p.attacking) { p.attacking = true; p.atkTimer = ATTACK_DURATION; }
+   549→    if (p.attacking) { p.atkTimer--; if (p.atkTimer <= 0) p.attacking = false; }
+   550→
+   551→    /* 无敌计时 */
+   552→    if (p.invincible) { p.invTimer -= dt; if (p.invTimer <= 0) p.invincible = false; }
+   553→
+   554→    /* 动画 */
+   555→    p.frameTimer += dt;
+   556→    if (p.frameTimer > 120) { p.frameTimer = 0; p.frame = (p.frame + 1) % 4; }
+   557→
+   558→    /* 重力 */
+   559→    p.vy += GRAVITY;
+   560→    if (p.vy > MAX_FALL) p.vy = MAX_FALL;
+   561→
+   562→    /* 水平移动+碰撞 */
+   563→    p.x += p.vx;
+   564→    for (const pl of g.platforms) {
+   565→      if (pl.x + pl.w <= g.cam - 50 || pl.x >= g.cam + CANVAS_W + 50) continue;
+   566→      if (p.x + PLAYER_W > pl.x && p.x < pl.x + pl.w && p.y + PLAYER_H > pl.y + 4 && p.y < pl.y + pl.h) {
+   567→        if (p.vx > 0) p.x = pl.x - PLAYER_W;
+   568→        else if (p.vx < 0) p.x = pl.x + pl.w;
+   569→        p.vx = 0;
+   570→      }
+   571→    }
+   572→
+   573→    /* 垂直移动+碰撞 */
+   574→    p.y += p.vy;
+   575→    p.onGround = false;
+   576→    for (const pl of g.platforms) {
+   577→      if (pl.x + pl.w <= g.cam - 50 || pl.x >= g.cam + CANVAS_W + 50) continue;
+   578→      if (p.x + PLAYER_W > pl.x + 2 && p.x < pl.x + pl.w - 2 && p.y + PLAYER_H > pl.y && p.y + PLAYER_H < pl.y + pl.h + 10 && p.vy >= 0) {
+   579→        p.y = pl.y - PLAYER_H;
+   580→        p.vy = 0;
+   581→        p.onGround = true;
+   582→      }
+   583→    }
+   584→
+   585→    /* 相机跟随 */
+   586→    if (p.x - g.cam > CANVAS_W * 0.65) g.cam = p.x - CANVAS_W * 0.65;
+   587→    if (g.cam < 0) g.cam = 0;
+   588→    if (g.cam < p.x - 50) g.cam += SCROLL_SPEED * 0.5;
+   589→    g.distance = Math.floor(p.x / 100);
+   590→
+   591→    /* 程序化生成 */
+   592→    const threshold = g.cam + CANVAS_W + CHUNK_W;
+   593→    if (g.genUpTo < threshold) {
+   594→      g.genUpTo = generateChunk(g.platforms, g.coins, g.monsters, g.genUpTo, threshold + CHUNK_W);
+   595→    }
+   596→
+   597→    /* 清理远处物体 */
+   598→    const cx = g.cam - 300;
+   599→    g.platforms = g.platforms.filter(pl => pl.x + pl.w > cx);
+   600→    g.coins = g.coins.filter(c => c.x > cx);
+   601→    g.monsters = g.monsters.filter(m => m.x + m.w > cx);
+   602→
+   603→    /* 收集金币 */
+   604→    const pcx = p.x + PLAYER_W / 2;
+   605→    const pcy = p.y + PLAYER_H / 2;
+   606→    for (const c of g.coins) {
+   607→      if (c.collected) continue;
+   608→      const dx = pcx - c.x;
+   609→      const dy = pcy - c.y;
+   610→      if (dx * dx + dy * dy < 500) {
+   611→        c.collected = true;
+   612→        g.score += 10;
+   613→        g.floats.push({ x: c.x, y: c.y, text: '+10', color: '#fbbf24', life: 60 });
+   614→      }
+   615→    }
+   616→
+   617→    /* 怪物AI */
+   618→    for (const m of g.monsters) {
+   619→      if (!m.alive) continue;
+   620→      m.phase += 0.08;
+   621→      /* 找脚下平台 */
+   622→      let onPlat: Platform | null = null;
+   623→      for (const pl of g.platforms) {
+   624→        if (m.x + m.w > pl.x && m.x < pl.x + pl.w && Math.abs(m.y + m.h - pl.y) < 5) { onPlat = pl; break; }
+   625→      }
+   626→      m.x += m.vx;
+   627→      /* 边缘转向 */
+   628→      if (onPlat) {
+   629→        if (m.x <= onPlat.x + 5) { m.x = onPlat.x + 5; m.vx = Math.abs(m.vx); }
+   630→        else if (m.x + m.w >= onPlat.x + onPlat.w - 5) { m.x = onPlat.x + onPlat.w - m.w - 5; m.vx = -Math.abs(m.vx); }
+   631→      }
+   632→      /* 攻击判定 */
+   633→      if (p.attacking && p.atkTimer > ATTACK_DURATION - 10) {
+   634→        const ax = p.x + (p.facing > 0 ? PLAYER_W : 0);
+   635→        const ay = p.y + PLAYER_H / 2;
+   636→        const mdx = (m.x + m.w / 2) - ax;
+   637→        const mdy = (m.y + m.h / 2) - ay;
+   638→        if (Math.sqrt(mdx * mdx + mdy * mdy) < ATTACK_RANGE && p.facing * mdx >= -10) {
+   639→          m.hp--;
+   640→          if (m.hp <= 0) {
+   641→            m.alive = false;
+   642→            const pts = m.kind === 'slime' ? 20 : 50;
+   643→            g.score += pts;
+   644→            g.floats.push({ x: m.x + m.w / 2, y: m.y, text: `+${pts}`, color: m.kind === 'slime' ? '#4ade80' : '#f87171', life: 60 });
+   645→          }
+   646→        }
+   647→      }
+   648→      /* 踩怪判定 */
+   649→      if (m.alive && !p.invincible) {
+   650→        const pb = p.y + PLAYER_H;
+   651→        const prevB = pb - p.vy;
+   652→        if (p.vy > 0 && prevB <= m.y + 5 && pb >= m.y && p.x + PLAYER_W > m.x + 3 && p.x < m.x + m.w - 3) {
+   653→          m.hp--;
+   654→          p.vy = JUMP_FORCE * 0.6;
+   655→          if (m.hp <= 0) {
+   656→            m.alive = false;
+   657→            const pts = m.kind === 'slime' ? 20 : 50;
+   658→            g.score += pts;
+   659→            g.floats.push({ x: m.x + m.w / 2, y: m.y, text: `+${pts}`, color: m.kind === 'slime' ? '#4ade80' : '#f87171', life: 60 });
+   660→          }
+   661→          continue;
+   662→        }
+   663→      }
+   664→      /* 碰撞伤害 */
+   665→      if (m.alive && !p.invincible) {
+   666→        if (p.x + PLAYER_W > m.x + 2 && p.x < m.x + m.w - 2 && p.y + PLAYER_H > m.y + 2 && p.y < m.y + m.h - 2) {
+   667→          hurtPlayer(g);
+   668→        }
+   669→      }
+   670→    }
+   671→
+   672→    /* 坠落 */
+   673→    if (p.y > CANVAS_H + 50) {
+   674→      g.lives--;
+   675→      setLives(g.lives);
+   676→      if (g.lives <= 0) { endGame(g); }
+   677→      else { respawn(g); }
+   678→    }
+   679→
+   680→    /* 防止跑出左边界 */
+   681→    if (p.x < g.cam - 20) p.x = g.cam - 20;
+   682→
+   683→    /* 更新飘字 */
+   684→    g.floats = g.floats.filter(ft => { ft.life--; ft.y -= 1.2; return ft.life > 0; });
+   685→  };
+   686→
+   687→  /* 绘制完整画面 */
+   688→  const render = (g: GameCore) => {
+   689→    const canvas = canvasRef.current;
+   690→    if (!canvas) return;
+   691→    const ctx = canvas.getContext('2d');
+   692→    if (!ctx) return;
+   693→    const s = g.scale;
+   694→    ctx.setTransform(s, 0, 0, s, 0, 0);
+   695→    /* 天空 */
+   696→    const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+   697→    sky.addColorStop(0, '#87ceeb');
+   698→    sky.addColorStop(0.6, '#b0e0f6');
+   699→    sky.addColorStop(1, '#d4f0fc');
+   700→    ctx.fillStyle = sky;
+   701→    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+   702→    drawClouds(ctx, g.cam);
+   703→    /* 平台 */
+   704→    for (const pl of g.platforms) {
+   705→      if (pl.x + pl.w < g.cam - 10 || pl.x > g.cam + CANVAS_W + 10) continue;
+   706→      drawPlatform(ctx, pl, g.cam);
+   707→    }
+   708→    /* 金币 */
+   709→    const t = performance.now() / 1000;
+   710→    for (const c of g.coins) {
+   711→      if (c.collected || c.x < g.cam - 20 || c.x > g.cam + CANVAS_W + 20) continue;
+   712→      drawCoin(ctx, c.x - g.cam, c.y, t + c.phase);
+   713→    }
+   714→    /* 怪物 */
+   715→    for (const m of g.monsters) {
+   716→      if (!m.alive || m.x + m.w < g.cam - 20 || m.x > g.cam + CANVAS_W + 20) continue;
+   717→      const mx = m.x - g.cam;
+   718→      if (m.kind === 'slime') drawSlime(ctx, mx, m.y, m.w, m.h, m.phase, m.vx);
+   719→      else drawSkeleton(ctx, mx, m.y, m.w, m.h, m.phase, m.hp);
+   720→    }
+   721→    /* 玩家 */
+   722→    drawPlayer(ctx, g.player, g.cam);
+   723→    /* Float text */
+   724→    for (const ft of g.floats) {
+   725→      ctx.globalAlpha = ft.life / 60;
+   726→      ctx.fillStyle = ft.color;
+   727→      ctx.font = 'bold 16px sans-serif';
+   728→      ctx.textAlign = 'center';
+   729→      ctx.fillText(ft.text, ft.x - g.cam, ft.y);
+   730→      ctx.globalAlpha = 1;
+   731→    }
+   732→    /* Paused overlay */
+   733→    if (pausedRef.current) {
+   734→      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+   735→      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+   736→      ctx.fillStyle = '#ffffff';
+   737→      ctx.font = 'bold 32px sans-serif';
+   738→      ctx.textAlign = 'center';
+   739→      ctx.fillText('已暂停', CANVAS_W / 2, CANVAS_H / 2 - 10);
+   740→      ctx.font = '16px sans-serif';
+   741→      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+   742→      ctx.fillText('按 Esc 继续', CANVAS_W / 2, CANVAS_H / 2 + 20);
+   743→      ctx.textAlign = 'start';
+   744→    }
+   745→  };
+   746→
+   747→  /* Game loop */
+   748→  const loop = (timestamp: number) => {
+   749→    const g = gRef.current;
+   750→    if (g.status !== 'playing') return;
+   751→    if (pausedRef.current) {
+   752→      g.lastTime = 0;
+   753→      render(g);
+   754→      rafRef.current = requestAnimationFrame(loop);
+   755→      return;
+   756→    }
+   757→    const dt = g.lastTime ? timestamp - g.lastTime : 16;
+   758→    g.lastTime = timestamp;
+   759→    tick(g, dt);
+   760→    render(g);
+   761→    /* 低频更新React状态 */
+   762→    uiUpdateRef.current++;
+   763→    if (uiUpdateRef.current % 6 === 0) {
+   764→      setScore(g.score);
+   765→      setDistance(g.distance);
+   766→    }
+   767→    rafRef.current = requestAnimationFrame(loop);
+   768→  };
+   769→
+   770→  /* 开始游戏 */
+   771→  const startGame = () => {
+   772→    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+   773→    initGameData();
+   774→    rafRef.current = requestAnimationFrame(loop);
+   775→  };
+   776→
+   777→  /* Keyboard events */
+   778→  useEffect(() => {
+   779→    const onDown = (e: KeyboardEvent) => {
+   780→      if (e.key === 'Escape' && gRef.current.status === 'playing') {
+   781→        e.preventDefault();
+   782→        pausedRef.current = !pausedRef.current;
+   783→        setPaused(pausedRef.current);
+   784→        return;
+   785→      }
+   786→      if (pausedRef.current) return;
+   787→      gRef.current.keys.add(e.key);
+   788→      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+   789→    };
+   790→    const onUp = (e: KeyboardEvent) => { gRef.current.keys.delete(e.key); };
+   791→    window.addEventListener('keydown', onDown);
+   792→    window.addEventListener('keyup', onUp);
+   793→    return () => { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); };
+   794→  }, []);
+   795→
+   796→  /* Mouse attack */
+   797→  useEffect(() => {
+   798→    const canvas = canvasRef.current;
+   799→    if (!canvas) return;
+   800→    const onClick = () => { if (gRef.current.status === 'playing' && !pausedRef.current) { const p = gRef.current.player; if (!p.attacking) { p.attacking = true; p.atkTimer = ATTACK_DURATION; } } };
+   801→    canvas.addEventListener('click', onClick);
+   802→    return () => canvas.removeEventListener('click', onClick);
+   803→  }, []);
+   804→
+   805→  /* 高DPI适配 */
+   806→  useEffect(() => {
+   807→    const canvas = canvasRef.current;
+   808→    const container = containerRef.current;
+   809→    if (!canvas || !container) return;
+   810→    const resize = () => {
+   811→      const cw = container.clientWidth;
+   812→      const dw = Math.min(cw, CANVAS_W);
+   813→      const dpr = window.devicePixelRatio || 1;
+   814→      const dh = (dw / CANVAS_W) * CANVAS_H;
+   815→      canvas.style.width = `${dw}px`;
+   816→      canvas.style.height = `${dh}px`;
+   817→      canvas.width = dw * dpr;
+   818→      canvas.height = dh * dpr;
+   819→      gRef.current.scale = (dw * dpr) / CANVAS_W;
+   820→    };
+   821→    resize();
+   822→    window.addEventListener('resize', resize);
+   823→    return () => window.removeEventListener('resize', resize);
+   824→  }, []);
+   825→
+   826→  /* 清理 */
+   827→  useEffect(() => { return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }; }, []);
+   828→
+   829→  /* 绘制待机画面 */
+   830→  useEffect(() => {
+   831→    if (gameStatus !== 'idle') return;
+   832→    const timer = setTimeout(() => {
+   833→      const canvas = canvasRef.current;
+   834→      if (!canvas) return;
+   835→      const ctx = canvas.getContext('2d');
+   836→      if (!ctx) return;
+   837→      const s = gRef.current.scale;
+   838→      ctx.setTransform(s, 0, 0, s, 0, 0);
+   839→      const sky = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+   840→      sky.addColorStop(0, '#87ceeb');
+   841→      sky.addColorStop(1, '#d4f0fc');
+   842→      ctx.fillStyle = sky;
+   843→      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+   844→      ctx.fillStyle = '#4ade80';
+   845→      ctx.fillRect(0, GROUND_Y, CANVAS_W, 8);
+   846→      ctx.fillStyle = '#8B6914';
+   847→      ctx.fillRect(0, GROUND_Y + 8, CANVAS_W, 52);
+   848→      ctx.fillStyle = '#1e40af';
+   849→      ctx.font = 'bold 36px sans-serif';
+   850→      ctx.textAlign = 'center';
+   851→      ctx.fillText('勇者冒险', CANVAS_W / 2, CANVAS_H / 2 - 40);
+   852→      ctx.font = '16px sans-serif';
+   853→      ctx.fillStyle = '#475569';
+   854→      ctx.fillText('横版跑酷闯关游戏', CANVAS_W / 2, CANVAS_H / 2 - 10);
+   855→      ctx.font = '14px sans-serif';
+   856→      ctx.fillStyle = '#64748b';
+   857→      ctx.fillText(isMobile ? '点击下方按钮开始游戏' : '点击「?」查看操作说明', CANVAS_W / 2, CANVAS_H / 2 + 30);
+   858→    }, 100);
+   859→    return () => clearTimeout(timer);
+   860→  }, [gameStatus, isMobile]);
+   861→
+   862→  /* 距离用state显示 */
+   863→
+   864→  /* 触摸处理函数 */
+   865→  const tb = {
+   866→    left: {
+   867→      onTouchStart: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchL = true; },
+   868→      onTouchEnd: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchL = false; },
+   869→      onTouchCancel: () => { gRef.current.touchL = false; },
+   870→    },
+   871→    right: {
+   872→      onTouchStart: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchR = true; },
+   873→      onTouchEnd: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchR = false; },
+   874→      onTouchCancel: () => { gRef.current.touchR = false; },
+   875→    },
+   876→    jump: {
+   877→      onTouchStart: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchJ = true; },
+   878→      onTouchEnd: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchJ = false; },
+   879→      onTouchCancel: () => { gRef.current.touchJ = false; },
+   880→    },
+   881→    attack: {
+   882→      onTouchStart: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchA = true; },
+   883→      onTouchEnd: (e: React.TouchEvent) => { e.preventDefault(); gRef.current.touchA = false; },
+   884→      onTouchCancel: () => { gRef.current.touchA = false; },
+   885→    },
+   886→  };
+   887→
+   888→  return (
+   889→    <div className="min-h-screen flex flex-col items-center px-2 py-2 sm:px-3 sm:py-3">
+   890→      <Card className="w-full max-w-2xl">
+   891→        <CardHeader className="pb-2">
+   892→          <div className="flex items-center justify-between">
+   893→            <div className="flex items-center gap-1">
+   894→              <Button variant="ghost" size="sm" onClick={onBack}>
+   895→                <ArrowLeft className="h-4 w-4 mr-1" />
+   896→                返回
+   897→              </Button>
+   898→              {gameStatus === 'playing' && <GameControlsHelp info={adventureControlsInfo} variant="button" />}
+   899→            </div>
+   900→            <CardTitle className="text-base sm:text-lg">勇者冒险</CardTitle>
+   901→            <span className="text-amber-500 font-bold text-sm">
+   902→              <Trophy className="h-3.5 w-3.5 inline mr-0.5" />
+   903→              {highScore}
+   904→            </span>
+   905→          </div>
+   906→          <div className="flex items-center justify-between text-sm px-1">
+   907→            <span className="font-bold">分数: {score}</span>
+   908→            <span className="text-xs text-muted-foreground">距离: {distance}m</span>
+   909→            <span className="text-base">
+   910→              {Array.from({ length: 3 }, (_, i) => (
+   911→                <span key={i} style={{ opacity: i < lives ? 1 : 0.2 }}>❤️</span>
+   912→              ))}
+   913→            </span>
+   914→          </div>
+   915→        </CardHeader>
+   916→        <CardContent className="pb-3">
+   917→          <div ref={containerRef} className="w-full relative" style={{ touchAction: 'none' }}>
+   918→            <canvas
+   919→              ref={canvasRef}
+   920→              className="w-full rounded-lg border border-border block"
+   921→              style={{ maxHeight: '400px' }}
+   922→            />
+   923→            {gameStatus === 'over' && (
+   924→              <div className="absolute inset-0 bg-black/60 rounded-lg flex flex-col items-center justify-center gap-3">
+   925→                <div className="text-2xl font-bold text-white">游戏结束</div>
+   926→                <div className="text-amber-400 text-lg font-bold">得分: {score}</div>
+   927→                {isNewRecord && (
+   928→                  <div className="text-yellow-300 text-sm font-bold animate-bounce">
+   929→                    🎉 新纪录！
+   930→                  </div>
+   931→                )}
+   932→                <div className="text-gray-300 text-xs">最高分: {highScore}</div>
+   933→                <Button onClick={startGame} className="mt-2" size="sm">
+   934→                  <RotateCcw className="h-4 w-4 mr-1" />
+   935→                  再来一局
+   936→                </Button>
+   937→              </div>
+   938→            )}
+   939→            {gameStatus === 'idle' && (
+   940→              <div className="absolute inset-0 bg-black/30 rounded-lg flex flex-col items-center justify-center gap-2">
+   941→                <Button onClick={startGame} size="lg">
+   942→                  开始游戏
+   943→                </Button>
+   944→              </div>
+   945→            )}
+   946→          </div>
+   947→          {isMobile && gameStatus === 'playing' && !paused && (
+   948→            <div className="relative w-full mt-3 flex items-center justify-between" style={{ height: '64px', touchAction: 'none' }}>
+   949→              <button
+   950→                {...tb.left}
+   951→                className="rounded-xl bg-blue-600 active:bg-blue-700 text-white font-bold text-xl w-20 h-14 flex items-center justify-center shadow-lg select-none"
+   952→                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+   953→              >◀</button>
+   954→              <button
+   955→                {...tb.jump}
+   956→                className="rounded-xl bg-emerald-600 active:bg-emerald-700 text-white font-bold text-sm w-20 h-14 flex items-center justify-center shadow-lg select-none"
+   957→                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+   958→              >跳跃</button>
+   959→              <button
+   960→                {...tb.attack}
+   961→                className="rounded-xl bg-red-600 active:bg-red-700 text-white font-bold text-sm w-16 h-14 flex items-center justify-center shadow-lg select-none"
+   962→                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+   963→              >攻击</button>
+   964→              <button
+   965→                {...tb.right}
+   966→                className="rounded-xl bg-blue-600 active:bg-blue-700 text-white font-bold text-xl w-20 h-14 flex items-center justify-center shadow-lg select-none"
+   967→                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+   968→              >▶</button>
+   969→            </div>
+   970→          )}
+   971→        </CardContent>
+   972→      </Card>
+   973→    </div>
+   974→  );
+   975→}
+   976→

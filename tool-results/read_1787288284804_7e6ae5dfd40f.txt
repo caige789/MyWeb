@@ -1,0 +1,991 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react';
+     6→
+     7→/** 组件属性接口 */
+     8→interface BreakoutGameProps {
+     9→  onBack: () => void;
+    10→}
+    11→
+    12→/** 游戏名称（用于API） */
+    13→const GAME_NAME = 'breakout';
+    14→/** Canvas 逻辑最大宽度 */
+    15→const CANVAS_MAX_W = 480;
+    16→/** Canvas 逻辑高度 */
+    17→const CANVAS_H = 600;
+    18→/** 挡板默认宽度 */
+    19→const PADDLE_W = 80;
+    20→/** 挡板高度 */
+    21→const PADDLE_H = 12;
+    22→/** 挡板Y轴位置（距底部） */
+    23→const PADDLE_Y_OFFSET = 30;
+    24→/** 弹球半径 */
+    25→const BALL_RADIUS = 6;
+    26→/** 弹球默认速度 */
+    27→const BALL_SPEED = 4.5;
+    28→/** 砖块列数 */
+    29→const BRICK_COLS = 8;
+    30→/** 砖块行高 */
+    31→const BRICK_H = 22;
+    32→/** 砖块水平间距 */
+    33→const BRICK_GAP = 3;
+    34→/** 砖块顶部偏移 */
+    35→const BRICK_TOP_OFFSET = 60;
+    36→/** 总生命数 */
+    37→const MAX_LIVES = 3;
+    38→/** 总关卡数 */
+    39→const MAX_LEVEL = 3;
+    40→/** 道具掉落概率 */
+    41→const POWERUP_CHANCE = 0.2;
+    42→/** 道具下落速度 */
+    43→const POWERUP_SPEED = 2.5;
+    44→/** 道具尺寸 */
+    45→const POWERUP_SIZE = 22;
+    46→
+    47→/** 砖块颜色与分值配置，索引越大越靠上、分值越高 */
+    48→const BRICK_TYPES = [
+    49→  { color: '#ef4444', score: 10, gradient: ['#f87171', '#dc2626'] },
+    50→  { color: '#f97316', score: 20, gradient: ['#fb923c', '#ea580c'] },
+    51→  { color: '#eab308', score: 30, gradient: ['#facc15', '#ca8a04'] },
+    52→  { color: '#22c55e', score: 40, gradient: ['#4ade80', '#16a34a'] },
+    53→  { color: '#a855f7', score: 50, gradient: ['#c084fc', '#9333ea'] },
+    54→];
+    55→
+    56→/** 道具类型枚举 */
+    57→enum PowerUpType {
+    58→  Extend = 'P',
+    59→  Multi = 'M',
+    60→  Slow = 'S',
+    61→}
+    62→
+    63→/** 道具颜色映射 */
+    64→const POWERUP_COLORS: Record<PowerUpType, string> = {
+    65→  [PowerUpType.Extend]: '#22c55e',
+    66→  [PowerUpType.Multi]: '#3b82f6',
+    67→  [PowerUpType.Slow]: '#eab308',
+    68→};
+    69→
+    70→/** 砖块数据结构 */
+    71→interface Brick {
+    72→  x: number;
+    73→  y: number;
+    74→  w: number;
+    75→  h: number;
+    76→  typeIndex: number;
+    77→  alive: boolean;
+    78→}
+    79→
+    80→/** 弹球数据结构 */
+    81→interface Ball {
+    82→  x: number;
+    83→  y: number;
+    84→  dx: number;
+    85→  dy: number;
+    86→  radius: number;
+    87→  speed: number;
+    88→}
+    89→
+    90→/** 道具数据结构 */
+    91→interface PowerUp {
+    92→  x: number;
+    93→  y: number;
+    94→  type: PowerUpType;
+    95→  frame: number;
+    96→}
+    97→
+    98→/** 粒子数据结构 */
+    99→interface Particle {
+   100→  x: number;
+   101→  y: number;
+   102→  dx: number;
+   103→  dy: number;
+   104→  life: number;
+   105→  maxLife: number;
+   106→  color: string;
+   107→  size: number;
+   108→}
+   109→
+   110→/** 拖尾位置记录 */
+   111→interface TrailPoint {
+   112→  x: number;
+   113→  y: number;
+   114→  alpha: number;
+   115→}
+   116→
+   117→/** 游戏状态类型 */
+   118→type GameStatus = 'idle' | 'playing' | 'levelUp' | 'over';
+   119→
+   120→/** 生成某一关的砖块布局 */
+   121→function generateBricks(level: number, canvasW: number): Brick[] {
+   122→  const bricks: Brick[] = [];
+   123→  const brickW = (canvasW - (BRICK_COLS + 1) * BRICK_GAP) / BRICK_COLS;
+   124→
+   125→  if (level === 1) {
+   126→    // 第一关：5行标准排列
+   127→    for (let row = 0; row < 5; row++) {
+   128→      const typeIndex = row;
+   129→      for (let col = 0; col < BRICK_COLS; col++) {
+   130→        bricks.push({
+   131→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   132→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   133→          w: brickW,
+   134→          h: BRICK_H,
+   135→          typeIndex,
+   136→          alive: true,
+   137→        });
+   138→      }
+   139→    }
+   140→  } else if (level === 2) {
+   141→    // 第二关：6行，部分位置空缺形成菱形
+   142→    for (let row = 0; row < 6; row++) {
+   143→      const typeIndex = Math.min(row, BRICK_TYPES.length - 1);
+   144→      for (let col = 0; col < BRICK_COLS; col++) {
+   145→        // 菱形空缺：中间两行各跳过2个砖块
+   146→        if (row === 2 && (col === 0 || col === 7)) continue;
+   147→        if (row === 3 && (col === 3 || col === 4)) continue;
+   148→        bricks.push({
+   149→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   150→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   151→          w: brickW,
+   152→          h: BRICK_H,
+   153→          typeIndex,
+   154→          alive: true,
+   155→        });
+   156→      }
+   157→    }
+   158→  } else {
+   159→    // 第三关：7行，交错排列，高密度
+   160→    for (let row = 0; row < 7; row++) {
+   161→      const typeIndex = Math.min(row, BRICK_TYPES.length - 1);
+   162→      for (let col = 0; col < BRICK_COLS; col++) {
+   163→        // 交错空缺
+   164→        if (row % 2 === 0 && col % 2 === 0) continue;
+   165→        if (row === 1 && col === 4) continue;
+   166→        if (row === 4 && col === 2) continue;
+   167→        bricks.push({
+   168→          x: BRICK_GAP + col * (brickW + BRICK_GAP),
+   169→          y: BRICK_TOP_OFFSET + row * (BRICK_H + BRICK_GAP),
+   170→          w: brickW,
+   171→          h: BRICK_H,
+   172→          typeIndex,
+   173→          alive: true,
+   174→        });
+   175→      }
+   176→    }
+   177→  }
+   178→  return bricks;
+   179→}
+   180→
+   181→/** 绘制圆角矩形路径 */
+   182→function roundRect(
+   183→  ctx: CanvasRenderingContext2D,
+   184→  x: number,
+   185→  y: number,
+   186→  w: number,
+   187→  h: number,
+   188→  r: number
+   189→) {
+   190→  const rr = Math.min(r, w / 2, h / 2);
+   191→  ctx.beginPath();
+   192→  ctx.moveTo(x + rr, y);
+   193→  ctx.lineTo(x + w - rr, y);
+   194→  ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+   195→  ctx.lineTo(x + w, y + h - rr);
+   196→  ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+   197→  ctx.lineTo(x + rr, y + h);
+   198→  ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+   199→  ctx.lineTo(x, y + rr);
+   200→  ctx.quadraticCurveTo(x, y, x + rr, y);
+   201→  ctx.closePath();
+   202→}
+   203→
+   204→export default function BreakoutGame({ onBack }: BreakoutGameProps) {
+   205→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   206→  const containerRef = useRef<HTMLDivElement>(null);
+   207→  const animFrameRef = useRef<number>(0);
+   208→  const canvasWRef = useRef<number>(CANVAS_MAX_W);
+   209→
+   210→  // 游戏核心数据用 ref 存储，避免闭包陈旧值
+   211→  const paddleRef = useRef({ x: 0, w: PADDLE_W });
+   212→  const ballsRef = useRef<Ball[]>([]);
+   213→  const bricksRef = useRef<Brick[]>([]);
+   214→  const powerUpsRef = useRef<PowerUp[]>([]);
+   215→  const particlesRef = useRef<Particle[]>([]);
+   216→  const trailsRef = useRef<TrailPoint[]>([]);
+   217→  const scoreRef = useRef(0);
+   218→  const livesRef = useRef(MAX_LIVES);
+   219→  const levelRef = useRef(1);
+   220→  const gameStatusRef = useRef<GameStatus>('idle');
+   221→  const paddleExtendTimerRef = useRef<number | null>(null);
+   222→  const keysRef = useRef<Set<string>>(new Set());
+   223→
+   224→  // UI 渲染用的 state
+   225→  const [score, setScore] = useState(0);
+   226→  const [lives, setLives] = useState(MAX_LIVES);
+   227→  const [level, setLevel] = useState(1);
+   228→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   229→  const [highScore, setHighScore] = useState(0);
+   230→  const [loadingHighScore, setLoadingHighScore] = useState(true);
+   231→  const [isNewRecord, setIsNewRecord] = useState(false);
+   232→
+   233→  // 获取挡板 Y 坐标
+   234→  const getPaddleY = useCallback(() => {
+   235→    return CANVAS_H - PADDLE_Y_OFFSET;
+   236→  }, []);
+   237→
+   238→  // 创建一个新球
+   239→  const createBall = useCallback(
+   240→    (canvasW: number) => {
+   241→      const speed = BALL_SPEED + (levelRef.current - 1) * 0.5;
+   242→      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+   243→      return {
+   244→        x: canvasW / 2,
+   245→        y: getPaddleY() - PADDLE_H / 2 - BALL_RADIUS - 1,
+   246→        dx: Math.cos(angle) * speed,
+   247→        dy: Math.sin(angle) * speed,
+   248→        radius: BALL_RADIUS,
+   249→        speed,
+   250→      };
+   251→    },
+   252→    [getPaddleY]
+   253→  );
+   254→
+   255→  // 生成砖块碎片粒子
+   256→  const spawnParticles = useCallback((brick: Brick) => {
+   257→    const brickType = BRICK_TYPES[brick.typeIndex];
+   258→    const cx = brick.x + brick.w / 2;
+   259→    const cy = brick.y + brick.h / 2;
+   260→    for (let i = 0; i < 8; i++) {
+   261→      const angle = Math.random() * Math.PI * 2;
+   262→      const speed = 1 + Math.random() * 3;
+   263→      particlesRef.current.push({
+   264→        x: cx + (Math.random() - 0.5) * brick.w * 0.6,
+   265→        y: cy + (Math.random() - 0.5) * brick.h * 0.6,
+   266→        dx: Math.cos(angle) * speed,
+   267→        dy: Math.sin(angle) * speed,
+   268→        life: 30 + Math.random() * 20,
+   269→        maxLife: 50,
+   270→        color: brickType.color,
+   271→        size: 2 + Math.random() * 3,
+   272→      });
+   273→    }
+   274→  }, []);
+   275→
+   276→  // 随机生成道具
+   277→  const trySpawnPowerUp = useCallback((brick: Brick) => {
+   278→    if (Math.random() > POWERUP_CHANCE) return;
+   279→    const types = [PowerUpType.Extend, PowerUpType.Multi, PowerUpType.Slow];
+   280→    const type = types[Math.floor(Math.random() * types.length)];
+   281→    powerUpsRef.current.push({
+   282→      x: brick.x + brick.w / 2,
+   283→      y: brick.y + brick.h / 2,
+   284→      type,
+   285→      frame: 0,
+   286→    });
+   287→  }, []);
+   288→
+   289→  // 应用道具效果
+   290→  const applyPowerUp = useCallback(
+   291→    (pu: PowerUp) => {
+   292→      if (pu.type === PowerUpType.Extend) {
+   293→        paddleRef.current.w = Math.min(PADDLE_W * 1.6, canvasWRef.current - 20);
+   294→        if (paddleExtendTimerRef.current) clearTimeout(paddleExtendTimerRef.current);
+   295→        paddleExtendTimerRef.current = window.setTimeout(() => {
+   296→          paddleRef.current.w = PADDLE_W;
+   297→          paddleExtendTimerRef.current = null;
+   298→        }, 10000);
+   299→      } else if (pu.type === PowerUpType.Multi) {
+   300→        // 每个现有球分裂出2个新球
+   301→        const newBalls: Ball[] = [];
+   302→        ballsRef.current.forEach((b) => {
+   303→          for (let i = 0; i < 2; i++) {
+   304→            const angle = Math.atan2(b.dy, b.dx) + (i === 0 ? 0.5 : -0.5);
+   305→            newBalls.push({
+   306→              ...b,
+   307→              dx: Math.cos(angle) * b.speed,
+   308→              dy: Math.sin(angle) * b.speed,
+   309→            });
+   310→          }
+   311→        });
+   312→        ballsRef.current.push(...newBalls);
+   313→      } else if (pu.type === PowerUpType.Slow) {
+   314→        ballsRef.current.forEach((b) => {
+   315→          const slowFactor = 0.65;
+   316→          b.dx *= slowFactor;
+   317→          b.dy *= slowFactor;
+   318→          b.speed *= slowFactor;
+   319→        });
+   320→      }
+   321→    },
+   322→    []
+   323→  );
+   324→
+   325→  // 初始化某一关
+   326→  const initLevel = useCallback(
+   327→    (lvl: number) => {
+   328→      const canvasW = canvasWRef.current;
+   329→      bricksRef.current = generateBricks(lvl, canvasW);
+   330→      ballsRef.current = [createBall(canvasW)];
+   331→      powerUpsRef.current = [];
+   332→      particlesRef.current = [];
+   333→      trailsRef.current = [];
+   334→      paddleRef.current.w = PADDLE_W;
+   335→      paddleRef.current.x = canvasW / 2 - PADDLE_W / 2;
+   336→      if (paddleExtendTimerRef.current) {
+   337→        clearTimeout(paddleExtendTimerRef.current);
+   338→        paddleExtendTimerRef.current = null;
+   339→      }
+   340→      levelRef.current = lvl;
+   341→      setLevel(lvl);
+   342→    },
+   343→    [createBall]
+   344→  );
+   345→
+   346→  // 游戏逻辑更新
+   347→  const update = useCallback(() => {
+   348→    const canvasW = canvasWRef.current;
+   349→    const paddle = paddleRef.current;
+   350→    const paddleY = getPaddleY();
+   351→    const balls = ballsRef.current;
+   352→    const bricks = bricksRef.current;
+   353→    const powerUps = powerUpsRef.current;
+   354→    const particles = particlesRef.current;
+   355→    const trails = trailsRef.current;
+   356→    const keys = keysRef.current;
+   357→
+   358→    // 键盘控制挡板移动
+   359→    const moveSpeed = 7;
+   360→    if (keys.has('ArrowLeft') || keys.has('a') || keys.has('A')) {
+   361→      paddle.x = Math.max(0, paddle.x - moveSpeed);
+   362→    }
+   363→    if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) {
+   364→      paddle.x = Math.min(canvasW - paddle.w, paddle.x + moveSpeed);
+   365→    }
+   366→
+   367→    // 更新弹球
+   368→    const ballsToRemove: number[] = [];
+   369→    balls.forEach((ball, idx) => {
+   370→      // 记录拖尾
+   371→      trails.push({ x: ball.x, y: ball.y, alpha: 1 });
+   372→
+   373→      ball.x += ball.dx;
+   374→      ball.y += ball.dy;
+   375→
+   376→      // 左右墙壁碰撞
+   377→      if (ball.x - ball.radius <= 0) {
+   378→        ball.x = ball.radius;
+   379→        ball.dx = Math.abs(ball.dx);
+   380→      }
+   381→      if (ball.x + ball.radius >= canvasW) {
+   382→        ball.x = canvasW - ball.radius;
+   383→        ball.dx = -Math.abs(ball.dx);
+   384→      }
+   385→
+   386→      // 顶部墙壁碰撞
+   387→      if (ball.y - ball.radius <= 0) {
+   388→        ball.y = ball.radius;
+   389→        ball.dy = Math.abs(ball.dy);
+   390→      }
+   391→
+   392→      // 底部出界
+   393→      if (ball.y - ball.radius > CANVAS_H) {
+   394→        ballsToRemove.push(idx);
+   395→        return;
+   396→      }
+   397→
+   398→      // 挡板碰撞检测
+   399→      const pLeft = paddle.x;
+   400→      const pRight = paddle.x + paddle.w;
+   401→      const pTop = paddleY - PADDLE_H / 2;
+   402→      const pBottom = paddleY + PADDLE_H / 2;
+   403→      if (
+   404→        ball.dy > 0 &&
+   405→        ball.y + ball.radius >= pTop &&
+   406→        ball.y + ball.radius <= pBottom + 4 &&
+   407→        ball.x >= pLeft - ball.radius &&
+   408→        ball.x <= pRight + ball.radius
+   409→      ) {
+   410→        ball.y = pTop - ball.radius;
+   411→        // 根据击中挡板的位置改变反弹角度
+   412→        const hitPos = (ball.x - (paddle.x + paddle.w / 2)) / (paddle.w / 2);
+   413→        const maxAngle = Math.PI / 3;
+   414→        const angle = hitPos * maxAngle;
+   415→        const spd = ball.speed;
+   416→        ball.dx = Math.sin(angle) * spd;
+   417→        ball.dy = -Math.cos(angle) * spd;
+   418→      }
+   419→
+   420→      // 砖块碰撞检测
+   421→      bricks.forEach((brick) => {
+   422→        if (!brick.alive) return;
+   423→        const bLeft = brick.x;
+   424→        const bRight = brick.x + brick.w;
+   425→        const bTop = brick.y;
+   426→        const bBottom = brick.y + brick.h;
+   427→
+   428→        // AABB 碰撞检测
+   429→        if (
+   430→          ball.x + ball.radius > bLeft &&
+   431→          ball.x - ball.radius < bRight &&
+   432→          ball.y + ball.radius > bTop &&
+   433→          ball.y - ball.radius < bBottom
+   434→        ) {
+   435→          brick.alive = false;
+   436→          scoreRef.current += BRICK_TYPES[brick.typeIndex].score;
+   437→          setScore(scoreRef.current);
+   438→          spawnParticles(brick);
+   439→          trySpawnPowerUp(brick);
+   440→
+   441→          // 判断碰撞方向
+   442→          const overlapLeft = ball.x + ball.radius - bLeft;
+   443→          const overlapRight = bRight - (ball.x - ball.radius);
+   444→          const overlapTop = ball.y + ball.radius - bTop;
+   445→          const overlapBottom = bBottom - (ball.y - ball.radius);
+   446→          const minOverlapX = Math.min(overlapLeft, overlapRight);
+   447→          const minOverlapY = Math.min(overlapTop, overlapBottom);
+   448→
+   449→          if (minOverlapX < minOverlapY) {
+   450→            ball.dx = -ball.dx;
+   451→          } else {
+   452→            ball.dy = -ball.dy;
+   453→          }
+   454→        }
+   455→      });
+   456→    });
+   457→
+   458→    // 移除出界的球（从后往前删）
+   459→    for (let i = ballsToRemove.length - 1; i >= 0; i--) {
+   460→      balls.splice(ballsToRemove[i], 1);
+   461→    }
+   462→
+   463→    // 所有球都出界，失去一条命
+   464→    if (balls.length === 0) {
+   465→      livesRef.current -= 1;
+   466→      setLives(livesRef.current);
+   467→      if (livesRef.current <= 0) {
+   468→        gameStatusRef.current = 'over';
+   469→        setGameStatus('over');
+   470→      } else {
+   471→        ballsRef.current = [createBall(canvasW)];
+   472→      }
+   473→    }
+   474→
+   475→    // 检查是否清关
+   476→    if (bricks.every((b) => !b.alive) && gameStatusRef.current === 'playing') {
+   477→      if (levelRef.current >= MAX_LEVEL) {
+   478→        gameStatusRef.current = 'over';
+   479→        setGameStatus('over');
+   480→      } else {
+   481→        gameStatusRef.current = 'levelUp';
+   482→        setGameStatus('levelUp');
+   483→        setTimeout(() => {
+   484→          initLevel(levelRef.current + 1);
+   485→          gameStatusRef.current = 'playing';
+   486→          setGameStatus('playing');
+   487→        }, 1500);
+   488→      }
+   489→    }
+   490→
+   491→    // 更新道具下落
+   492→    const puToRemove: number[] = [];
+   493→    powerUps.forEach((pu, idx) => {
+   494→      pu.y += POWERUP_SPEED;
+   495→      pu.frame += 1;
+   496→
+   497→      // 检测是否被挡板接住
+   498→      if (
+   499→        pu.y + POWERUP_SIZE / 2 >= paddleY - PADDLE_H / 2 &&
+   500→        pu.y - POWERUP_SIZE / 2 <= paddleY + PADDLE_H / 2 &&
+   501→        pu.x + POWERUP_SIZE / 2 >= paddle.x &&
+   502→        pu.x - POWERUP_SIZE / 2 <= paddle.x + paddle.w
+   503→      ) {
+   504→        applyPowerUp(pu);
+   505→        puToRemove.push(idx);
+   506→      }
+   507→
+   508→      // 出界移除
+   509→      if (pu.y > CANVAS_H + 20) {
+   510→        puToRemove.push(idx);
+   511→      }
+   512→    });
+   513→    for (let i = puToRemove.length - 1; i >= 0; i--) {
+   514→      powerUps.splice(puToRemove[i], 1);
+   515→    }
+   516→
+   517→    // 更新粒子
+   518→    for (let i = particles.length - 1; i >= 0; i--) {
+   519→      const p = particles[i];
+   520→      p.x += p.dx;
+   521→      p.y += p.dy;
+   522→      p.dy += 0.08; // 重力
+   523→      p.life -= 1;
+   524→      if (p.life <= 0) {
+   525→        particles.splice(i, 1);
+   526→      }
+   527→    }
+   528→
+   529→    // 更新拖尾衰减
+   530→    for (let i = trails.length - 1; i >= 0; i--) {
+   531→      trails[i].alpha -= 0.08;
+   532→      if (trails[i].alpha <= 0) {
+   533→        trails.splice(i, 1);
+   534→      }
+   535→    }
+   536→  }, [createBall, spawnParticles, trySpawnPowerUp, applyPowerUp, getPaddleY, initLevel]);
+   537→
+   538→  // 绘制画面
+   539→  const draw = useCallback(() => {
+   540→    const canvas = canvasRef.current;
+   541→    if (!canvas) return;
+   542→    const ctx = canvas.getContext('2d');
+   543→    if (!ctx) return;
+   544→
+   545→    const w = canvasWRef.current;
+   546→    const h = CANVAS_H;
+   547→    const paddle = paddleRef.current;
+   548→    const paddleY = getPaddleY();
+   549→    const balls = ballsRef.current;
+   550→    const bricks = bricksRef.current;
+   551→    const powerUps = powerUpsRef.current;
+   552→    const particles = particlesRef.current;
+   553→    const trails = trailsRef.current;
+   554→
+   555→    // 清空画布并绘制深色背景
+   556→    ctx.fillStyle = '#0f0f1a';
+   557→    ctx.fillRect(0, 0, w, h);
+   558→
+   559→    // 绘制背景网格线
+   560→    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+   561→    ctx.lineWidth = 0.5;
+   562→    for (let i = 0; i < w; i += 40) {
+   563→      ctx.beginPath();
+   564→      ctx.moveTo(i, 0);
+   565→      ctx.lineTo(i, h);
+   566→      ctx.stroke();
+   567→    }
+   568→    for (let j = 0; j < h; j += 40) {
+   569→      ctx.beginPath();
+   570→      ctx.moveTo(0, j);
+   571→      ctx.lineTo(w, j);
+   572→      ctx.stroke();
+   573→    }
+   574→
+   575→    // 绘制拖尾
+   576→    trails.forEach((t) => {
+   577→      ctx.beginPath();
+   578→      ctx.arc(t.x, t.y, BALL_RADIUS * 0.6, 0, Math.PI * 2);
+   579→      ctx.fillStyle = `rgba(255,255,255,${t.alpha * 0.3})`;
+   580→      ctx.fill();
+   581→    });
+   582→
+   583→    // 绘制砖块
+   584→    bricks.forEach((brick) => {
+   585→      if (!brick.alive) return;
+   586→      const bt = BRICK_TYPES[brick.typeIndex];
+   587→      const grad = ctx.createLinearGradient(brick.x, brick.y, brick.x, brick.y + brick.h);
+   588→      grad.addColorStop(0, bt.gradient[0]);
+   589→      grad.addColorStop(1, bt.gradient[1]);
+   590→      ctx.fillStyle = grad;
+   591→      roundRect(ctx, brick.x, brick.y, brick.w, brick.h, 4);
+   592→      ctx.fill();
+   593→      // 高光线条
+   594→      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+   595→      ctx.lineWidth = 1;
+   596→      roundRect(ctx, brick.x + 1, brick.y + 1, brick.w - 2, brick.h / 2, 3);
+   597→      ctx.stroke();
+   598→    });
+   599→
+   600→    // 绘制挡板
+   601→    const paddleGrad = ctx.createLinearGradient(
+   602→      paddle.x, paddleY - PADDLE_H / 2,
+   603→      paddle.x, paddleY + PADDLE_H / 2
+   604→    );
+   605→    paddleGrad.addColorStop(0, '#60a5fa');
+   606→    paddleGrad.addColorStop(0.5, '#3b82f6');
+   607→    paddleGrad.addColorStop(1, '#2563eb');
+   608→    ctx.fillStyle = paddleGrad;
+   609→    roundRect(ctx, paddle.x, paddleY - PADDLE_H / 2, paddle.w, PADDLE_H, 6);
+   610→    ctx.fill();
+   611→    // 挡板高光
+   612→    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+   613→    roundRect(ctx, paddle.x + 4, paddleY - PADDLE_H / 2 + 1, paddle.w - 8, PADDLE_H / 3, 3);
+   614→    ctx.fill();
+   615→
+   616→    // 绘制弹球
+   617→    balls.forEach((ball) => {
+   618→      // 光晕
+   619→      ctx.shadowColor = '#ffffff';
+   620→      ctx.shadowBlur = 12;
+   621→      ctx.fillStyle = '#ffffff';
+   622→      ctx.beginPath();
+   623→      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+   624→      ctx.fill();
+   625→      // 高光点
+   626→      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+   627→      ctx.beginPath();
+   628→      ctx.arc(ball.x - 1.5, ball.y - 1.5, ball.radius * 0.35, 0, Math.PI * 2);
+   629→      ctx.fill();
+   630→      ctx.shadowBlur = 0;
+   631→    });
+   632→
+   633→    // 绘制道具
+   634→    powerUps.forEach((pu) => {
+   635→      const color = POWERUP_COLORS[pu.type];
+   636→      const blink = Math.sin(pu.frame * 0.3) * 0.3 + 0.7;
+   637→      ctx.globalAlpha = blink;
+   638→      ctx.fillStyle = color;
+   639→      roundRect(ctx, pu.x - POWERUP_SIZE / 2, pu.y - POWERUP_SIZE / 2, POWERUP_SIZE, POWERUP_SIZE, 5);
+   640→      ctx.fill();
+   641→      ctx.fillStyle = '#ffffff';
+   642→      ctx.font = 'bold 13px sans-serif';
+   643→      ctx.textAlign = 'center';
+   644→      ctx.textBaseline = 'middle';
+   645→      ctx.fillText(pu.type, pu.x, pu.y + 1);
+   646→      ctx.globalAlpha = 1;
+   647→    });
+   648→
+   649→    // 绘制粒子
+   650→    particles.forEach((p) => {
+   651→      const alpha = p.life / p.maxLife;
+   652→      ctx.globalAlpha = alpha;
+   653→      ctx.fillStyle = p.color;
+   654→      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+   655→    });
+   656→    ctx.globalAlpha = 1;
+   657→
+   658→    // 过关提示
+   659→    if (gameStatusRef.current === 'levelUp') {
+   660→      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+   661→      ctx.fillRect(0, 0, w, h);
+   662→      ctx.fillStyle = '#fbbf24';
+   663→      ctx.font = 'bold 36px sans-serif';
+   664→      ctx.textAlign = 'center';
+   665→      ctx.textBaseline = 'middle';
+   666→      ctx.fillText(`第 ${levelRef.current} 关通过！`, w / 2, h / 2 - 20);
+   667→      ctx.fillStyle = '#ffffff';
+   668→      ctx.font = '20px sans-serif';
+   669→      ctx.fillText('准备进入下一关...', w / 2, h / 2 + 25);
+   670→    }
+   671→
+   672→    // 游戏未开始提示
+   673→    if (gameStatusRef.current === 'idle') {
+   674→      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+   675→      ctx.fillRect(0, 0, w, h);
+   676→      ctx.fillStyle = '#ffffff';
+   677→      ctx.font = 'bold 28px sans-serif';
+   678→      ctx.textAlign = 'center';
+   679→      ctx.textBaseline = 'middle';
+   680→      ctx.fillText('打砖块', w / 2, h / 2 - 30);
+   681→      ctx.font = '16px sans-serif';
+   682→      ctx.fillStyle = '#a1a1aa';
+   683→      ctx.fillText('按「开始游戏」开始', w / 2, h / 2 + 15);
+   684→      ctx.fillText('鼠标 / 方向键 / 触摸 控制挡板', w / 2, h / 2 + 45);
+   685→    }
+   686→
+   687→    // 游戏结束遮罩
+   688→    if (gameStatusRef.current === 'over') {
+   689→      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+   690→      ctx.fillRect(0, 0, w, h);
+   691→      const isWin = livesRef.current > 0;
+   692→      ctx.fillStyle = isWin ? '#4ade80' : '#ef4444';
+   693→      ctx.font = 'bold 36px sans-serif';
+   694→      ctx.textAlign = 'center';
+   695→      ctx.textBaseline = 'middle';
+   696→      ctx.fillText(isWin ? '恭喜通关！' : '游戏结束', w / 2, h / 2 - 40);
+   697→      ctx.fillStyle = '#fbbf24';
+   698→      ctx.font = 'bold 24px sans-serif';
+   699→      ctx.fillText(`最终得分: ${scoreRef.current}`, w / 2, h / 2 + 10);
+   700→      if (isWin) {
+   701→        ctx.fillStyle = '#a1a1aa';
+   702→        ctx.font = '16px sans-serif';
+   703→        ctx.fillText('所有关卡已通关！', w / 2, h / 2 + 45);
+   704→      }
+   705→    }
+   706→  }, [getPaddleY]);
+   707→
+   708→  // 游戏主循环
+   709→  const gameLoop = useCallback(() => {
+   710→    if (gameStatusRef.current === 'playing') {
+   711→      update();
+   712→    }
+   713→    draw();
+   714→    animFrameRef.current = requestAnimationFrame(gameLoop);
+   715→  }, [update, draw]);
+   716→
+   717→  // 结束游戏并提交分数
+   718→  const endGame = useCallback(async () => {
+   719→    if (animFrameRef.current) {
+   720→      cancelAnimationFrame(animFrameRef.current);
+   721→      animFrameRef.current = 0;
+   722→    }
+   723→
+   724→    if (scoreRef.current > highScore) {
+   725→      setIsNewRecord(true);
+   726→      try {
+   727→        const res = await fetch('/api/games/scores', {
+   728→          method: 'POST',
+   729→          headers: { 'Content-Type': 'application/json' },
+   730→          body: JSON.stringify({ game: GAME_NAME, score: scoreRef.current }),
+   731→        });
+   732→        if (res.ok) {
+   733→          const data = await res.json();
+   734→          if (data.data?.score !== undefined) {
+   735→            setHighScore(data.data.score);
+   736→          }
+   737→        }
+   738→      } catch {
+   739→        // 网络异常静默处理
+   740→      }
+   741→    } else {
+   742→      setIsNewRecord(false);
+   743→    }
+   744→  }, [highScore]);
+   745→
+   746→  // 游戏结束触发提交
+   747→  useEffect(() => {
+   748→    if (gameStatus === 'over') {
+   749→      endGame();
+   750→    }
+   751→  }, [gameStatus, endGame]);
+   752→
+   753→  // 开始游戏
+   754→  const startGame = useCallback(() => {
+   755→    scoreRef.current = 0;
+   756→    livesRef.current = MAX_LIVES;
+   757→    setScore(0);
+   758→    setLives(MAX_LIVES);
+   759→    setIsNewRecord(false);
+   760→    initLevel(1);
+   761→    gameStatusRef.current = 'playing';
+   762→    setGameStatus('playing');
+   763→
+   764→    // 启动游戏循环（如果尚未启动）
+   765→    if (animFrameRef.current) {
+   766→      cancelAnimationFrame(animFrameRef.current);
+   767→    }
+   768→    animFrameRef.current = requestAnimationFrame(gameLoop);
+   769→  }, [initLevel, gameLoop]);
+   770→
+   771→  // 键盘事件
+   772→  useEffect(() => {
+   773→    const onKeyDown = (e: KeyboardEvent) => {
+   774→      keysRef.current.add(e.key);
+   775→      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+   776→        e.preventDefault();
+   777→      }
+   778→    };
+   779→    const onKeyUp = (e: KeyboardEvent) => {
+   780→      keysRef.current.delete(e.key);
+   781→    };
+   782→    window.addEventListener('keydown', onKeyDown);
+   783→    window.addEventListener('keyup', onKeyUp);
+   784→    return () => {
+   785→      window.removeEventListener('keydown', onKeyDown);
+   786→      window.removeEventListener('keyup', onKeyUp);
+   787→    };
+   788→  }, []);
+   789→
+   790→  // 鼠标移动控制挡板
+   791→  useEffect(() => {
+   792→    const canvas = canvasRef.current;
+   793→    if (!canvas) return;
+   794→
+   795→    const onMouseMove = (e: MouseEvent) => {
+   796→      if (gameStatusRef.current !== 'playing') return;
+   797→      const rect = canvas.getBoundingClientRect();
+   798→      const scaleX = canvasWRef.current / rect.width;
+   799→      const mouseX = (e.clientX - rect.left) * scaleX;
+   800→      const paddle = paddleRef.current;
+   801→      paddle.x = Math.max(
+   802→        0,
+   803→        Math.min(canvasWRef.current - paddle.w, mouseX - paddle.w / 2)
+   804→      );
+   805→    };
+   806→
+   807→    canvas.addEventListener('mousemove', onMouseMove);
+   808→    return () => canvas.removeEventListener('mousemove', onMouseMove);
+   809→  }, []);
+   810→
+   811→  // 触摸滑动控制挡板
+   812→  useEffect(() => {
+   813→    const canvas = canvasRef.current;
+   814→    if (!canvas) return;
+   815→
+   816→    const onTouchMove = (e: TouchEvent) => {
+   817→      if (gameStatusRef.current !== 'playing') return;
+   818→      e.preventDefault();
+   819→      const touch = e.touches[0];
+   820→      const rect = canvas.getBoundingClientRect();
+   821→      const scaleX = canvasWRef.current / rect.width;
+   822→      const touchX = (touch.clientX - rect.left) * scaleX;
+   823→      const paddle = paddleRef.current;
+   824→      paddle.x = Math.max(
+   825→        0,
+   826→        Math.min(canvasWRef.current - paddle.w, touchX - paddle.w / 2)
+   827→      );
+   828→    };
+   829→
+   830→    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+   831→    return () => canvas.removeEventListener('touchmove', onTouchMove);
+   832→  }, []);
+   833→
+   834→  // 获取最高分
+   835→  useEffect(() => {
+   836→    const fetchHighScore = async () => {
+   837→      try {
+   838→        const res = await fetch('/api/games/scores');
+   839→        if (res.ok) {
+   840→          const data = await res.json();
+   841→          if (Array.isArray(data.data)) {
+   842→            const found = data.data.find(
+   843→              (item: { game: string; score: number }) => item.game === GAME_NAME
+   844→            );
+   845→            if (found) {
+   846→              setHighScore(found.score);
+   847→            }
+   848→          }
+   849→        }
+   850→      } catch {
+   851→        // 静默处理
+   852→      } finally {
+   853→        setLoadingHighScore(false);
+   854→      }
+   855→    };
+   856→    fetchHighScore();
+   857→  }, []);
+   858→
+   859→  // Canvas 尺寸自适应 + 高DPI适配
+   860→  useEffect(() => {
+   861→    const updateSize = () => {
+   862→      const container = containerRef.current;
+   863→      const canvas = canvasRef.current;
+   864→      if (!container || !canvas) return;
+   865→
+   866→      const containerWidth = container.clientWidth;
+   867→      const w = Math.min(containerWidth, CANVAS_MAX_W);
+   868→      const dpr = window.devicePixelRatio || 1;
+   869→
+   870→      canvas.width = w * dpr;
+   871→      canvas.height = CANVAS_H * dpr;
+   872→      canvas.style.width = `${w}px`;
+   873→      canvas.style.height = `${CANVAS_H}px`;
+   874→
+   875→      const ctx = canvas.getContext('2d');
+   876→      if (ctx) ctx.scale(dpr, dpr);
+   877→
+   878→      canvasWRef.current = w;
+   879→    };
+   880→
+   881→    updateSize();
+   882→    window.addEventListener('resize', updateSize);
+   883→    return () => window.removeEventListener('resize', updateSize);
+   884→  }, []);
+   885→
+   886→  // 组件卸载时清理
+   887→  useEffect(() => {
+   888→    return () => {
+   889→      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+   890→      if (paddleExtendTimerRef.current) clearTimeout(paddleExtendTimerRef.current);
+   891→    };
+   892→  }, []);
+   893→
+   894→  // 生成生命值展示
+   895→  const heartsDisplay = Array.from({ length: MAX_LIVES }, (_, i) => (
+   896→    <span
+   897→      key={i}
+   898→      className={i < lives ? 'opacity-100' : 'opacity-25'}
+   899→    >
+   900→      ❤️
+   901→    </span>
+   902→  ));
+   903→
+   904→  return (
+   905→    <div className="flex flex-col items-center w-full max-w-md mx-auto px-4 py-6 gap-4">
+   906→      {/* 顶部栏 */}
+   907→      <div className="flex items-center justify-between w-full">
+   908→        <Button
+   909→          variant="ghost"
+   910→          size="sm"
+   911→          onClick={onBack}
+   912→          className="text-muted-foreground hover:text-foreground"
+   913→        >
+   914→          <ArrowLeft className="h-4 w-4 mr-1" />
+   915→          返回大厅
+   916→        </Button>
+   917→        <h2 className="text-lg font-bold tracking-wide">🧱 打砖块</h2>
+   918→        <div className="w-20" />
+   919→      </div>
+   920→
+   921→      {/* 分数与状态栏 */}
+   922→      <div className="grid grid-cols-4 gap-2 w-full text-center">
+   923→        <div className="flex flex-col items-center gap-0.5">
+   924→          <span className="text-xs text-muted-foreground">分数</span>
+   925→          <span className="text-xl font-bold text-primary tabular-nums">{score}</span>
+   926→        </div>
+   927→        <div className="flex flex-col items-center gap-0.5">
+   928→          <span className="text-xs text-muted-foreground flex items-center gap-1">
+   929→            <Trophy className="h-3 w-3 text-yellow-500" />
+   930→            最高分
+   931→          </span>
+   932→          <span className="text-xl font-bold text-yellow-500 tabular-nums">
+   933→            {loadingHighScore ? '...' : highScore}
+   934→          </span>
+   935→        </div>
+   936→        <div className="flex flex-col items-center gap-0.5">
+   937→          <span className="text-xs text-muted-foreground">生命</span>
+   938→          <div className="text-base leading-tight">{heartsDisplay}</div>
+   939→        </div>
+   940→        <div className="flex flex-col items-center gap-0.5">
+   941→          <span className="text-xs text-muted-foreground">关卡</span>
+   942→          <span className="text-xl font-bold tabular-nums">
+   943→            {level}/{MAX_LEVEL}
+   944→          </span>
+   945→        </div>
+   946→      </div>
+   947→
+   948→      {/* Canvas 游戏区域 */}
+   949→      <div
+   950→        ref={containerRef}
+   951→        className="w-full flex justify-center"
+   952→      >
+   953→        <canvas
+   954→          ref={canvasRef}
+   955→          className="rounded-lg border border-border/30 shadow-lg"
+   956→          style={{ touchAction: 'none' }}
+   957→        />
+   958→      </div>
+   959→
+   960→      {/* 操作按钮与提示 */}
+   961→      <div className="flex flex-col items-center gap-3 w-full">
+   962→        {gameStatus === 'playing' && (
+   963→          <p className="text-sm text-muted-foreground">
+   964→            鼠标 / 方向键 / 触摸滑动 控制挡板
+   965→          </p>
+   966→        )}
+   967→
+   968→        {gameStatus === 'over' && isNewRecord && (
+   969→          <p className="text-sm font-semibold text-yellow-500 animate-pulse">
+   970→            🎉 新纪录！
+   971→          </p>
+   972→        )}
+   973→
+   974→        <Button
+   975→          onClick={startGame}
+   976→          size="lg"
+   977→          className="w-full max-w-xs text-base font-semibold"
+   978→          disabled={gameStatus === 'playing' || gameStatus === 'levelUp'}
+   979→        >
+   980→          <RotateCcw className="h-4 w-4 mr-2" />
+   981→          {gameStatus === 'playing'
+   982→            ? '游戏中...'
+   983→            : gameStatus === 'levelUp'
+   984→              ? '过关中...'
+   985→              : '开始游戏'}
+   986→        </Button>
+   987→      </div>
+   988→    </div>
+   989→  );
+   990→}
+   991→

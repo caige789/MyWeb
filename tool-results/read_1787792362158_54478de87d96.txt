@@ -1,0 +1,1270 @@
+     1→'use client';
+     2→
+     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { ArrowLeft, Trophy, Sun } from 'lucide-react';
+     6→import GameControlsHelp, { type GameControlsInfo } from './GameControlsHelp';
+     7→
+     8→interface PvzGameProps {
+     9→  onBack: () => void;
+    10→}
+    11→
+    12→const GAME_NAME = 'pvz';
+    13→const ROWS = 5;
+    14→const COLS = 9;
+    15→const LOGIC_W = 640;
+    16→const LOGIC_H = Math.floor(LOGIC_W * (ROWS / COLS));
+    17→const TOTAL_WAVES = 5;
+    18→const WAVE_DURATION = 30;
+    19→const SUN_DROP_INTERVAL = 7000;
+    20→const SUN_VALUE = 25;
+    21→const PEA_SPEED = 4.5;
+    22→const PEA_DAMAGE = 25;
+    23→const SHOOT_INTERVAL = 1400;
+    24→const SUNFLOWER_INTERVAL = 10000;
+    25→const SUN_LIFE = 900;
+    26→const ICE_SLOW_DURATION = 3000;
+    27→const ICE_SLOW_FACTOR = 0.5;
+    28→const CHERRY_FUSE_TIME = 1200;
+    29→const CHERRY_DAMAGE = 1800;
+    30→const CHERRY_RADIUS_CELLS = 1.5;
+    31→const CHOMP_DIGEST_TIME = 25000;
+    32→const CHOMP_MAX_HP = 300;
+    33→const MINE_ARM_TIME = 4000;
+    34→const TORCH_EXTRA_DAMAGE = 15;
+    35→const SUN_ATTRACT_RADIUS = 90;
+    36→const SUN_ATTRACT_SPEED = 10;
+    37→
+    38→
+    39→
+    40→
+    41→
+    42→type Difficulty = 'easy' | 'normal' | 'hard';
+    43→
+    44→interface DifficultyConfig {
+    45→  label: string;
+    46→  initSun: number;
+    47→  zombieSpeedMul: number;
+    48→  zombieCountMul: number;
+    49→}
+    50→
+    51→const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
+    52→  easy:   { label: '简单', initSun: 200, zombieSpeedMul: 0.6, zombieCountMul: 0.6 },
+    53→  normal: { label: '普通', initSun: 150, zombieSpeedMul: 1.0, zombieCountMul: 1.0 },
+    54→  hard:   { label: '困难', initSun: 75,  zombieSpeedMul: 1.3, zombieCountMul: 1.4 },
+    55→};
+    56→
+    57→interface PlantDef {
+    58→  id: string;
+    59→  name: string;
+    60→  emoji: string;
+    61→  cost: number;
+    62→  hp: number;
+    63→  desc: string;
+    64→}
+    65→
+    66→const PLANT_DEFS: PlantDef[] = [
+    67→  { id: 'sunflower',   name: '\u5411\u65e5\u8475',     emoji: '\u{1f33b}', cost: 50,  hp: 80,  desc: '\u4ea7\u751f\u9633\u5149' },
+    68→  { id: 'peashooter',  name: '\u8c4c\u8c46\u5c04\u624b',   emoji: '\u{1f7e2}', cost: 100, hp: 80,  desc: '\u5355\u53d1\u5c04\u51fb' },
+    69→  { id: 'wallnut',     name: '\u575a\u679c\u5899',     emoji: '\u{1f95c}', cost: 50,  hp: 800, desc: '\u9ad8\u8840\u91cf\u6321\u8def' },
+    70→  { id: 'doubleshoot', name: '\u53cc\u53d1\u5c04\u624b',   emoji: '\u{1f535}', cost: 200, hp: 80,  desc: '\u53cc\u53d1\u5c04\u51fb' },
+    71→  { id: 'iceshooter',  name: '\u5bd2\u51b0\u5c04\u624b', emoji: '\u2744\ufe0f', cost: 175, hp: 80,  desc: '\u51b0\u8c4c\u8c46\u51cf\u901f' },
+    72→  { id: 'cherrybomb',  name: '\u6a31\u6843\u70b8\u5f39', emoji: '\u{1f4a5}', cost: 150, hp: 80,  desc: '\u8303\u56f4\u7206\u70b8' },
+    73→  { id: 'chomper',     name: '\u5927\u5634\u82b1',     emoji: '\u{1f335}', cost: 150, hp: 80,  desc: '\u5403\u6389\u50f5\u5c38' },
+    74→  { id: 'potatomine',  name: '\u571f\u8c46\u96f7',     emoji: '\u{1f954}', cost: 25,  hp: 80,  desc: '\u8e29\u7206\u50f5\u5c38' },
+    75→  { id: 'torchwood',   name: '\u706b\u70ac\u6811\u6869',   emoji: '\u{1f525}', cost: 175, hp: 200, desc: '\u8c4c\u8c46\u53d8\u706b\u7403' },
+    76→];
+    77→
+    78→
+    79→
+    80→
+    81→
+    82→type ZombieType = 'normal' | 'cone' | 'bucket' | 'flag' | 'newspaper' | 'football' | 'gargantuar';
+    83→
+    84→interface ZombieDef {
+    85→  type: ZombieType;
+    86→  name: string;
+    87→  emoji: string;
+    88→  hp: number;
+    89→  speed: number;
+    90→  score: number;
+    91→}
+    92→
+    93→const ZOMBIE_DEFS: Record<ZombieType, ZombieDef> = {
+    94→  normal:    { type: 'normal',    name: '\u666e\u901a\u50f5\u5c38',   emoji: '\u{1f9df}',     hp: 100,  speed: 0.3,  score: 10 },
+    95→  cone:      { type: 'cone',      name: '\u8def\u969c\u50f5\u5c38',   emoji: '\u{1f9df}\u200d\u2642\ufe0f',  hp: 200,  speed: 0.3,  score: 20 },
+    96→  bucket:    { type: 'bucket',    name: '\u94c1\u6876\u50f5\u5c38', emoji: '\u{1f9df}\u200d\u2640\ufe0f', hp: 400,  speed: 0.25, score: 40 },
+    97→  flag:      { type: 'flag',      name: '\u65d7\u5e1c\u50f5\u5c38',   emoji: '\u{1f6a9}',     hp: 150,  speed: 0.5,  score: 30 },
+    98→  newspaper: { type: 'newspaper', name: '\u62a5\u7eb8\u50f5\u5c38', emoji: '\u{1f4f0}',     hp: 280,  speed: 0.3,  score: 35 },
+    99→  football:  { type: 'football',  name: '\u6a44\u6984\u7403\u50f5\u5c38', emoji: '\u{1f3c8}',     hp: 500,  speed: 0.45, score: 50 },
+   100→  gargantuar:{ type: 'gargantuar',name: '\u5de8\u4eba\u50f5\u5c38',   emoji: '\u{1f947}',     hp: 1000, speed: 0.15, score: 80 },
+   101→};
+   102→
+   103→interface Plant {
+   104→  type: string;
+   105→  row: number;
+   106→  col: number;
+   107→  hp: number;
+   108→  maxHp: number;
+   109→  shootTimer: number;
+   110→  sunTimer: number;
+   111→  fuseTimer: number;
+   112→  digestTimer: number;
+   113→  digesting: boolean;
+   114→  dead: boolean;
+   115→  armTimer: number;
+   116→  armed: boolean;
+   117→}
+   118→
+   119→interface Zombie {
+   120→  id: number;
+   121→  type: ZombieType;
+   122→  name: string;
+   123→  emoji: string;
+   124→  row: number;
+   125→  x: number;
+   126→  hp: number;
+   127→  maxHp: number;
+   128→  baseSpeed: number;
+   129→  speed: number;
+   130→  score: number;
+   131→  hitFlash: number;
+   132→  eating: boolean;
+   133→  walkPhase: number;
+   134→  slowTimer: number;
+   135→  paperBroken: boolean;
+   136→  smashed: boolean;
+   137→}
+   138→
+   139→interface Pea {
+   140→  row: number;
+   141→  x: number;
+   142→  y: number;
+   143→  isIce: boolean;
+   144→  isFire: boolean;
+   145→  damage: number;
+   146→}
+   147→
+   148→interface Sun {
+   149→  id: number;
+   150→  x: number;
+   151→  y: number;
+   152→  targetY: number;
+   153→  vy: number;
+   154→  collected: boolean;
+   155→  alpha: number;
+   156→  bouncePhase: number;
+   157→  lifeTimer: number;
+   158→  scale: number;
+   159→}
+   160→
+   161→interface Mower {
+   162→  row: number;
+   163→  x: number;
+   164→  active: boolean;
+   165→  speed: number;
+   166→}
+   167→
+   168→function getWaveZombies(wave: number, countMul: number): { type: ZombieType; delay: number }[] {
+   169→  const zombies: { type: ZombieType; delay: number }[] = [];
+   170→  let delay = 0;
+   171→  const baseCounts: number[][] = [
+   172→    [4, 1, 0, 0, 0, 0, 0],
+   173→    [3, 2, 0, 1, 1, 0, 0],
+   174→    [2, 2, 1, 1, 1, 1, 0],
+   175→    [2, 3, 1, 1, 2, 1, 1],
+   176→    [1, 3, 2, 2, 2, 2, 2],
+   177→  ];
+   178→  const counts = baseCounts[Math.min(wave, baseCounts.length - 1)];
+   179→  const types: ZombieType[] = ['normal', 'cone', 'bucket', 'flag', 'newspaper', 'football', 'gargantuar'];
+   180→  for (let i = 0; i < types.length; i++) {
+   181→    const count = Math.round(counts[i] * countMul);
+   182→    for (let j = 0; j < count; j++) {
+   183→      zombies.push({ type: types[i], delay });
+   184→      delay += 2000 + Math.random() * 3000;
+   185→    }
+   186→  }
+   187→  for (let i = zombies.length - 1; i > 0; i--) {
+   188→    const j = Math.floor(Math.random() * (i + 1));
+   189→    [zombies[i], zombies[j]] = [zombies[j], zombies[i]];
+   190→  }
+   191→  return zombies;
+   192→}
+   193→
+   194→const pvzControlsInfo: GameControlsInfo = {
+   195→  gameName: '植物大战僵尸',
+   196→  desktop: [
+   197→    { action: '点击植物卡', keys: [], description: '选中要种植的植物' },
+   198→    { action: '点击草坪', keys: [], description: '在空格子上种植选中的植物' },
+   199→    { action: '点击阳光', keys: [], description: '收集飘落的阳光' },
+   200→  ],
+   201→  mobile: [
+   202→    { action: '点击植物卡', keys: [], description: '选中要种植的植物' },
+   203→    { action: '点击草坪', keys: [], description: '在空格子上种植选中的植物' },
+   204→    { action: '点击阳光', keys: [], description: '收集飘落的阳光' },
+   205→    { action: '收集全部按钮', keys: [], description: '一键收集所有场上阳光' },
+   206→  ],
+   207→  rules: [
+   208→    '选择植物卡片，点击草坪空格子种植',
+   209→    '收集阳光获取资源，用于购买植物',
+   210→    '僵尸从右侧出现，植物自动攻击',
+   211→    '阻止僵尸到达左侧即可获胜',
+   212→    '每排有一个割草机作为最后防线',
+   213→  ],
+   214→  tips: [
+   215→    '优先种向日葵，快速积累阳光',
+   216→    '坚果墙可以挡住僵尸，争取时间',
+   217→    '樱桃炸弹一次性消灭范围内所有僵尸',
+   218→    '地雷需要4秒准备时间，种在前方效果好',
+   219→    '火炬树桩可以把豌豆变成火球，伤害翻倍',
+   220→  ],
+   221→};
+   222→
+   223→export default function PvzGame({ onBack }: PvzGameProps) {
+   224→  const [phase, setPhase] = useState<'settings' | 'playing' | 'won' | 'lost'>('settings');
+   225→  const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+   226→  const [highScore, setHighScore] = useState(0);
+   227→
+   228→  const plantsRef = useRef<Plant[]>([]);
+   229→  const zombiesRef = useRef<Zombie[]>([]);
+   230→  const peasRef = useRef<Pea[]>([]);
+   231→  const sunsRef = useRef<Sun[]>([]);
+   232→  const mowersRef = useRef<Mower[]>([]);
+   233→  const sunRef = useRef(100);
+   234→  const scoreRef = useRef(0);
+   235→  const waveRef = useRef(1);
+   236→  const waveElapsedRef = useRef(0);
+   237→  const waveZombiesRef = useRef<{ type: ZombieType; delay: number }[]>([]);
+   238→  const waveSpawnIdxRef = useRef(0);
+   239→  const sunDropTimerRef = useRef(0);
+   240→  const zombieIdRef = useRef(0);
+   241→  const sunIdRef = useRef(0);
+   242→  const diffRef = useRef<Difficulty>('normal');
+   243→  const overRef = useRef(false);
+   244→  const wonRef = useRef(false);
+   245→  const selPlantRef = useRef<string | null>(null);
+   246→  const lastTimeRef = useRef(0);
+   247→  const rafRef = useRef(0);
+   248→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   249→  const containerRef = useRef<HTMLDivElement>(null);
+   250→  const cellWRef = useRef(LOGIC_W / COLS);
+   251→  const cellHRef = useRef(LOGIC_H / ROWS);
+   252→  const cursorRef = useRef<{ x: number; y: number } | null>(null);
+   253→  const isShovelRef = useRef(false);
+   254→  const loopFnRef = useRef<(timestamp: number) => void>(null!);
+   255→  const submitScoreRef = useRef<(s: number) => void>(() => {});
+   256→  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+   257→  const hasMovedRef = useRef(false);
+   258→
+   259→  const [selectedPlant, setSelectedPlant] = useState<string | null>(null);
+   260→  const [isShovel, setIsShovel] = useState(false);
+   261→  const [displaySun, setDisplaySun] = useState(100);
+   262→  const [displayScore, setDisplayScore] = useState(0);
+   263→  const [displayWave, setDisplayWave] = useState(1);
+   264→
+   265→  useEffect(() => {
+   266→    fetch('/api/games/scores')
+   267→      .then(r => r.json())
+   268→      .then(data => {
+   269→        if (data.code === 200) {
+   270→          const pvz = (data.data || []).find((s: { game: string }) => s.game === GAME_NAME);
+   271→          if (pvz) setHighScore(pvz.score);
+   272→        }
+   273→      });
+   274→  }, []);
+   275→
+   276→  const doSubmitScore = useCallback((s: number) => {
+   277→    fetch('/api/games/scores', {
+   278→      method: 'POST',
+   279→      headers: { 'Content-Type': 'application/json' },
+   280→      body: JSON.stringify({ game: GAME_NAME, score: s }),
+   281→    })
+   282→      .then(r => r.json())
+   283→      .then(data => {
+   284→        if (data.code === 200 && data.data) setHighScore(data.data.score);
+   285→      });
+   286→  }, []);
+   287→
+   288→  useEffect(() => { submitScoreRef.current = doSubmitScore; }, [doSubmitScore]);
+   289→
+   290→  const setupCanvas = useCallback(() => {
+   291→    const canvas = canvasRef.current;
+   292→    const container = containerRef.current;
+   293→    if (!canvas || !container) return;
+   294→    const rect = container.getBoundingClientRect();
+   295→    const w = Math.min(rect.width, 640);
+   296→    const h = w * (ROWS / COLS);
+   297→    const dpr = window.devicePixelRatio || 1;
+   298→    canvas.width = w * dpr;
+   299→    canvas.height = h * dpr;
+   300→    canvas.style.width = w + 'px';
+   301→    canvas.style.height = h + 'px';
+   302→    const ctx = canvas.getContext('2d');
+   303→    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   304→    cellWRef.current = w / COLS;
+   305→    cellHRef.current = h / ROWS;
+   306→  }, []);
+   307→
+   308→  const initGame = useCallback((diff: Difficulty) => {
+   309→    const cfg = DIFFICULTY_CONFIG[diff];
+   310→    plantsRef.current = [];
+   311→    zombiesRef.current = [];
+   312→    peasRef.current = [];
+   313→    sunsRef.current = [];
+   314→    const mowers: Mower[] = [];
+   315→    for (let r = 0; r < ROWS; r++) {
+   316→      mowers.push({ row: r, x: 0, active: false, speed: 3 });
+   317→    }
+   318→    mowersRef.current = mowers;
+   319→    sunRef.current = cfg.initSun;
+   320→    scoreRef.current = 0;
+   321→    waveRef.current = 1;
+   322→    waveElapsedRef.current = 0;
+   323→    waveZombiesRef.current = getWaveZombies(0, cfg.zombieCountMul);
+   324→    waveSpawnIdxRef.current = 0;
+   325→    sunDropTimerRef.current = 0;
+   326→    zombieIdRef.current = 0;
+   327→    sunIdRef.current = 0;
+   328→    diffRef.current = diff;
+   329→    overRef.current = false;
+   330→    wonRef.current = false;
+   331→    selPlantRef.current = null;
+   332→    isShovelRef.current = false;
+   333→    cursorRef.current = null;
+   334→    lastTimeRef.current = 0;
+   335→    touchStartRef.current = null;
+   336→    hasMovedRef.current = false;
+   337→    setDisplaySun(cfg.initSun);
+   338→    setDisplayScore(0);
+   339→    setDisplayWave(1);
+   340→    setSelectedPlant(null);
+   341→    setIsShovel(false);
+   342→  }, []);
+   343→
+   344→  const startGame = useCallback(() => {
+   345→    initGame(difficulty);
+   346→    setPhase('playing');
+   347→  }, [difficulty, initGame]);
+   348→
+   349→  const screenToLogic = useCallback((clientX: number, clientY: number) => {
+   350→    const canvas = canvasRef.current;
+   351→    if (!canvas) return { x: 0, y: 0 };
+   352→    const rect = canvas.getBoundingClientRect();
+   353→    return {
+   354→      x: (clientX - rect.left) / rect.width * LOGIC_W,
+   355→      y: (clientY - rect.top) / rect.height * LOGIC_H,
+   356→    };
+   357→  }, []);
+   358→
+   359→  const collectSun = useCallback((pos: { x: number; y: number }): boolean => {
+   360→    const suns = sunsRef.current;
+   361→    const cellSize = LOGIC_W / COLS;
+   362→    const tapRadius = cellSize * 1.5;
+   363→    for (let i = suns.length - 1; i >= 0; i--) {
+   364→      const s = suns[i];
+   365→      if (s.collected) continue;
+   366→      const dx = pos.x - s.x;
+   367→      const dy = pos.y - s.y;
+   368→      if (dx * dx + dy * dy < tapRadius * tapRadius) {
+   369→        s.collected = true;
+   370→        s.scale = 2.0;
+   371→        sunRef.current += SUN_VALUE;
+   372→        setDisplaySun(sunRef.current);
+   373→        return true;
+   374→      }
+   375→    }
+   376→    return false;
+   377→  }, []);
+   378→
+   379→  const handleTap = useCallback((clientX: number, clientY: number) => {
+   380→    if (overRef.current || wonRef.current) return;
+   381→    const pos = screenToLogic(clientX, clientY);
+   382→
+   383→    if (collectSun(pos)) return;
+   384→
+   385→    if (isShovelRef.current) {
+   386→      const cellW = LOGIC_W / COLS;
+   387→      const cellH = LOGIC_H / ROWS;
+   388→      const col = Math.floor(pos.x / cellW);
+   389→      const row = Math.floor(pos.y / cellH);
+   390→      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+   391→        const idx = plantsRef.current.findIndex(p => p.row === row && p.col === col);
+   392→        if (idx >= 0) {
+   393→          plantsRef.current.splice(idx, 1);
+   394→        }
+   395→      }
+   396→      return;
+   397→    }
+   398→
+   399→    const sel = selPlantRef.current;
+   400→    if (sel) {
+   401→      const cellW = LOGIC_W / COLS;
+   402→      const cellH = LOGIC_H / ROWS;
+   403→      const col = Math.floor(pos.x / cellW);
+   404→      const row = Math.floor(pos.y / cellH);
+   405→      if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+   406→        const exists = plantsRef.current.some(p => p.row === row && p.col === col);
+   407→        if (!exists) {
+   408→          const def = PLANT_DEFS.find(d => d.id === sel);
+   409→          if (def && sunRef.current >= def.cost) {
+   410→            sunRef.current -= def.cost;
+   411→            setDisplaySun(sunRef.current);
+   412→            plantsRef.current.push({
+   413→              type: def.id, row, col,
+   414→              hp: def.hp, maxHp: def.hp,
+   415→              shootTimer: 0, sunTimer: 0,
+   416→              fuseTimer: 0, digestTimer: 0,
+   417→              digesting: false, dead: false,
+   418→              armTimer: 0, armed: false,
+   419→            });
+   420→            selPlantRef.current = null;
+   421→            setSelectedPlant(null);
+   422→          }
+   423→        }
+   424→      }
+   425→    }
+   426→  }, [screenToLogic, collectSun]);
+   427→
+   428→  const handleCanvasMove = useCallback((clientX: number, clientY: number) => {
+   429→    if (overRef.current || wonRef.current) return;
+   430→    const pos = screenToLogic(clientX, clientY);
+   431→    cursorRef.current = pos;
+   432→  }, [screenToLogic]);
+   433→
+   434→  const handleCanvasLeave = useCallback(() => {
+   435→    cursorRef.current = null;
+   436→  }, []);
+   437→
+   438→  const collectAllFlagRef = useRef(false);
+   439→
+   440→  const requestCollectAll = useCallback(() => {
+   441→    collectAllFlagRef.current = true;
+   442→  }, []);
+   443→  useEffect(() => {
+   444→    if (phase !== 'playing') return;
+   445→    const canvas = canvasRef.current;
+   446→    if (!canvas) return;
+   447→
+   448→    const onClick = (e: MouseEvent) => {
+   449→      e.preventDefault();
+   450→      handleTap(e.clientX, e.clientY);
+   451→    };
+   452→    const onMouseMove = (e: MouseEvent) => {
+   453→      handleCanvasMove(e.clientX, e.clientY);
+   454→    };
+   455→    const onMouseLeave = () => { handleCanvasLeave(); };
+   456→
+   457→    const onTouchStart = (e: TouchEvent) => {
+   458→      e.preventDefault();
+   459→      const t = e.touches[0];
+   460→      if (t) {
+   461→        touchStartRef.current = { x: t.clientX, y: t.clientY };
+   462→        hasMovedRef.current = false;
+   463→        handleCanvasMove(t.clientX, t.clientY);
+   464→      }
+   465→    };
+   466→    const onTouchMove = (e: TouchEvent) => {
+   467→      e.preventDefault();
+   468→      const t = e.touches[0];
+   469→      if (t) {
+   470→        const start = touchStartRef.current;
+   471→        if (start) {
+   472→          const dx = t.clientX - start.x;
+   473→          const dy = t.clientY - start.y;
+   474→          if (dx * dx + dy * dy > 400) hasMovedRef.current = true;
+   475→        }
+   476→        handleCanvasMove(t.clientX, t.clientY);
+   477→      }
+   478→    };
+   479→    const onTouchEnd = (e: TouchEvent) => {
+   480→      e.preventDefault();
+   481→      if (!hasMovedRef.current && touchStartRef.current) {
+   482→        handleTap(touchStartRef.current.x, touchStartRef.current.y);
+   483→      }
+   484→      cursorRef.current = null;
+   485→      touchStartRef.current = null;
+   486→    };
+   487→
+   488→    canvas.addEventListener('click', onClick);
+   489→    canvas.addEventListener('mousemove', onMouseMove);
+   490→    canvas.addEventListener('mouseleave', onMouseLeave);
+   491→    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+   492→    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+   493→    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+   494→    return () => {
+   495→      canvas.removeEventListener('click', onClick);
+   496→      canvas.removeEventListener('mousemove', onMouseMove);
+   497→      canvas.removeEventListener('mouseleave', onMouseLeave);
+   498→      canvas.removeEventListener('touchstart', onTouchStart);
+   499→      canvas.removeEventListener('touchmove', onTouchMove);
+   500→      canvas.removeEventListener('touchend', onTouchEnd);
+   501→    };
+   502→  }, [phase, handleTap, handleCanvasMove, handleCanvasLeave]);
+   503→
+   504→  const handleSelectPlant = useCallback((plantId: string) => {
+   505→    if (selPlantRef.current === plantId) {
+   506→      selPlantRef.current = null;
+   507→      setSelectedPlant(null);
+   508→    } else {
+   509→      selPlantRef.current = plantId;
+   510→      setSelectedPlant(plantId);
+   511→      isShovelRef.current = false;
+   512→      setIsShovel(false);
+   513→    }
+   514→  }, []);
+   515→
+   516→  const handleShovel = useCallback(() => {
+   517→    if (isShovelRef.current) {
+   518→      isShovelRef.current = false;
+   519→      setIsShovel(false);
+   520→    } else {
+   521→      isShovelRef.current = true;
+   522→      setIsShovel(true);
+   523→      selPlantRef.current = null;
+   524→      setSelectedPlant(null);
+   525→    }
+   526→  }, []);
+   527→
+   528→  useEffect(() => {
+   529→    const loop = (timestamp: number) => {
+   530→      const canvas = canvasRef.current;
+   531→      if (!canvas) return;
+   532→      const ctx = canvas.getContext('2d');
+   533→      if (!ctx) return;
+   534→      const dpr = window.devicePixelRatio || 1;
+   535→      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+   536→
+   537→      if (lastTimeRef.current === 0) lastTimeRef.current = timestamp;
+   538→      const deltaMs = Math.min(timestamp - lastTimeRef.current, 50);
+   539→      lastTimeRef.current = timestamp;
+   540→      const dt = deltaMs / 16.667;
+   541→      const cellW = cellWRef.current;
+   542→      const cellH = cellHRef.current;
+   543→      const cfg = DIFFICULTY_CONFIG[diffRef.current];
+   544→
+   545→      if (!overRef.current && !wonRef.current) {
+   546→        waveElapsedRef.current += deltaMs;
+   547→
+   548→        sunDropTimerRef.current += deltaMs;
+   549→        if (sunDropTimerRef.current >= SUN_DROP_INTERVAL) {
+   550→          sunDropTimerRef.current -= SUN_DROP_INTERVAL;
+   551→          sunsRef.current.push({
+   552→            id: sunIdRef.current++,
+   553→            x: 40 + Math.random() * (LOGIC_W - 80),
+   554→            y: -20,
+   555→            targetY: 30 + Math.random() * (LOGIC_H - 60),
+   556→            vy: 0, collected: false, alpha: 1, bouncePhase: 0,
+   557→            lifeTimer: SUN_LIFE, scale: 1,
+   558→          });
+   559→        }
+   560→
+   561→        const wz = waveZombiesRef.current;
+   562→        const wsi = waveSpawnIdxRef.current;
+   563→        if (wsi < wz.length && waveElapsedRef.current >= wz[wsi].delay) {
+   564→          const zType = wz[wsi].type;
+   565→          const def = ZOMBIE_DEFS[zType];
+   566→          zombiesRef.current.push({
+   567→            id: zombieIdRef.current++,
+   568→            type: zType, name: def.name, emoji: def.emoji,
+   569→            row: Math.floor(Math.random() * ROWS),
+   570→            x: LOGIC_W + 10,
+   571→            hp: def.hp, maxHp: def.hp,
+   572→            baseSpeed: def.speed, speed: def.speed * cfg.zombieSpeedMul,
+   573→            score: def.score, hitFlash: 0, eating: false,
+   574→            walkPhase: Math.random() * Math.PI * 2,
+   575→            slowTimer: 0, paperBroken: false, smashed: false,
+   576→          });
+   577→          waveSpawnIdxRef.current++;
+   578→        }
+   579→
+   580→        if (
+   581→          waveElapsedRef.current >= WAVE_DURATION * 1000 &&
+   582→          waveSpawnIdxRef.current >= wz.length &&
+   583→          zombiesRef.current.length === 0
+   584→        ) {
+   585→          if (waveRef.current >= TOTAL_WAVES) {
+   586→            wonRef.current = true;
+   587→            submitScoreRef.current(scoreRef.current);
+   588→            setDisplayScore(scoreRef.current);
+   589→            setPhase('won');
+   590→          } else {
+   591→            waveRef.current++;
+   592→            waveElapsedRef.current = 0;
+   593→            waveSpawnIdxRef.current = 0;
+   594→            waveZombiesRef.current = getWaveZombies(waveRef.current - 1, cfg.zombieCountMul);
+   595→            setDisplayWave(waveRef.current);
+   596→          }
+   597→        }
+   598→
+   599→        const plants = plantsRef.current;
+   600→        for (let pi = plants.length - 1; pi >= 0; pi--) {
+   601→          const p = plants[pi];
+   602→          if (p.dead || p.hp <= 0) { plants.splice(pi, 1); continue; }
+   603→
+   604→          if (p.type === 'cherrybomb') {
+   605→            p.fuseTimer += deltaMs;
+   606→            if (p.fuseTimer >= CHERRY_FUSE_TIME) {
+   607→              const cx = (p.col + 0.5) * LOGIC_W / COLS;
+   608→              const cy = (p.row + 0.5) * LOGIC_H / ROWS;
+   609→              const radius = CHERRY_RADIUS_CELLS * Math.max(LOGIC_W / COLS, LOGIC_H / ROWS);
+   610→              for (const z of zombiesRef.current) {
+   611→                const zy = (z.row + 0.5) * LOGIC_H / ROWS;
+   612→                const dx = z.x - cx;
+   613→                const dy = zy - cy;
+   614→                if (dx * dx + dy * dy < radius * radius) {
+   615→                  z.hp -= CHERRY_DAMAGE;
+   616→                  z.hitFlash = 10;
+   617→                }
+   618→              }
+   619→              p.hp = 0;
+   620→            }
+   621→            continue;
+   622→          }
+   623→
+   624→          if (p.type === 'chomper') {
+   625→            if (p.digesting) {
+   626→              p.digestTimer += deltaMs;
+   627→              if (p.digestTimer >= CHOMP_DIGEST_TIME) {
+   628→                p.digesting = false;
+   629→                p.digestTimer = 0;
+   630→              }
+   631→              continue;
+   632→            }
+   633→            const chompRange = (LOGIC_W / COLS) * 1.2;
+   634→            const px = (p.col + 0.5) * LOGIC_W / COLS;
+   635→            const py = (p.row + 0.5) * LOGIC_H / ROWS;
+   636→            for (const z of zombiesRef.current) {
+   637→              if (z.hp <= 0 || z.row !== p.row) continue;
+   638→              const zy = (z.row + 0.5) * LOGIC_H / ROWS;
+   639→              const dx = z.x - px;
+   640→              const dy = zy - py;
+   641→              if (dx > 0 && dx < chompRange && Math.abs(dy) < LOGIC_H / ROWS * 0.5) {
+   642→                if (z.hp <= CHOMP_MAX_HP) {
+   643→                  z.hp = 0;
+   644→                  p.digesting = true;
+   645→                  p.digestTimer = 0;
+   646→                }
+   647→                break;
+   648→              }
+   649→            }
+   650→            continue;
+   651→          }
+   652→
+   653→          if (p.type === 'potatomine') {
+   654→            if (!p.armed) {
+   655→              p.armTimer += deltaMs;
+   656→              if (p.armTimer >= MINE_ARM_TIME) {
+   657→                p.armed = true;
+   658→              }
+   659→              continue;
+   660→            }
+   661→            const mx = (p.col + 0.5) * LOGIC_W / COLS;
+   662→            const my = (p.row + 0.5) * LOGIC_H / ROWS;
+   663→            const mineR = LOGIC_W / COLS * 0.6;
+   664→            for (const z of zombiesRef.current) {
+   665→              if (z.hp <= 0 || z.row !== p.row) continue;
+   666→              const zy = (z.row + 0.5) * LOGIC_H / ROWS;
+   667→              const dx = z.x - mx;
+   668→              const dy = zy - my;
+   669→              if (dx * dx + dy * dy < mineR * mineR) {
+   670→                z.hp -= 1800;
+   671→                z.hitFlash = 10;
+   672→                p.hp = 0;
+   673→                break;
+   674→              }
+   675→            }
+   676→            continue;
+   677→          }
+   678→
+   679→          if (p.type === 'sunflower') {
+   680→            p.sunTimer += deltaMs;
+   681→            if (p.sunTimer >= SUNFLOWER_INTERVAL) {
+   682→              p.sunTimer -= SUNFLOWER_INTERVAL;
+   683→              const sx = (p.col + 0.5) * LOGIC_W / COLS;
+   684→              const sy = p.row * LOGIC_H / ROWS + LOGIC_H / ROWS * 0.2;
+   685→              sunsRef.current.push({
+   686→                id: sunIdRef.current++,
+   687→                x: sx, y: sy,
+   688→                targetY: sy + 20 + Math.random() * 30,
+   689→                vy: 0, collected: false, alpha: 1,
+   690→                bouncePhase: 0, lifeTimer: SUN_LIFE, scale: 1,
+   691→              });
+   692→            }
+   693→          }
+   694→
+   695→          if (p.type === 'peashooter' || p.type === 'doubleshoot' || p.type === 'iceshooter') {
+   696→            const hasZombie = zombiesRef.current.some(
+   697→              z => z.row === p.row && z.x > (p.col + 0.5) * LOGIC_W / COLS && z.hp > 0
+   698→            );
+   699→            if (hasZombie) {
+   700→              p.shootTimer += deltaMs;
+   701→              if (p.shootTimer >= SHOOT_INTERVAL) {
+   702→                p.shootTimer -= SHOOT_INTERVAL;
+   703→                const px = (p.col + 0.8) * LOGIC_W / COLS;
+   704→                const py = (p.row + 0.5) * LOGIC_H / ROWS;
+   705→                const isIce = p.type === 'iceshooter';
+   706→                peasRef.current.push({ row: p.row, x: px, y: py, isIce, isFire: false, damage: PEA_DAMAGE });
+   707→                if (p.type === 'doubleshoot') {
+   708→                  peasRef.current.push({ row: p.row, x: px - 8, y: py - 4, isIce: false, isFire: false, damage: PEA_DAMAGE });
+   709→                }
+   710→              }
+   711→            }
+   712→          }
+   713→        }
+   714→
+   715→        for (const plant of plants) {
+   716→          if (plant.type !== 'torchwood' || plant.hp <= 0) continue;
+   717→          const tx = (plant.col + 0.5) * LOGIC_W / COLS;
+   718→          const tr = LOGIC_W / COLS * 0.6;
+   719→          for (const pea of peasRef.current) {
+   720→            if (pea.isFire) continue;
+   721→            if (pea.row === plant.row && Math.abs(pea.x - tx) < tr) {
+   722→              pea.isFire = true;
+   723→              pea.isIce = false;
+   724→              pea.damage = PEA_DAMAGE + TORCH_EXTRA_DAMAGE;
+   725→            }
+   726→          }
+   727→        }
+   728→
+   729→        for (let i = peasRef.current.length - 1; i >= 0; i--) {
+   730→          peasRef.current[i].x += PEA_SPEED * dt;
+   731→        }
+   732→
+   733→        for (let i = peasRef.current.length - 1; i >= 0; i--) {
+   734→          const pea = peasRef.current[i];
+   735→          let hit = false;
+   736→          const hitR = LOGIC_W / COLS * 0.45;
+   737→          for (const z of zombiesRef.current) {
+   738→            if (z.hp <= 0 || z.row !== pea.row) continue;
+   739→            const zy = (z.row + 0.5) * LOGIC_H / ROWS;
+   740→            const dx = pea.x - z.x;
+   741→            const dy = pea.y - zy;
+   742→            if (dx * dx + dy * dy < hitR * hitR) {
+   743→              z.hp -= pea.damage;
+   744→              z.hitFlash = 6;
+   745→              if (pea.isIce) z.slowTimer = ICE_SLOW_DURATION;
+   746→              hit = true;
+   747→              break;
+   748→            }
+   749→          }
+   750→          if (hit || pea.x > LOGIC_W + 20) {
+   751→            peasRef.current.splice(i, 1);
+   752→          }
+   753→        }
+   754→
+   755→        for (const m of mowersRef.current) {
+   756→          if (!m.active) continue;
+   757→          m.x += m.speed * dt;
+   758→          for (const z of zombiesRef.current) {
+   759→            if (z.hp <= 0 || z.row !== m.row) continue;
+   760→            if (Math.abs(z.x - m.x) < 80) {
+   761→              z.hp = 0;
+   762→              z.smashed = true;
+   763→            }
+   764→          }
+   765→        }
+   766→        mowersRef.current = mowersRef.current.filter(m => !m.active || m.x < LOGIC_W + 50);
+   767→
+   768→        const zombies = zombiesRef.current;
+   769→        for (let i = zombies.length - 1; i >= 0; i--) {
+   770→          const z = zombies[i];
+   771→          if (z.hp <= 0) {
+   772→            scoreRef.current += z.score;
+   773→            setDisplayScore(scoreRef.current);
+   774→            zombies.splice(i, 1);
+   775→            continue;
+   776→          }
+   777→          if (z.hitFlash > 0) z.hitFlash -= dt;
+   778→          z.walkPhase += 0.05 * dt;
+   779→
+   780→          if (z.slowTimer > 0) {
+   781→            z.slowTimer -= deltaMs;
+   782→            z.speed = z.baseSpeed * cfg.zombieSpeedMul * ICE_SLOW_FACTOR;
+   783→          } else {
+   784→            z.speed = z.baseSpeed * cfg.zombieSpeedMul;
+   785→          }
+   786→
+   787→          if (z.type === 'newspaper' && !z.paperBroken && z.hp <= 100) {
+   788→            z.paperBroken = true;
+   789→            z.baseSpeed = 0.6;
+   790→            z.maxHp = 100;
+   791→          }
+   792→
+   793→          if (z.x < LOGIC_W / COLS * 0.5) {
+   794→            const mower = mowersRef.current.find(m => m.row === z.row && !m.active);
+   795→            if (mower) {
+   796→              mower.active = true;
+   797→              continue;
+   798→            }
+   799→          }
+   800→
+   801→          z.eating = false;
+   802→          const zCol = Math.floor(z.x / (LOGIC_W / COLS));
+   803→          const target = plants.find(p => p.row === z.row && p.col === zCol && !p.dead && p.hp > 0);
+   804→          if (target) {
+   805→            z.eating = true;
+   806→            const dmg = z.type === 'gargantuar' ? 1.5 : 0.5;
+   807→            target.hp -= dmg * dt;
+   808→          } else {
+   809→            z.x -= z.speed * dt;
+   810→          }
+   811→
+   812→          if (z.x < LOGIC_W / COLS * 0.2) {
+   813→            overRef.current = true;
+   814→            setDisplayScore(scoreRef.current);
+   815→            submitScoreRef.current(scoreRef.current);
+   816→            setPhase('lost');
+   817→          }
+   818→        }
+   819→
+   820→        for (let i = sunsRef.current.length - 1; i >= 0; i--) {
+   821→          const s = sunsRef.current[i];
+   822→          if (s.collected) {
+   823→            s.scale = Math.max(s.scale - 0.08 * dt, 0);
+   824→            s.alpha -= 0.1 * dt;
+   825→            if (s.alpha <= 0) sunsRef.current.splice(i, 1);
+   826→            continue;
+   827→          }
+   828→          s.lifeTimer -= dt;
+   829→          if (s.lifeTimer <= 0) { sunsRef.current.splice(i, 1); continue; }
+   830→          if (s.y < s.targetY) {
+   831→            s.vy += 0.15 * dt;
+   832→            s.y += s.vy * dt;
+   833→            if (s.y >= s.targetY) {
+   834→              s.y = s.targetY;
+   835→              s.vy = -s.vy * 0.3;
+   836→              s.bouncePhase++;
+   837→              if (s.bouncePhase >= 3) { s.y = s.targetY; s.vy = 0; }
+   838→            }
+   839→          }
+   840→
+   841→          const cursor = cursorRef.current;
+   842→          if (cursor) {
+   843→            const adx = cursor.x - s.x;
+   844→            const ady = cursor.y - s.y;
+   845→            const adist = Math.sqrt(adx * adx + ady * ady);
+   846→            if (adist < SUN_ATTRACT_RADIUS && adist > 0.1) {
+   847→              const speed = SUN_ATTRACT_SPEED * dt;
+   848→              s.x += (adx / adist) * speed;
+   849→              s.y += (ady / adist) * speed;
+   850→              if (adist < 10) {
+   851→                s.collected = true;
+   852→                s.scale = 2.0;
+   853→                sunRef.current += SUN_VALUE;
+   854→                setDisplaySun(sunRef.current);
+   855→              }
+   856→            }
+   857→          }
+   858→        }
+   859→      }
+   860→
+   861→      if (collectAllFlagRef.current) {
+   862→        collectAllFlagRef.current = false;
+   863→        for (const s of sunsRef.current) {
+   864→          if (!s.collected) {
+   865→            s.collected = true;
+   866→            s.scale = 1.8;
+   867→            sunRef.current += SUN_VALUE;
+   868→          }
+   869→        }
+   870→        setDisplaySun(sunRef.current);
+   871→      }
+   872→
+   873→      const lw = LOGIC_W / COLS;
+   874→      const lh = LOGIC_H / ROWS;
+   875→      ctx.clearRect(0, 0, LOGIC_W, LOGIC_H);
+   876→
+   877→      for (let r = 0; r < ROWS; r++) {
+   878→        for (let c = 0; c < COLS; c++) {
+   879→          ctx.fillStyle = (r + c) % 2 === 0 ? '#5cb85c' : '#4cae4c';
+   880→          ctx.fillRect(c * lw, r * lh, lw, lh);
+   881→        }
+   882→      }
+   883→
+   884→      ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+   885→      ctx.lineWidth = 0.5;
+   886→      for (let r = 0; r <= ROWS; r++) {
+   887→        ctx.beginPath(); ctx.moveTo(0, r * lh); ctx.lineTo(LOGIC_W, r * lh); ctx.stroke();
+   888→      }
+   889→      for (let c = 0; c <= COLS; c++) {
+   890→        ctx.beginPath(); ctx.moveTo(c * lw, 0); ctx.lineTo(c * lw, LOGIC_H); ctx.stroke();
+   891→      }
+   892→
+   893→      for (const m of mowersRef.current) {
+   894→        const my = (m.row + 0.5) * lh;
+   895→        ctx.fillStyle = '#666';
+   896→        ctx.fillRect(m.x - 12, my - 8, 24, 16);
+   897→        ctx.fillStyle = '#f44336';
+   898→        ctx.fillRect(m.x + 6, my - 5, 8, 10);
+   899→      }
+   900→
+   901→      const cursor = cursorRef.current;
+   902→      const sel = selPlantRef.current;
+   903→      if (cursor && (sel || isShovelRef.current)) {
+   904→        const hCol = Math.floor(cursor.x / lw);
+   905→        const hRow = Math.floor(cursor.y / lh);
+   906→        if (hRow >= 0 && hRow < ROWS && hCol >= 0 && hCol < COLS) {
+   907→          const exists = plantsRef.current.some(p => p.row === hRow && p.col === hCol);
+   908→          if (isShovelRef.current) {
+   909→            ctx.fillStyle = exists ? 'rgba(244,67,54,0.35)' : 'rgba(255,255,255,0.1)';
+   910→          } else {
+   911→            ctx.fillStyle = exists ? 'rgba(244,67,54,0.35)' : 'rgba(255,255,255,0.25)';
+   912→          }
+   913→          ctx.fillRect(hCol * lw, hRow * lh, lw, lh);
+   914→          ctx.strokeStyle = exists ? '#f44336' : '#fff';
+   915→          ctx.lineWidth = 2;
+   916→          ctx.strokeRect(hCol * lw + 1, hRow * lh + 1, lw - 2, lh - 2);
+   917→
+   918→          if (sel && !exists) {
+   919→            const pDef = PLANT_DEFS.find(d => d.id === sel);
+   920→            if (pDef) {
+   921→              const fs = Math.min(lw, lh) * 0.65;
+   922→              ctx.globalAlpha = 0.7;
+   923→              ctx.font = `${fs}px serif`;
+   924→              ctx.textAlign = 'center';
+   925→              ctx.textBaseline = 'middle';
+   926→              ctx.fillText(pDef.emoji, cursor.x, cursor.y);
+   927→              ctx.globalAlpha = 1;
+   928→            }
+   929→          }
+   930→        }
+   931→      }
+   932→
+   933→      for (const p of plantsRef.current) {
+   934→        const def = PLANT_DEFS.find(d => d.id === p.type);
+   935→        if (!def) continue;
+   936→        const cx = (p.col + 0.5) * lw;
+   937→        const cy = (p.row + 0.5) * lh;
+   938→        const fs = Math.min(lw, lh) * 0.7;
+   939→        ctx.font = `${fs}px serif`;
+   940→        ctx.textAlign = 'center';
+   941→        ctx.textBaseline = 'middle';
+   942→
+   943→        if (p.type === 'cherrybomb' && p.fuseTimer > 0) {
+   944→          const flash = Math.sin(p.fuseTimer * 0.02) > 0;
+   945→          if (flash) {
+   946→            ctx.fillStyle = 'rgba(255,100,0,0.3)';
+   947→            ctx.beginPath();
+   948→            ctx.arc(cx, cy, lw * 0.6, 0, Math.PI * 2);
+   949→            ctx.fill();
+   950→          }
+   951→        }
+   952→
+   953→        if (p.type === 'chomper' && p.digesting) ctx.globalAlpha = 0.5;
+   954→        if (p.type === 'potatomine' && !p.armed) ctx.globalAlpha = 0.4;
+   955→
+   956→        ctx.fillText(def.emoji, cx, cy);
+   957→        ctx.globalAlpha = 1;
+   958→
+   959→        if (p.type === 'chomper' && p.digesting) {
+   960→          const bw = lw * 0.7;
+   961→          const bx = cx - bw / 2;
+   962→          const by = (p.row + 0.15) * lh;
+   963→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   964→          ctx.fillRect(bx, by, bw, 3);
+   965→          ctx.fillStyle = '#9c27b0';
+   966→          ctx.fillRect(bx, by, bw * Math.min(1, p.digestTimer / CHOMP_DIGEST_TIME), 3);
+   967→        }
+   968→
+   969→        if (p.type === 'potatomine' && !p.armed) {
+   970→          const bw = lw * 0.7;
+   971→          const bx = cx - bw / 2;
+   972→          const by = (p.row + 0.15) * lh;
+   973→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   974→          ctx.fillRect(bx, by, bw, 3);
+   975→          ctx.fillStyle = '#ff9800';
+   976→          ctx.fillRect(bx, by, bw * Math.min(1, p.armTimer / MINE_ARM_TIME), 3);
+   977→        }
+   978→
+   979→        if (p.type !== 'cherrybomb' && p.type !== 'potatomine' && p.hp < p.maxHp) {
+   980→          const bw = lw * 0.7;
+   981→          const bx = cx - bw / 2;
+   982→          const by = (p.row + 0.92) * lh;
+   983→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+   984→          ctx.fillRect(bx, by, bw, 4);
+   985→          const ratio = Math.max(0, p.hp / p.maxHp);
+   986→          ctx.fillStyle = ratio > 0.5 ? '#4caf50' : ratio > 0.25 ? '#ff9800' : '#f44336';
+   987→          ctx.fillRect(bx, by, bw * ratio, 4);
+   988→        }
+   989→      }
+   990→
+   991→      for (const pea of peasRef.current) {
+   992→        if (pea.isFire) {
+   993→          ctx.fillStyle = '#ff5722';
+   994→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 6, 0, Math.PI * 2); ctx.fill();
+   995→          ctx.fillStyle = '#ffeb3b';
+   996→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 3, 0, Math.PI * 2); ctx.fill();
+   997→        } else if (pea.isIce) {
+   998→          ctx.fillStyle = '#42a5f5';
+   999→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 5, 0, Math.PI * 2); ctx.fill();
+  1000→          ctx.fillStyle = '#bbdefb';
+  1001→          ctx.beginPath(); ctx.arc(pea.x - 1, pea.y - 1, 2, 0, Math.PI * 2); ctx.fill();
+  1002→        } else {
+  1003→          ctx.fillStyle = '#66bb6a';
+  1004→          ctx.beginPath(); ctx.arc(pea.x, pea.y, 4, 0, Math.PI * 2); ctx.fill();
+  1005→        }
+  1006→      }
+  1007→
+  1008→      for (const s of sunsRef.current) {
+  1009→        ctx.save();
+  1010→        const baseAlpha = s.collected ? Math.max(0, s.alpha) : (s.lifeTimer < 180 ? (Math.sin(s.lifeTimer * 0.15) > 0 ? 1 : 0.4) : 1);
+  1011→        ctx.globalAlpha = baseAlpha;
+  1012→        const sc = s.scale || 1;
+  1013→        const pulse = s.collected ? 0 : Math.sin(Date.now() * 0.004 + s.id) * 0.15;
+  1014→        const r = (18 + pulse * 5) * sc;
+  1015→
+  1016→        ctx.fillStyle = 'rgba(255,235,59,0.25)';
+  1017→        ctx.beginPath(); ctx.arc(s.x, s.y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+  1018→        ctx.fillStyle = 'rgba(255,235,59,0.45)';
+  1019→        ctx.beginPath(); ctx.arc(s.x, s.y, r * 1.2, 0, Math.PI * 2); ctx.fill();
+  1020→        ctx.fillStyle = '#ffeb3b';
+  1021→        ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.fill();
+  1022→        ctx.fillStyle = '#fff9c4';
+  1023→        ctx.beginPath(); ctx.arc(s.x - 3 * sc, s.y - 3 * sc, r * 0.35, 0, Math.PI * 2); ctx.fill();
+  1024→        ctx.fillStyle = '#f57f17';
+  1025→        ctx.font = `bold ${Math.round(11 * sc)}px sans-serif`;
+  1026→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1027→        ctx.fillText('25', s.x, s.y + 1);
+  1028→        ctx.restore();
+  1029→      }
+  1030→
+  1031→      for (const z of zombiesRef.current) {
+  1032→        if (z.hp <= 0) continue;
+  1033→        const cy = (z.row + 0.5) * lh;
+  1034→        const wobble = Math.sin(z.walkPhase) * 3;
+  1035→        const fs = Math.min(lw, lh) * 0.7;
+  1036→        ctx.save();
+  1037→        if (z.hitFlash > 0) {
+  1038→          ctx.globalAlpha = 0.5 + Math.sin(z.hitFlash * 2) * 0.5;
+  1039→        }
+  1040→        if (z.slowTimer > 0) {
+  1041→          ctx.fillStyle = 'rgba(66,165,245,0.3)';
+  1042→          ctx.beginPath(); ctx.arc(z.x + wobble, cy, fs * 0.6, 0, Math.PI * 2); ctx.fill();
+  1043→        }
+  1044→        ctx.font = `${fs}px serif`;
+  1045→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1046→        ctx.fillText(z.emoji, z.x + wobble, cy);
+  1047→        ctx.restore();
+  1048→
+  1049→        if (z.hp < z.maxHp) {
+  1050→          const bw = lw * 0.7;
+  1051→          const bx = z.x - bw / 2;
+  1052→          const by = (z.row + 0.92) * lh;
+  1053→          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  1054→          ctx.fillRect(bx, by, bw, 4);
+  1055→          const ratio = Math.max(0, z.hp / z.maxHp);
+  1056→          ctx.fillStyle = ratio > 0.5 ? '#e53935' : '#b71c1c';
+  1057→          ctx.fillRect(bx, by, bw * ratio, 4);
+  1058→        }
+  1059→      }
+  1060→
+  1061→      if (overRef.current || wonRef.current) {
+  1062→        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  1063→        ctx.fillRect(0, 0, LOGIC_W, LOGIC_H);
+  1064→        ctx.fillStyle = '#fff';
+  1065→        ctx.font = 'bold 28px sans-serif';
+  1066→        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  1067→        if (wonRef.current) {
+  1068→          ctx.fillText('胜利!', LOGIC_W / 2, LOGIC_H / 2 - 20);
+  1069→        } else {
+  1070→          ctx.fillText('游戏结束', LOGIC_W / 2, LOGIC_H / 2 - 20);
+  1071→        }
+  1072→        ctx.font = '18px sans-serif';
+  1073→        ctx.fillText(`得分: ${scoreRef.current}`, LOGIC_W / 2, LOGIC_H / 2 + 20);
+  1074→      }
+  1075→
+  1076→      rafRef.current = requestAnimationFrame(loop);
+  1077→    };
+  1078→    loopFnRef.current = loop;
+  1079→  }, []);
+  1080→
+  1081→  useEffect(() => {
+  1082→    if (phase === 'playing') {
+  1083→      lastTimeRef.current = 0;
+  1084→      requestAnimationFrame(() => {
+  1085→        setupCanvas();
+  1086→        rafRef.current = requestAnimationFrame(loopFnRef.current);
+  1087→      });
+  1088→    }
+  1089→    return () => {
+  1090→      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  1091→    };
+  1092→  }, [phase, setupCanvas]);
+  1093→
+  1094→  useEffect(() => {
+  1095→    const onResize = () => { if (phase === 'playing') setupCanvas(); };
+  1096→    window.addEventListener('resize', onResize);
+  1097→    return () => window.removeEventListener('resize', onResize);
+  1098→  }, [phase, setupCanvas]);
+  1099→
+  1100→  if (phase === 'settings') {
+  1101→    return (
+  1102→      <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+  1103→        <div className="w-full flex items-center gap-3 mb-6">
+  1104→          <Button variant="ghost" size="icon" onClick={onBack}>
+  1105→            <ArrowLeft className="h-5 w-5" />
+  1106→          </Button>
+  1107→          <h1 className="text-2xl font-bold">🌱 植物大战僵尸</h1>
+  1108→        </div>
+  1109→        <div className="w-full bg-card border rounded-lg p-4 md:p-6 space-y-5">
+  1110→          <div>
+  1111→            <h2 className="text-lg font-semibold mb-3">难度选择</h2>
+  1112→            <div className="flex gap-3">
+  1113→              {(['easy', 'normal', 'hard'] as Difficulty[]).map(d => (
+  1114→                <button
+  1115→                  key={d}
+  1116→                  onClick={() => setDifficulty(d)}
+  1117→                  className={`flex-1 py-3 px-4 rounded-lg border-2 text-sm font-medium transition-all ${
+  1118→                    difficulty === d
+  1119→                      ? 'border-primary bg-primary/10 text-primary'
+  1120→                      : 'border-muted bg-background hover:border-primary/50'
+  1121→                  }`}
+  1122→                >
+  1123→                  {DIFFICULTY_CONFIG[d].label}
+  1124→                  <span className="block text-xs text-muted-foreground mt-1">
+  1125→                    初始阳光 {DIFFICULTY_CONFIG[d].initSun}
+  1126→                  </span>
+  1127→                </button>
+  1128→              ))}
+  1129→            </div>
+  1130→          </div>
+  1131→          <div>
+  1132→            <h2 className="text-lg font-semibold mb-3">操作说明</h2>
+  1133→            <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
+  1134→              <li>先点击底部植物卡片选择植物</li>
+  1135→              <li>移动手指/鼠标到草坪上定位</li>
+  1136→              <li>点击草坪放置植物</li>
+  1137→              <li>点击掉落的阳光收集（点击范围很大！）</li>
+  1138→              <li>点“收集全部”按钮一次性收集所有阳光</li>
+  1139→              <li>用铲子可以移除植物</li>
+  1140→              <li>撑过全部5波僵尸即可获胜!</li>
+  1141→            </ol>
+  1142→          </div>
+  1143→          <div>
+  1144→            <h2 className="text-lg font-semibold mb-3">植物介绍 ({PLANT_DEFS.length})</h2>
+  1145→            <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
+  1146→              {PLANT_DEFS.map(p => (
+  1147→                <div key={p.id} className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg p-2">
+  1148→                  <span className="text-2xl">{p.emoji}</span>
+  1149→                  <div className="min-w-0">
+  1150→                    <div className="font-medium text-xs truncate">{p.name}</div>
+  1151→                    <div className="text-xs text-muted-foreground">{p.cost}阳光</div>
+  1152→                  </div>
+  1153→                </div>
+  1154→              ))}
+  1155→            </div>
+  1156→          </div>
+  1157→          <div>
+  1158→            <h2 className="text-lg font-semibold mb-3">僵尸介绍 ({Object.keys(ZOMBIE_DEFS).length})</h2>
+  1159→            <div className="grid grid-cols-4 sm:grid-cols-4 gap-2">
+  1160→              {(Object.values(ZOMBIE_DEFS) as ZombieDef[]).map(z => (
+  1161→                <div key={z.type} className="flex flex-col items-center gap-1 text-sm bg-muted/50 rounded-lg p-2">
+  1162→                  <span className="text-2xl">{z.emoji}</span>
+  1163→                  <div className="font-medium text-xs">{z.name}</div>
+  1164→                  <div className="text-xs text-muted-foreground">血量 {z.hp}</div>
+  1165→                </div>
+  1166→              ))}
+  1167→            </div>
+  1168→          </div>
+  1169→          {highScore > 0 && (
+  1170→            <div className="flex items-center justify-center gap-2 text-amber-600">
+  1171→              <Trophy className="h-4 w-4" />
+  1172→              <span className="text-sm font-medium">最高分: {highScore}</span>
+  1173→            </div>
+  1174→          )}
+  1175→          <Button className="w-full" size="lg" onClick={startGame}>
+  1176→            开始游戏
+  1177→          </Button>
+  1178→        </div>
+  1179→      </div>
+  1180→    );
+  1181→  }
+  1182→
+  1183→  return (
+  1184→    <div className="flex flex-col items-center w-full max-w-xl mx-auto">
+  1185→      <div className="w-full flex items-center justify-between mb-2 px-1">
+  1186→        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+  1187→          <ArrowLeft className="h-5 w-5" />
+  1188→        </Button>
+  1189→        <GameControlsHelp info={pvzControlsInfo} className="ml-1" />
+  1190→        <h1 className="text-lg font-bold">🌱 植物大战僵尸</h1>
+  1191→        <div className="flex items-center gap-3 text-sm">
+  1192→          <span className="font-medium">{displayScore}</span>
+  1193→          <span className="text-muted-foreground">第{displayWave}/{TOTAL_WAVES}波</span>
+  1194→        </div>
+  1195→      </div>
+  1196→      <div className="w-full flex items-center justify-center gap-2 mb-2 py-1.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+  1197→        <span className="text-xl">☀️</span>
+  1198→        <span className="text-lg font-bold text-amber-700 dark:text-amber-400">{displaySun}</span>
+  1199→        <Button
+  1200→          variant="ghost"
+  1201→          size="sm"
+  1202→          className="ml-auto h-9 min-h-9 px-3 text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-200/50"
+  1203→          onClick={requestCollectAll}
+  1204→        >
+  1205→          <Sun className="h-3.5 w-3.5 mr-1" />
+  1206→          收集全部
+  1207→        </Button>
+  1208→      </div>
+  1209→      <div ref={containerRef} className="w-full" style={{ maxWidth: 640 }}>
+  1210→        <canvas
+  1211→          ref={canvasRef}
+  1212→          className="w-full border-2 border-green-700 dark:border-green-800 rounded-lg cursor-crosshair block"
+  1213→          style={{ aspectRatio: `${COLS} / ${ROWS}`, touchAction: 'none' }}
+  1214→        />
+  1215→      </div>
+  1216→      <div className="w-full mt-2">
+  1217→        <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+  1218→          <button
+  1219→            onClick={handleShovel}
+  1220→            className={`flex-shrink-0 flex flex-col items-center justify-center rounded-lg border-2 transition-all min-w-[56px] h-[64px] px-1 ${
+  1221→              isShovel
+  1222→                ? 'border-red-500 bg-red-500/10 shadow-md'
+  1223→                : 'border-muted bg-card hover:border-red-500/50 active:scale-95'
+  1224→            }`}
+  1225→          >
+  1226→            <span className="text-xl leading-none">ﲪ8</span>
+  1227→            <span className="text-xs font-medium">铲子</span>
+  1228→          </button>
+  1229→          {PLANT_DEFS.map(p => {
+  1230→            const canAfford = displaySun >= p.cost;
+  1231→            const isSel = selectedPlant === p.id;
+  1232→            return (
+  1233→              <button
+  1234→                key={p.id}
+  1235→                onClick={() => handleSelectPlant(p.id)}
+  1236→                disabled={!canAfford && !isSel}
+  1237→                className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-lg border-2 transition-all min-w-[56px] h-[64px] py-1 px-1 ${
+  1238→                  isSel
+  1239→                    ? 'border-primary bg-primary/10 shadow-md scale-105'
+  1240→                    : canAfford
+  1241→                      ? 'border-muted bg-card hover:border-primary/50 active:scale-95'
+  1242→                      : 'border-muted bg-muted/30 opacity-50 cursor-not-allowed'
+  1243→                }`}
+  1244→              >
+  1245→                <span className="text-xl leading-none">{p.emoji}</span>
+  1246→                <span className="text-xs font-medium leading-tight truncate max-w-[52px]">{p.name}</span>
+  1247→                <span className={`text-xs font-bold leading-tight ${canAfford ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+  1248→                  {p.cost}☀️
+  1249→                </span>
+  1250→              </button>
+  1251→            );
+  1252→          })}
+  1253→        </div>
+  1254→      </div>
+  1255→      {(phase === 'won' || phase === 'lost') && (
+  1256→        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) {} }}>
+  1257→          <div className="bg-card border rounded-2xl p-6 mx-4 flex flex-col items-center gap-4 animate-in zoom-in-95 duration-200">
+  1258→            <p className="text-4xl">{phase === 'won' ? '🎉' : '💀'}</p>
+  1259→            <p className="text-2xl font-bold">{phase === 'won' ? '胜利！' : '游戏结束'}</p>
+  1260→            <p className="text-sm text-muted-foreground">波次: {displayWave}/{TOTAL_WAVES}</p>
+  1261→            <div className="flex gap-3 w-full">
+  1262→              <Button className="flex-1" variant="outline" onClick={onBack}>返回大厅</Button>
+  1263→              <Button className="flex-1" onClick={() => { setPhase('settings'); }}>再来一局</Button>
+  1264→            </div>
+  1265→          </div>
+  1266→        </div>
+  1267→      )}
+  1268→    </div>
+  1269→  );
+  1270→}

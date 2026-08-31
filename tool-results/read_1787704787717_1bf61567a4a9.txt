@@ -1,0 +1,907 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useRef, useEffect, useState, useCallback } from 'react';
+     4→     4→import { Button } from '@/components/ui/button';
+     5→     5→import { Card, CardContent } from '@/components/ui/card';
+     6→     6→import { ArrowLeft, Trophy, RotateCcw } from 'lucide-react';
+     7→     7→import { useIsMobile } from '@/hooks/use-mobile';
+     8→     8→import GameControlsHelp from '@/components/games/GameControlsHelp';
+     9→     9→import type { GameControlsInfo } from '@/components/games/GameControlsHelp';
+    10→    10→
+    11→    11→const tetrisControlsInfo: GameControlsInfo = {
+    12→    12→  gameName: '俄罗斯方块',
+    13→    13→  desktop: [
+    14→    14→    { action: '← →', keys: ['ArrowLeft','ArrowRight'], description: '左右移动方块' },
+    15→    15→    { action: '↑', keys: ['ArrowUp'], description: '旋转方块' },
+    16→    16→    { action: '↓', keys: ['ArrowDown'], description: '加速下落(软降)' },
+    17→    17→    { action: '空格', keys: ['Space'], description: '硬降(直接落底)' },
+    18→    18→    { action: '暂停', keys: ['Escape'], description: '暂停/继续游戏' },
+    19→    19→  ],
+    20→    20→  mobile: [
+    21→    21→    { action: '虚拟按钮', keys: [], description: '屏幕底部5个操作按钮(手机端显示)' },
+    22→    22→  ],
+    23→    23→  rules: ['方块从顶部下落，填满一行即消除','消除多行获得更多分数','方块堆到顶部则游戏结束','可切换3种速度'],
+    24→    24→  tips: ['尽量把方块铺平，避免高低不平','留一列给长条(I形)方块','提前观察下一个方块预览'],
+    25→    25→};
+    26→    26→
+    27→    27→/* ==================== Type definitions ==================== */
+    28→    28→
+    29→    29→interface TetrisGameProps {
+    30→    30→  onBack: () => void;
+    31→    31→}
+    32→    32→
+    33→    33→/** Board columns */
+    34→    34→const COLS = 10;
+    35→    35→/** Board rows */
+    36→    36→const ROWS = 20;
+    37→    37→/** Cell pixel size (logical) */
+    38→    38→const CELL = 30;
+    39→    39→/** Game name (for API) */
+    40→    40→const GAME_NAME = 'tetris';
+    41→    41→
+    42→    42→/** Speed presets */
+    43→    43→const SPEED_CONFIG = {
+    44→    44→  slow: { label: '慢速', base: 800 },
+    45→    45→  normal: { label: '正常', base: 500 },
+    46→    46→  fast: { label: '快速', base: 300 },
+    47→    47→} as const;
+    48→    48→
+    49→    49→type SpeedKey = keyof typeof SPEED_CONFIG;
+    50→    50→
+    51→    51→/** 7 standard tetromino shapes */
+    52→    52→const SHAPES: Record<string, number[][]> = {
+    53→    53→  I: [
+    54→    54→    [0, 0, 0, 0],
+    55→    55→    [1, 1, 1, 1],
+    56→    56→    [0, 0, 0, 0],
+    57→    57→    [0, 0, 0, 0],
+    58→    58→  ],
+    59→    59→  O: [
+    60→    60→    [1, 1],
+    61→    61→    [1, 1],
+    62→    62→  ],
+    63→    63→  T: [
+    64→    64→    [0, 1, 0],
+    65→    65→    [1, 1, 1],
+    66→    66→    [0, 0, 0],
+    67→    67→  ],
+    68→    68→  S: [
+    69→    69→    [0, 1, 1],
+    70→    70→    [1, 1, 0],
+    71→    71→    [0, 0, 0],
+    72→    72→  ],
+    73→    73→  Z: [
+    74→    74→    [1, 1, 0],
+    75→    75→    [0, 1, 1],
+    76→    76→    [0, 0, 0],
+    77→    77→  ],
+    78→    78→  J: [
+    79→    79→    [1, 0, 0],
+    80→    80→    [1, 1, 1],
+    81→    81→    [0, 0, 0],
+    82→    82→  ],
+    83→    83→  L: [
+    84→    84→    [0, 0, 1],
+    85→    85→    [1, 1, 1],
+    86→    86→    [0, 0, 0],
+    87→    87→  ],
+    88→    88→};
+    89→    89→
+    90→    90→/** Piece colors */
+    91→    91→const COLORS: Record<string, string> = {
+    92→    92→  I: '#00e5ff',
+    93→    93→  O: '#ffea00',
+    94→    94→  T: '#d500f9',
+    95→    95→  S: '#00e676',
+    96→    96→  Z: '#ff1744',
+    97→    97→  J: '#2979ff',
+    98→    98→  L: '#ff9100',
+    99→    99→};
+   100→   100→
+   101→   101→/** Piece stroke colors (darker) */
+   102→   102→const STROKE_COLORS: Record<string, string> = {
+   103→   103→  I: '#00b8d4',
+   104→   104→  O: '#f9a825',
+   105→   105→  T: '#aa00ff',
+   106→   106→  S: '#00c853',
+   107→   107→  Z: '#d50000',
+   108→   108→  J: '#2962ff',
+   109→   109→  L: '#e65100',
+   110→   110→};
+   111→   111→
+   112→   112→/** Piece highlight colors (lighter) */
+   113→   113→const HIGHLIGHT_COLORS: Record<string, string> = {
+   114→   114→  I: '#80f0ff',
+   115→   115→  O: '#fff59d',
+   116→   116→  T: '#ea80fc',
+   117→   117→  S: '#69f0ae',
+   118→   118→  Z: '#ff8a80',
+   119→   119→  J: '#82b1ff',
+   120→   120→  L: '#ffcc80',
+   121→   121→};
+   122→   122→
+   123→   123→const PIECE_TYPES = Object.keys(SHAPES);
+   124→   124→
+   125→   125→/** Scoring per number of cleared lines */
+   126→   126→const LINE_SCORES: Record<number, number> = {
+   127→   127→  1: 100,
+   128→   128→  2: 300,
+   129→   129→  3: 500,
+   130→   130→  4: 800,
+   131→   131→};
+   132→   132→
+   133→   133→/** Current piece info */
+   134→   134→interface Piece {
+   135→   135→  type: string;
+   136→   136→  shape: number[][];
+   137→   137→  x: number;
+   138→   138→  y: number;
+   139→   139→}
+   140→   140→
+   141→   141→type GameStatus = 'idle' | 'playing' | 'over';
+   142→   142→
+   143→   143→/* ==================== Utility functions ==================== */
+   144→   144→
+   145→   145→function randomType(): string {
+   146→   146→  return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+   147→   147→}
+   148→   148→
+   149→   149→function cloneShape(shape: number[][]): number[][] {
+   150→   150→  return shape.map(row => [...row]);
+   151→   151→}
+   152→   152→
+   153→   153→function rotateShape(shape: number[][]): number[][] {
+   154→   154→  const n = shape.length;
+   155→   155→  const rotated: number[][] = [];
+   156→   156→  for (let i = 0; i < n; i++) {
+   157→   157→    rotated[i] = [];
+   158→   158→    for (let j = 0; j < n; j++) {
+   159→   159→      rotated[i][j] = shape[n - 1 - j][i];
+   160→   160→    }
+   161→   161→  }
+   162→   162→  return rotated;
+   163→   163→}
+   164→   164→
+   165→   165→function createPiece(type: string): Piece {
+   166→   166→  return {
+   167→   167→    type,
+   168→   168→    shape: cloneShape(SHAPES[type]),
+   169→   169→    x: Math.floor((COLS - SHAPES[type][0].length) / 2),
+   170→   170→    y: 0,
+   171→   171→  };
+   172→   172→}
+   173→   173→
+   174→   174→function isValid(
+   175→   175→  shape: number[][],
+   176→   176→  board: (string | null)[][],
+   177→   177→  px: number,
+   178→   178→  py: number
+   179→   179→): boolean {
+   180→   180→  for (let r = 0; r < shape.length; r++) {
+   181→   181→    for (let c = 0; c < shape[r].length; c++) {
+   182→   182→      if (shape[r][c]) {
+   183→   183→        const nx = px + c;
+   184→   184→        const ny = py + r;
+   185→   185→        if (nx < 0 || nx >= COLS || ny >= ROWS) return false;
+   186→   186→        if (ny >= 0 && board[ny][nx] !== null) return false;
+   187→   187→      }
+   188→   188→    }
+   189→   189→  }
+   190→   190→  return true;
+   191→   191→}
+   192→   192→
+   193→   193→/* ==================== Main component ==================== */
+   194→   194→
+   195→   195→export default function TetrisGame({ onBack }: TetrisGameProps) {
+   196→   196→  const isMobile = useIsMobile();
+   197→   197→
+   198→   198→  /* --- Refs --- */
+   199→   199→  const canvasRef = useRef<HTMLCanvasElement>(null);
+   200→   200→  const containerRef = useRef<HTMLDivElement>(null);
+   201→   201→  const rafRef = useRef<number | null>(null);
+   202→   202→  const boardRef = useRef<(string | null)[][]>(
+   203→   203→    Array.from({ length: ROWS }, () => Array(COLS).fill(null))
+   204→   204→  );
+   205→   205→  const currentRef = useRef<Piece | null>(null);
+   206→   206→  const nextRef = useRef<string>(randomType());
+   207→   207→  const scoreRef = useRef<number>(0);
+   208→   208→  const levelRef = useRef<number>(1);
+   209→   209→  const linesRef = useRef<number>(0);
+   210→   210→  const statusRef = useRef<GameStatus>('idle');
+   211→   211→  const lastDropRef = useRef<number>(0);
+   212→   212→  const speedRef = useRef<SpeedKey>('normal');
+   213→   213→  const flashRowsRef = useRef<number[]>([]);
+   214→   214→  const flashStartRef = useRef<number>(0);
+   215→   215→  const gameOverCheckedRef = useRef<boolean>(false);
+   216→   216→  const scaleRef = useRef<number>(1);
+   217→   217→
+   218→   218→  /* --- React state (for UI rendering) --- */
+   219→   219→  const [score, setScore] = useState(0);
+   220→   220→  const [level, setLevel] = useState(1);
+   221→   221→  const [highScore, setHighScore] = useState(0);
+   222→   222→  const [gameStatus, setGameStatus] = useState<GameStatus>('idle');
+   223→   223→  const [speed, setSpeed] = useState<SpeedKey>('normal');
+   224→   224→  const [isNewRecord, setIsNewRecord] = useState(false);
+   225→   225→  const [loadingHighScore, setLoadingHighScore] = useState(true);
+   226→   226→  const [paused, setPaused] = useState(false);
+   227→   227→  const pausedRef = useRef(false);
+   228→   228→  const [nextPiece, setNextPiece] = useState(randomType());
+   229→   229→
+   230→   230→  /* ==================== Drop interval ==================== */
+   231→   231→  const getDropInterval = useCallback((): number => {
+   232→   232→    const base = SPEED_CONFIG[speedRef.current].base;
+   233→   233→    const lv = levelRef.current;
+   234→   234→    return Math.max(80, base * Math.pow(0.9, lv - 1));
+   235→   235→  }, []);
+   236→   236→
+   237→   237→  /* ==================== Reset board ==================== */
+   238→   238→  const resetBoard = useCallback(() => {
+   239→   239→    boardRef.current = Array.from({ length: ROWS }, () =>
+   240→   240→      Array(COLS).fill(null)
+   241→   241→    );
+   242→   242→  }, []);
+   243→   243→
+   244→   244→  /* ==================== Spawn piece ==================== */
+   245→   245→  const spawnPiece = useCallback(() => {
+   246→   246→    const type = nextRef.current;
+   247→   247→    nextRef.current = randomType();
+   248→   248→    setNextPiece(nextRef.current);
+   249→   249→    const piece = createPiece(type);
+   250→   250→    currentRef.current = piece;
+   251→   251→    if (!isValid(piece.shape, boardRef.current, piece.x, piece.y)) {
+   252→   252→      statusRef.current = 'over';
+   253→   253→      setGameStatus('over');
+   254→   254→      gameOverCheckedRef.current = false;
+   255→   255→    }
+   256→   256→  }, []);
+   257→   257→
+   258→   258→  /* ==================== Lock piece to board ==================== */
+   259→   259→  const lockPiece = useCallback(() => {
+   260→   260→    const piece = currentRef.current;
+   261→   261→    if (!piece) return;
+   262→   262→    const board = boardRef.current;
+   263→   263→    for (let r = 0; r < piece.shape.length; r++) {
+   264→   264→      for (let c = 0; c < piece.shape[r].length; c++) {
+   265→   265→        if (piece.shape[r][c]) {
+   266→   266→          const ny = piece.y + r;
+   267→   267→          const nx = piece.x + c;
+   268→   268→          if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS) {
+   269→   269→            board[ny][nx] = piece.type;
+   270→   270→          }
+   271→   271→        }
+   272→   272→      }
+   273→   273→    }
+   274→   274→  }, []);
+   275→   275→
+   276→   276→  /* ==================== Clear lines ==================== */
+   277→   277→  const clearLines = useCallback((): number => {
+   278→   278→    const board = boardRef.current;
+   279→   279→    const fullRows: number[] = [];
+   280→   280→    for (let r = 0; r < ROWS; r++) {
+   281→   281→      if (board[r].every(cell => cell !== null)) {
+   282→   282→        fullRows.push(r);
+   283→   283→      }
+   284→   284→    }
+   285→   285→    if (fullRows.length === 0) return 0;
+   286→   286→    flashRowsRef.current = fullRows;
+   287→   287→    flashStartRef.current = performance.now();
+   288→   288→    return fullRows.length;
+   289→   289→  }, []);
+   290→   290→
+   291→   291→  /** Remove full rows and add empty rows at top */
+   292→   292→  const removeLines = useCallback(() => {
+   293→   293→    const board = boardRef.current;
+   294→   294→    const fullRows = flashRowsRef.current;
+   295→   295→    const newBoard = board.filter((_, idx) => !fullRows.includes(idx));
+   296→   296→    while (newBoard.length < ROWS) {
+   297→   297→      newBoard.unshift(Array(COLS).fill(null));
+   298→   298→    }
+   299→   299→    boardRef.current = newBoard;
+   300→   300→    flashRowsRef.current = [];
+   301→   301→  }, []);
+   302→   302→
+   303→   303→  /* ==================== Move down ==================== */
+   304→   304→  const moveDown = useCallback(() => {
+   305→   305→    const piece = currentRef.current;
+   306→   306→    if (!piece || statusRef.current !== 'playing') return;
+   307→   307→    const board = boardRef.current;
+   308→   308→    if (isValid(piece.shape, board, piece.x, piece.y + 1)) {
+   309→   309→      piece.y += 1;
+   310→   310→    } else {
+   311→   311→      lockPiece();
+   312→   312→      const cleared = clearLines();
+   313→   313→      if (cleared > 0) {
+   314→   314→        const pts = LINE_SCORES[cleared] || cleared * 100;
+   315→   315→        scoreRef.current += pts;
+   316→   316→        linesRef.current += cleared;
+   317→   317→        const newLv = Math.floor(linesRef.current / 10) + 1;
+   318→   318→        levelRef.current = newLv;
+   319→   319→        setScore(scoreRef.current);
+   320→   320→        setLevel(newLv);
+   321→   321→      }
+   322→   322→      if (cleared === 0) {
+   323→   323→        spawnPiece();
+   324→   324→      }
+   325→   325→    }
+   326→   326→  }, [lockPiece, clearLines, spawnPiece]);
+   327→   327→
+   328→   328→  /* ==================== Move left ==================== */
+   329→   329→  const moveLeft = useCallback(() => {
+   330→   330→    const piece = currentRef.current;
+   331→   331→    if (!piece || statusRef.current !== 'playing') return;
+   332→   332→    if (isValid(piece.shape, boardRef.current, piece.x - 1, piece.y)) {
+   333→   333→      piece.x -= 1;
+   334→   334→    }
+   335→   335→  }, []);
+   336→   336→
+   337→   337→  /* ==================== Move right ==================== */
+   338→   338→  const moveRight = useCallback(() => {
+   339→   339→    const piece = currentRef.current;
+   340→   340→    if (!piece || statusRef.current !== 'playing') return;
+   341→   341→    if (isValid(piece.shape, boardRef.current, piece.x + 1, piece.y)) {
+   342→   342→      piece.x += 1;
+   343→   343→    }
+   344→   344→  }, []);
+   345→   345→
+   346→   346→  /* ==================== Rotate ==================== */
+   347→   347→  const rotate = useCallback(() => {
+   348→   348→    const piece = currentRef.current;
+   349→   349→    if (!piece || statusRef.current !== 'playing') return;
+   350→   350→    if (piece.type === 'O') return;
+   351→   351→    const rotated = rotateShape(piece.shape);
+   352→   352→    if (isValid(rotated, boardRef.current, piece.x, piece.y)) {
+   353→   353→      piece.shape = rotated;
+   354→   354→      return;
+   355→   355→    }
+   356→   356→    const kicks = [1, -1, 2, -2];
+   357→   357→    for (const kick of kicks) {
+   358→   358→      if (isValid(rotated, boardRef.current, piece.x + kick, piece.y)) {
+   359→   359→        piece.shape = rotated;
+   360→   360→        piece.x += kick;
+   361→   361→        return;
+   362→   362→      }
+   363→   363→    }
+   364→   364→  }, []);
+   365→   365→
+   366→   366→  /* ==================== Hard drop ==================== */
+   367→   367→  const hardDrop = useCallback(() => {
+   368→   368→    const piece = currentRef.current;
+   369→   369→    if (!piece || statusRef.current !== 'playing') return;
+   370→   370→    const board = boardRef.current;
+   371→   371→    const originalY = piece.y;
+   372→   372→    let dropY = piece.y;
+   373→   373→    while (isValid(piece.shape, board, piece.x, dropY + 1)) {
+   374→   374→      dropY += 1;
+   375→   375→    }
+   376→   376→    piece.y = dropY;
+   377→   377→    scoreRef.current += (dropY - originalY) * 2;
+   378→   378→    setScore(scoreRef.current);
+   379→   379→    lockPiece();
+   380→   380→    const cleared = clearLines();
+   381→   381→    if (cleared > 0) {
+   382→   382→      const pts = LINE_SCORES[cleared] || cleared * 100;
+   383→   383→      scoreRef.current += pts;
+   384→   384→      linesRef.current += cleared;
+   385→   385→      const newLv = Math.floor(linesRef.current / 10) + 1;
+   386→   386→      levelRef.current = newLv;
+   387→   387→      setScore(scoreRef.current);
+   388→   388→      setLevel(newLv);
+   389→   389→    }
+   390→   390→    if (cleared === 0) {
+   391→   391→      spawnPiece();
+   392→   392→    }
+   393→   393→  }, [lockPiece, clearLines, spawnPiece]);
+   394→   394→
+   395→   395→  /* ==================== Ghost Y ==================== */
+   396→   396→  const getGhostY = useCallback((): number => {
+   397→   397→    const piece = currentRef.current;
+   398→   398→    if (!piece) return 0;
+   399→   399→    const board = boardRef.current;
+   400→   400→    let ghostY = piece.y;
+   401→   401→    while (isValid(piece.shape, board, piece.x, ghostY + 1)) {
+   402→   402→      ghostY += 1;
+   403→   403→    }
+   404→   404→    return ghostY;
+   405→   405→  }, []);
+   406→   406→
+   407→   407→  /* ==================== Canvas rendering ==================== */
+   408→   408→  const draw = useCallback(
+   409→   409→    (ctx: CanvasRenderingContext2D, now: number) => {
+   410→   410→      const s = scaleRef.current;
+   411→   411→      const dpr = window.devicePixelRatio || 1;
+   412→   412→      const cw = COLS * CELL;
+   413→   413→      const ch = ROWS * CELL;
+   414→   414→      const board = boardRef.current;
+   415→   415→      const piece = currentRef.current;
+   416→   416→
+   417→   417→      // Set transform to map game coordinates to bitmap pixels
+   418→   418→      ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
+   419→   419→      ctx.clearRect(0, 0, cw, ch);
+   420→   420→
+   421→   421→      // Deep background
+   422→   422→      ctx.fillStyle = '#1a1a2e';
+   423→   423→      ctx.fillRect(0, 0, cw, ch);
+   424→   424→
+   425→   425→      // Grid lines
+   426→   426→      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+   427→   427→      ctx.lineWidth = 0.5;
+   428→   428→      for (let r = 0; r <= ROWS; r++) {
+   429→   429→        ctx.beginPath();
+   430→   430→        ctx.moveTo(0, r * CELL);
+   431→   431→        ctx.lineTo(cw, r * CELL);
+   432→   432→        ctx.stroke();
+   433→   433→      }
+   434→   434→      for (let c = 0; c <= COLS; c++) {
+   435→   435→        ctx.beginPath();
+   436→   436→        ctx.moveTo(c * CELL, 0);
+   437→   437→        ctx.lineTo(c * CELL, ch);
+   438→   438→        ctx.stroke();
+   439→   439→      }
+   440→   440→
+   441→   441→      // Draw locked cells
+   442→   442→      for (let r = 0; r < ROWS; r++) {
+   443→   443→        for (let c = 0; c < COLS; c++) {
+   444→   444→          if (board[r][c] !== null) {
+   445→   445→            drawCell(ctx, c, r, board[r][c]!, 1);
+   446→   446→          }
+   447→   447→        }
+   448→   448→      }
+   449→   449→
+   450→   450→      // Line clear flash animation
+   451→   451→      if (flashRowsRef.current.length > 0) {
+   452→   452→        const elapsed = now - flashStartRef.current;
+   453→   453→        const flashDuration = 300;
+   454→   454→        if (elapsed < flashDuration) {
+   455→   455→          const alpha = 0.5 + 0.5 * Math.sin((elapsed / flashDuration) * Math.PI * 4);
+   456→   456→          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+   457→   457→          for (const row of flashRowsRef.current) {
+   458→   458→            ctx.fillRect(0, row * CELL, cw, CELL);
+   459→   459→          }
+   460→   460→        } else {
+   461→   461→          removeLines();
+   462→   462→          spawnPiece();
+   463→   463→        }
+   464→   464→      }
+   465→   465→
+   466→   466→      // Draw ghost piece
+   467→   467→      if (piece && statusRef.current === 'playing' && flashRowsRef.current.length === 0) {
+   468→   468→        const ghostY = getGhostY();
+   469→   469→        if (ghostY !== piece.y) {
+   470→   470→          for (let r = 0; r < piece.shape.length; r++) {
+   471→   471→            for (let c = 0; c < piece.shape[r].length; c++) {
+   472→   472→              if (piece.shape[r][c]) {
+   473→   473→                const px = (piece.x + c) * CELL;
+   474→   474→                const py = (ghostY + r) * CELL;
+   475→   475→                ctx.strokeStyle = COLORS[piece.type];
+   476→   476→                ctx.globalAlpha = 0.3;
+   477→   477→                ctx.lineWidth = 2;
+   478→   478→                ctx.strokeRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   479→   479→                ctx.globalAlpha = 0.08;
+   480→   480→                ctx.fillStyle = COLORS[piece.type];
+   481→   481→                ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   482→   482→                ctx.globalAlpha = 1;
+   483→   483→              }
+   484→   484→            }
+   485→   485→          }
+   486→   486→        }
+   487→   487→      }
+   488→   488→
+   489→   489→      // Draw current piece
+   490→   490→      if (piece && statusRef.current === 'playing') {
+   491→   491→        for (let r = 0; r < piece.shape.length; r++) {
+   492→   492→          for (let c = 0; c < piece.shape[r].length; c++) {
+   493→   493→            if (piece.shape[r][c]) {
+   494→   494→              drawCell(ctx, piece.x + c, piece.y + r, piece.type, 1);
+   495→   495→            }
+   496→   496→          }
+   497→   497→        }
+   498→   498→      }
+   499→   499→    },
+   500→   500→    [getGhostY, removeLines, spawnPiece]
+   501→   501→  );
+   502→   502→
+   503→   503→  /** Draw a single cell with highlight and stroke */
+   504→   504→  function drawCell(
+   505→   505→    ctx: CanvasRenderingContext2D,
+   506→   506→    x: number,
+   507→   507→    y: number,
+   508→   508→    type: string,
+   509→   509→    alpha: number
+   510→   510→  ) {
+   511→   511→    const px = x * CELL;
+   512→   512→    const py = y * CELL;
+   513→   513→    ctx.globalAlpha = alpha;
+   514→   514→    ctx.fillStyle = COLORS[type];
+   515→   515→    ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   516→   516→    ctx.strokeStyle = STROKE_COLORS[type];
+   517→   517→    ctx.lineWidth = 1.5;
+   518→   518→    ctx.strokeRect(px + 1, py + 1, CELL - 2, CELL - 2);
+   519→   519→    ctx.fillStyle = HIGHLIGHT_COLORS[type];
+   520→   520→    ctx.globalAlpha = alpha * 0.45;
+   521→   521→    ctx.fillRect(px + 3, py + 3, CELL - 6, 5);
+   522→   522→    ctx.fillRect(px + 3, py + 3, 3, CELL - 6);
+   523→   523→    ctx.globalAlpha = 1;
+   524→   524→  }
+   525→   525→
+   526→   526→  /* ==================== Main game loop ==================== */
+   527→   527→  const gameLoop = useCallback(
+   528→   528→    (now: number) => {
+   529→   529→      if (statusRef.current === 'playing' && !pausedRef.current) {
+   530→   530→        if (flashRowsRef.current.length === 0) {
+   531→   531→          if (now - lastDropRef.current >= getDropInterval()) {
+   532→   532→            moveDown();
+   533→   533→            lastDropRef.current = now;
+   534→   534→          }
+   535→   535→        }
+   536→   536→      }
+   537→   537→
+   538→   538→      if (
+   539→   539→        statusRef.current === 'over' &&
+   540→   540→        !gameOverCheckedRef.current
+   541→   541→      ) {
+   542→   542→        gameOverCheckedRef.current = true;
+   543→   543→        submitScore(scoreRef.current);
+   544→   544→      }
+   545→   545→
+   546→   546→      const canvas = canvasRef.current;
+   547→   547→      if (canvas) {
+   548→   548→        const ctx = canvas.getContext('2d');
+   549→   549→        if (ctx) draw(ctx, now);
+   550→   550→      }
+   551→   551→
+   552→   552→      rafRef.current = requestAnimationFrame(gameLoop);
+   553→   553→    },
+   554→   554→    [draw, getDropInterval, moveDown]
+   555→   555→  );
+   556→   556→
+   557→   557→  /* ==================== Submit score ==================== */
+   558→   558→  const submitScore = useCallback(async (finalScore: number) => {
+   559→   559→    try {
+   560→   560→      const res = await fetch('/api/games/scores', {
+   561→   561→        method: 'POST',
+   562→   562→        headers: { 'Content-Type': 'application/json' },
+   563→   563→        body: JSON.stringify({ game: GAME_NAME, score: finalScore }),
+   564→   564→      });
+   565→   565→      const data = await res.json();
+   566→   566→      if (data.data) {
+   567→   567→        const newHigh = data.data.score;
+   568→   568→        setHighScore(newHigh);
+   569→   569→        if (newHigh === finalScore && finalScore > 0) {
+   570→   570→          setIsNewRecord(true);
+   571→   571→        }
+   572→   572→      }
+   573→   573→    } catch {
+   574→   574→      // Silent handling
+   575→   575→    }
+   576→   576→  }, []);
+   577→   577→
+   578→   578→  /* ==================== Load high score ==================== */
+   579→   579→  useEffect(() => {
+   580→   580→    async function load() {
+   581→   581→      try {
+   582→   582→        const res = await fetch('/api/games/scores');
+   583→   583→        const data = await res.json();
+   584→   584→        if (data.data && Array.isArray(data.data)) {
+   585→   585→          const entry = data.data.find(
+   586→   586→            (e: { game: string; score: number }) => e.game === GAME_NAME
+   587→   587→          );
+   588→   588→          if (entry) setHighScore(entry.score);
+   589→   589→        }
+   590→   590→      } catch {
+   591→   591→        // Silent handling
+   592→   592→      } finally {
+   593→   593→        setLoadingHighScore(false);
+   594→   594→      }
+   595→   595→    }
+   596→   596→    load();
+   597→   597→  }, []);
+   598→   598→
+   599→   599→  /* ==================== Canvas sizing (container-based, high-DPI) ==================== */
+   600→   600→  useEffect(() => {
+   601→   601→    const canvas = canvasRef.current;
+   602→   602→    if (!canvas) return;
+   603→   603→
+   604→   604→    const updateSize = () => {
+   605→   605→      const w = canvas.clientWidth;
+   606→   606→      const h = canvas.clientHeight;
+   607→   607→      if (w === 0 || h === 0) return;
+   608→   608→      const dpr = window.devicePixelRatio || 1;
+   609→   609→      canvas.width = w * dpr;
+   610→   610→      canvas.height = h * dpr;
+   611→   611→      scaleRef.current = w / (COLS * CELL);
+   612→   612→    };
+   613→   613→
+   614→   614→    // Use rAF to ensure browser has laid out the element
+   615→   615→    const raf = requestAnimationFrame(updateSize);
+   616→   616→
+   617→   617→    const ro = new ResizeObserver(updateSize);
+   618→   618→    ro.observe(canvas);
+   619→   619→    return () => {
+   620→   620→      cancelAnimationFrame(raf);
+   621→   621→      ro.disconnect();
+   622→   622→    };
+   623→   623→  }, [gameStatus]);
+   624→   624→
+   625→   625→  /* ==================== Game loop start/stop ==================== */
+   626→   626→  useEffect(() => {
+   627→   627→    if (gameStatus === 'playing') {
+   628→   628→      lastDropRef.current = performance.now();
+   629→   629→      rafRef.current = requestAnimationFrame(gameLoop);
+   630→   630→    }
+   631→   631→    return () => {
+   632→   632→      if (rafRef.current) {
+   633→   633→        cancelAnimationFrame(rafRef.current);
+   634→   634→        rafRef.current = null;
+   635→   635→      }
+   636→   636→    };
+   637→   637→  }, [gameStatus, gameLoop]);
+   638→   638→
+   639→   639→  /* ==================== Keyboard events ==================== */
+   640→   640→  useEffect(() => {
+   641→   641→    if (gameStatus !== 'playing') return;
+   642→   642→    const handleKeyDown = (e: KeyboardEvent) => {
+   643→   643→      if (e.key === 'Escape') {
+   644→   644→        e.preventDefault();
+   645→   645→        pausedRef.current = !pausedRef.current;
+   646→   646→        setPaused(pausedRef.current);
+   647→   647→        return;
+   648→   648→      }
+   649→   649→      if (pausedRef.current) return;
+   650→   650→      switch (e.key) {
+   651→   651→        case 'ArrowLeft':
+   652→   652→          e.preventDefault();
+   653→   653→          moveLeft();
+   654→   654→          break;
+   655→   655→        case 'ArrowRight':
+   656→   656→          e.preventDefault();
+   657→   657→          moveRight();
+   658→   658→          break;
+   659→   659→        case 'ArrowDown':
+   660→   660→          e.preventDefault();
+   661→   661→          moveDown();
+   662→   662→          lastDropRef.current = performance.now();
+   663→   663→          break;
+   664→   664→        case 'ArrowUp':
+   665→   665→          e.preventDefault();
+   666→   666→          rotate();
+   667→   667→          break;
+   668→   668→        case ' ':
+   669→   669→          e.preventDefault();
+   670→   670→          hardDrop();
+   671→   671→          break;
+   672→   672→      }
+   673→   673→    };
+   674→   674→    window.addEventListener('keydown', handleKeyDown);
+   675→   675→    return () => window.removeEventListener('keydown', handleKeyDown);
+   676→   676→  }, [gameStatus, moveLeft, moveRight, moveDown, rotate, hardDrop]);
+   677→   677→
+   678→   678→  /* ==================== Start game ==================== */
+   679→   679→  const startGame = useCallback(() => {
+   680→   680→    resetBoard();
+   681→   681→    scoreRef.current = 0;
+   682→   682→    levelRef.current = 1;
+   683→   683→    linesRef.current = 0;
+   684→   684→    speedRef.current = speed;
+   685→   685→    flashRowsRef.current = [];
+   686→   686→    gameOverCheckedRef.current = false;
+   687→   687→    pausedRef.current = false;
+   688→   688→    setPaused(false);
+   689→   689→    setIsNewRecord(false);
+   690→   690→    setScore(0);
+   691→   691→    setLevel(1);
+   692→   692→    nextRef.current = randomType();
+   693→   693→    setNextPiece(nextRef.current);
+   694→   694→    spawnPiece();
+   695→   695→    statusRef.current = 'playing';
+   696→   696→    setGameStatus('playing');
+   697→   697→  }, [speed, resetBoard, spawnPiece]);
+   698→   698→
+   699→   699→  /* ==================== Restart ==================== */
+   700→   700→  const restartGame = useCallback(() => {
+   701→   701→    startGame();
+   702→   702→  }, [startGame]);
+   703→   703→
+   704→   704→  /* ==================== Next piece preview data ==================== */
+   705→   705→  const previewShape = SHAPES[nextPiece];
+   706→   706→  const previewColor = COLORS[nextPiece];
+   707→   707→
+   708→   708→  /* ==================== IDLE SCREEN ==================== */
+   709→   709→  if (gameStatus === 'idle') {
+   710→   710→    return (
+   711→   711→      <div className="flex flex-col items-center w-full min-h-[60vh] gap-3 px-2 py-2">
+   712→   712→        <div className="w-full max-w-md">
+   713→   713→          <Button variant="ghost" onClick={onBack} className="min-h-[44px] mb-2">
+   714→   714→            <ArrowLeft className="h-5 w-5 mr-2" />
+   715→   715→            返回
+   716→   716→          </Button>
+   717→   717→          <Card className="bg-card border-border">
+   718→   718→            <CardContent className="p-4 space-y-4">
+   719→   719→              <div className="text-center">
+   720→   720→                <h2 className="text-xl sm:text-2xl font-bold flex items-center justify-center gap-2">
+   721→   721→                  <span className="text-xl sm:text-2xl">🟦</span> 俄罗斯方块
+   722→   722→                </h2>
+   723→   723→                {!loadingHighScore && highScore > 0 && (
+   724→   724→                  <p className="text-xs sm:text-sm text-muted-foreground mt-1 flex items-center justify-center gap-1">
+   725→   725→                    <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+   726→   726→                    最高分: {highScore}
+   727→   727→                  </p>
+   728→   728→                )}
+   729→   729→              </div>
+   730→   730→
+   731→   731→              <div className="space-y-2">
+   732→   732→                <p className="text-sm font-medium">速度设置</p>
+   733→   733→                <div className="grid grid-cols-3 gap-2">
+   734→   734→                  {(Object.entries(SPEED_CONFIG) as [SpeedKey, { label: string; base: number }][]).map(
+   735→   735→                    ([key, cfg]) => (
+   736→   736→                      <Button
+   737→   737→                        key={key}
+   738→   738→                        variant={speed === key ? 'default' : 'outline'}
+   739→   739→                        className="w-full min-h-[44px]"
+   740→   740→                        onClick={() => setSpeed(key)}
+   741→   741→                      >
+   742→   742→                        {cfg.label}
+   743→   743→                      </Button>
+   744→   744→                    )
+   745→   745→                  )}
+   746→   746→                </div>
+   747→   747→              </div>
+   748→   748→
+   749→   749→              <div className="flex items-center justify-between">
+   750→   750→                <p className="text-sm font-medium">操作说明</p>
+   751→   751→                <GameControlsHelp info={tetrisControlsInfo} variant="text" />
+   752→   752→              </div>
+   753→   753→
+   754→   754→              <Button onClick={startGame} className="w-full min-h-[44px]" size="lg">
+   755→   755→                开始游戏
+   756→   756→              </Button>
+   757→   757→            </CardContent>
+   758→   758→          </Card>
+   759→   759→        </div>
+   760→   760→      </div>
+   761→   761→    );
+   762→   762→  }
+   763→   763→
+   764→   764→  /* ==================== PLAYING / GAME OVER SCREEN ==================== */
+   765→   765→  return (
+   766→   766→    <div className="flex flex-col items-center w-full min-h-[60vh] gap-2 px-2 py-2">
+   767→   767→      {/* Compact status bar */}
+   768→   768→      <div className="w-full max-w-[300px] flex items-center justify-between gap-1">
+   769→   769→        <Button variant="ghost" onClick={onBack} className="min-h-[44px] shrink-0 px-2">
+   770→   770→          <ArrowLeft className="h-4 w-4 mr-0.5" />
+   771→   771→          <span className="hidden sm:inline">返回</span>
+   772→   772→        </Button>
+   773→   773→        <div className="flex items-center gap-1.5 shrink-0">
+   774→   774→          <h2 className="text-sm sm:text-base font-bold flex items-center gap-1 truncate">
+   775→   775→            <span>🟦</span>
+   776→   776→            <span className="hidden sm:inline">俄罗斯方块</span>
+   777→   777→          </h2>
+   778→   778→          <GameControlsHelp info={tetrisControlsInfo} variant="button" />
+   779→   779→        </div>
+   780→   780→        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+   781→   781→          <div className="flex items-center gap-1">
+   782→   782→            <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+   783→   783→            <span className="text-xs sm:text-sm font-semibold tabular-nums">{score}</span>
+   784→   784→          </div>
+   785→   785→          <span className="text-xs text-muted-foreground tabular-nums">Lv.{level}</span>
+   786→   786→          {/* Next piece mini-preview */}
+   787→   787→          <div className="grid grid-cols-4 gap-[1px] w-5 h-5 shrink-0" title="下一个">
+   788→   788→            {previewShape.flat().map((cell, i) => (
+   789→   789→              <div
+   790→   790→                key={i}
+   791→   791→                className="rounded-[1px]"
+   792→   792→                style={{
+   793→   793→                  backgroundColor: cell ? previewColor : 'transparent',
+   794→   794→                }}
+   795→   795→              />
+   796→   796→            ))}
+   797→   797→          </div>
+   798→   798→        </div>
+   799→   799→      </div>
+   800→   800→
+   801→   801→      {/* Canvas container with HTML overlays */}
+   802→   802→      <div ref={containerRef} className="w-full max-w-[300px] mx-auto relative">
+   803→   803→        <canvas
+   804→   804→          ref={canvasRef}
+   805→   805→          className="w-full rounded-lg border border-border/50"
+   806→   806→          style={{ aspectRatio: `${COLS}/${ROWS}`, touchAction: 'none' }}
+   807→   807→        />
+   808→   808→
+   809→   809→        {/* Paused overlay */}
+   810→   810→        {paused && (
+   811→   811→          <div className="absolute inset-0 bg-black/60 rounded-lg flex flex-col items-center justify-center gap-2 z-10">
+   812→   812→            <p className="text-white text-lg sm:text-xl font-bold">已暂停</p>
+   813→   813→            <p className="text-white/60 text-xs sm:text-sm">按 Esc 继续</p>
+   814→   814→          </div>
+   815→   815→        )}
+   816→   816→
+   817→   817→        {/* Game over overlay */}
+   818→   818→        {gameStatus === 'over' && (
+   819→   819→          <div className="absolute inset-0 bg-black/65 rounded-lg flex flex-col items-center justify-center gap-2 z-10 px-4">
+   820→   820→            <p className="text-red-400 text-lg sm:text-xl font-bold">游戏结束</p>
+   821→   821→            <p className="text-white text-sm sm:text-base">得分: {score}</p>
+   822→   822→            {isNewRecord && (
+   823→   823→              <p className="text-yellow-400 text-xs sm:text-sm font-semibold animate-pulse">
+   824→   824→                🎉 新纪录！
+   825→   825→              </p>
+   826→   826→            )}
+   827→   827→            <Button
+   828→   828→              onClick={restartGame}
+   829→   829→              className="mt-2 min-h-[44px] font-semibold"
+   830→   830→              size="lg"
+   831→   831→            >
+   832→   832→              <RotateCcw className="h-4 w-4 mr-2" />
+   833→   833→              再来一局
+   834→   834→            </Button>
+   835→   835→          </div>
+   836→   836→        )}
+   837→   837→      </div>
+   838→   838→
+   839→   839→      {/* Mobile virtual buttons */}
+   840→   840→      {isMobile && (
+   841→   841→        <div className="w-full max-w-[300px] px-1">
+   842→   842→          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+   843→   843→            <Button
+   844→   844→              variant="outline"
+   845→   845→              className="min-h-[44px] min-w-[44px] text-lg font-bold px-3"
+   846→   846→              onTouchStart={(e) => {
+   847→   847→                e.preventDefault();
+   848→   848→                if (!pausedRef.current) moveLeft();
+   849→   849→              }}
+   850→   850→              disabled={gameStatus === 'over' || paused}
+   851→   851→            >
+   852→   852→              ←
+   853→   853→            </Button>
+   854→   854→            <Button
+   855→   855→              variant="outline"
+   856→   856→              className="min-h-[44px] min-w-[44px] text-lg font-bold px-3"
+   857→   857→              onTouchStart={(e) => {
+   858→   858→                e.preventDefault();
+   859→   859→                if (!pausedRef.current) {
+   860→   860→                  moveDown();
+   861→   861→                  lastDropRef.current = performance.now();
+   862→   862→                }
+   863→   863→              }}
+   864→   864→              disabled={gameStatus === 'over' || paused}
+   865→   865→            >
+   866→   866→              ↓
+   867→   867→            </Button>
+   868→   868→            <Button
+   869→   869→              variant="outline"
+   870→   870→              className="min-h-[44px] min-w-[44px] text-lg font-bold px-3"
+   871→   871→              onTouchStart={(e) => {
+   872→   872→                e.preventDefault();
+   873→   873→                if (!pausedRef.current) moveRight();
+   874→   874→              }}
+   875→   875→              disabled={gameStatus === 'over' || paused}
+   876→   876→            >
+   877→   877→              →
+   878→   878→            </Button>
+   879→   879→            <Button
+   880→   880→              variant="outline"
+   881→   881→              className="min-h-[44px] min-w-[44px] text-sm font-bold px-3"
+   882→   882→              onTouchStart={(e) => {
+   883→   883→                e.preventDefault();
+   884→   884→                if (!pausedRef.current) rotate();
+   885→   885→              }}
+   886→   886→              disabled={gameStatus === 'over' || paused}
+   887→   887→            >
+   888→   888→              旋转
+   889→   889→            </Button>
+   890→   890→            <Button
+   891→   891→              variant="outline"
+   892→   892→              className="min-h-[44px] min-w-[44px] text-sm font-bold px-3"
+   893→   893→              onTouchStart={(e) => {
+   894→   894→                e.preventDefault();
+   895→   895→                if (!pausedRef.current) hardDrop();
+   896→   896→              }}
+   897→   897→              disabled={gameStatus === 'over' || paused}
+   898→   898→            >
+   899→   899→              硬降
+   900→   900→            </Button>
+   901→   901→          </div>
+   902→   902→        </div>
+   903→   903→      )}
+   904→   904→    </div>
+   905→   905→  );
+   906→   906→}
+   907→   907→
