@@ -59,3 +59,4 @@ server.log
 .open-next/
 .next/
 内测账号.txt
+wrangler.toml
